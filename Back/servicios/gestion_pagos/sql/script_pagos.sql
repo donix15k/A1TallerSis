@@ -613,3 +613,48 @@ ALTER TABLE pagos.transacciones
 -- ==========================================================================
 ALTER TABLE pagos.ventas_online
     ADD COLUMN IF NOT EXISTS email VARCHAR(150);
+
+-- ==========================================================================
+-- TDSI-958: pantalla "Verificación de Pub/Sub" del Administrador -- manda un
+-- mensaje de texto libre a cualquiera de los tópicos de los grupos del proyecto
+-- compartido (A-I) y deja constancia de si Pub/Sub lo acepto o no. Sirve para
+-- probar la conexion real con cada grupo sin depender de una integracion de
+-- negocio ya armada para ese grupo en particular.
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS pagos.pubsub_verificaciones (
+    id              BIGSERIAL PRIMARY KEY,
+    grupo           VARCHAR(10)  NOT NULL,
+    grupo_origen    VARCHAR(10)  NOT NULL DEFAULT 'A',
+    topico          VARCHAR(200) NOT NULL,
+    mensaje         TEXT         NOT NULL,
+    payload_enviado JSONB,
+    ok              BOOLEAN      NOT NULL,
+    message_id      VARCHAR(100),
+    error           VARCHAR(500),
+    enviado_por     VARCHAR(150),
+    creado_en       TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_pubsub_verificaciones_creado_en ON pagos.pubsub_verificaciones (creado_en DESC);
+
+ALTER TABLE pagos.pubsub_verificaciones ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================================================
+-- TDSI-960: el cuerpo exacto que se publico (mensaje + grupo + fecha + correo de
+-- quien lo mando), para poder mostrarlo tal cual en el log -- antes solo se
+-- guardaba el texto libre que escribio el Administrador.
+-- ==========================================================================
+ALTER TABLE pagos.pubsub_verificaciones
+    ADD COLUMN IF NOT EXISTS payload_enviado JSONB;
+
+-- ==========================================================================
+-- TDSI-962: "CUSTOM" (topico personalizado, ver TDSI-958) no entraba en VARCHAR(5).
+-- ==========================================================================
+ALTER TABLE pagos.pubsub_verificaciones
+    ALTER COLUMN grupo TYPE VARCHAR(10);
+
+-- ==========================================================================
+-- TDSI-963: "Tópico origen" seleccionable -- simular que el mensaje viene de
+-- cualquiera de los 9 grupos (A por defecto, el real), no solo mandarlo como A fijo.
+-- ==========================================================================
+ALTER TABLE pagos.pubsub_verificaciones
+    ADD COLUMN IF NOT EXISTS grupo_origen VARCHAR(10) NOT NULL DEFAULT 'A';

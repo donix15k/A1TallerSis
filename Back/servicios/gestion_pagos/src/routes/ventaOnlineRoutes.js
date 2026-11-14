@@ -38,7 +38,11 @@ router.get("/online/ventas", wrap(async (req, res) => {
 // 200 { publicado, messageId, facturaEmail } o { publicado: false, error, facturaEmail }.
 // 404 si la venta no existe; 409 si todavia no tiene una factura emitida.
 router.post("/online/:id/reenviar-marketplace", wrap(async (req, res) => {
-  const data = await reenviarAvisoMarketplace(req.params.id);
+  const cuerpo = req.body || {};
+  const data = await reenviarAvisoMarketplace(req.params.id, {
+    grupoOrigen: cuerpo.grupo_origen,
+    enviadoPor: cuerpo.enviado_por,
+  });
   res.json({ ok: true, data });
 }));
 

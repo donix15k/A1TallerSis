@@ -117,10 +117,13 @@ export function resolverDiferencia(id, { justificacion, resuelta_por }) {
   })
 }
 
-// TDSI-701/704: reintenta el aviso a Contabilidad de una diferencia ya resuelta (solo
+// TDSI-701/704/964: reintenta el aviso a Contabilidad de una diferencia ya resuelta (solo
 // tiene sentido si el envio anterior quedo en Pendiente-con-error o en Rechazado).
-export function reenviarDiferenciaContabilidad(id) {
+// grupo_origen (opcional, A por defecto) simula -- solo para pruebas -- que el reenvío
+// viene de otro grupo; el destino siempre es Contabilidad, eso no cambia.
+export function reenviarDiferenciaContabilidad(id, { grupo_origen, enviado_por } = {}) {
   return apiFetch(`/api/caja/diferencias/${id}/reenviar-contabilidad`, {
     method: 'POST',
+    body: JSON.stringify({ grupo_origen, enviado_por }),
   })
 }

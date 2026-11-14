@@ -35,6 +35,9 @@ async function venta({ ordenId, dia, estado = "Pagado", hora = "10:00", items })
 test.after(async () => {
   publisher.usarClienteDePrueba(null);
   await query(`DELETE FROM pagos.ventas_online WHERE orden_id LIKE $1`, [`${PREFIJO}%`]);
+  // TDSI-964: cada publicarProductosVendidos() tambien queda en el log compartido de
+  // "Verificación de Pub/Sub".
+  await query(`DELETE FROM pagos.pubsub_verificaciones WHERE payload_enviado->>'referencia_externa' = $1`, [`PV-${DIA_PUBLICAR}`]);
   await query(`DELETE FROM pagos.envios_compras WHERE fecha = $1`, [DIA_PUBLICAR]);
   await pool.end();
 });
@@ -90,34 +93,64 @@ test("TDSI-185: exige la fecha y valida que sea una fecha real", async () => {
   await assert.rejects(() => obtenerProductosVendidos("no-es-fecha"), (e) => e.status === 400);
 });
 
-test("TDSI-682: publica el reporte con un identificador unico por fecha", async () => {
+test("TDSI-682/964: publica el reporte en el sobre estandar, con un identificador unico por fecha, y queda en el log compartido", async () => {
   await venta({
     ordenId: `${PREFIJO}-5`, dia: DIA_PUBLICAR, hora: "11:00",
     items: [{ sku: "PAN-05", descripcion: "Pan de molde", cantidad: 4, precioUnitario: 8 }],
   });
-  publisher.usarClienteDePrueba({ topic: () => ({ publishMessage: async () => "pub-1" }) });
+  const publicados = [];
+  publisher.usarClienteDePrueba({ topic: () => ({ publishMessage: async (msg) => { publicados.push(msg); return "pub-1"; } }) });
 
   const { mensaje, resultado, envio } = await publicarProductosVendidos(DIA_PUBLICAR);
 
-  assert.equal(mensaje.reporte_id, `PV-${DIA_PUBLICAR}`);
-  assert.equal(mensaje.fecha, DIA_PUBLICAR);
-  assert.equal(mensaje.origen, "gestion_pagos");
-  assert.ok(mensaje.productos.some((p) => p.sku === "PAN-05"));
-  assert.ok(mensaje.generado_en);
+  // TDSI-964: mismo sobre que Contabilidad/Marketplace/"Verificación de Pub/Sub".
+  assert.equal(mensaje.sistema_origen, "GESTION_DE_PAGOS_Y_FACTURACION");
+  assert.equal(mensaje.referencia_externa, `PV-${DIA_PUBLICAR}`);
+  assert.equal(mensaje.tipo_operacion, "productos_vendidos");
+  assert.equal(mensaje.fecha_documento, DIA_PUBLICAR);
+  assert.ok(mensaje.datos.productos.some((p) => p.sku === "PAN-05"));
+  assert.ok(mensaje.datos.generado_en);
   assert.equal(resultado.ok, true);
   assert.equal(resultado.messageId, "pub-1");
+
+  const ultimo = publicados.at(-1);
+  assert.equal(ultimo.attributes.grupo, "A");
+  assert.deepEqual(ultimo.json, mensaje);
 
   // TDSI-697: el intento quedo registrado en pagos.envios_compras.
   assert.equal(envio.estado, "Enviado");
   assert.equal(envio.pubsub_message_id, "pub-1");
   assert.equal(envio.reporte_id, `PV-${DIA_PUBLICAR}`);
+
+  // TDSI-964: y en el log compartido de "Verificación de Pub/Sub" con destino fijo (C = Compras).
+  const { rows: log } = await query(
+    `SELECT grupo, grupo_origen, ok FROM pagos.pubsub_verificaciones WHERE payload_enviado->>'referencia_externa' = $1 ORDER BY creado_en DESC LIMIT 1`,
+    [`PV-${DIA_PUBLICAR}`]
+  );
+  assert.deepEqual(log[0], { grupo: "C", grupo_origen: "A", ok: true });
+});
+
+test("TDSI-964: se puede simular que el reporte viene de otro grupo (grupoOrigen), sin cambiar el destino (Compras)", async () => {
+  publisher.usarClienteDePrueba({ topic: () => ({ publishMessage: async () => "pub-origen" }) });
+  const { mensaje } = await publicarProductosVendidos(DIA_PUBLICAR, { grupoOrigen: "i", enviadoPor: "admin-test@correo.test" });
+  assert.equal(mensaje.sistema_origen, "GESTION_DE_INVENTARIOS_Y_ALMACEN");
+
+  const { rows: log } = await query(
+    `SELECT grupo, grupo_origen, enviado_por FROM pagos.pubsub_verificaciones WHERE payload_enviado->>'referencia_externa' = $1 ORDER BY creado_en DESC LIMIT 1`,
+    [`PV-${DIA_PUBLICAR}`]
+  );
+  assert.deepEqual(log[0], { grupo: "C", grupo_origen: "I", enviado_por: "admin-test@correo.test" });
+});
+
+test("TDSI-964: un grupoOrigen invalido responde 400", async () => {
+  await assert.rejects(() => publicarProductosVendidos(DIA_PUBLICAR, { grupoOrigen: "Z" }), (e) => e.status === 400);
 });
 
 test("TDSI-682: el mismo identificador siempre sale igual para la misma fecha (lo que publica Compras puede deduplicar)", async () => {
   publisher.usarClienteDePrueba({ topic: () => ({ publishMessage: async () => "pub-2" }) });
   const { mensaje: m1 } = await publicarProductosVendidos(DIA_PUBLICAR);
   const { mensaje: m2 } = await publicarProductosVendidos(DIA_PUBLICAR);
-  assert.equal(m1.reporte_id, m2.reporte_id);
+  assert.equal(m1.referencia_externa, m2.referencia_externa);
 });
 
 test("TDSI-682: si no hubo ventas ese dia, no se puede enviar", async () => {

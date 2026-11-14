@@ -10,11 +10,19 @@ const { errorHandler } = require("../middlewares/errorHandler");
 const { resolverDiferencia, listarDiferencias, reenviarContabilidad } = require("../services/diferenciasService");
 const publisher = require("../clients/pubsubPublisher");
 
+const publicados = [];
+const topicoQueCaptura = () => ({
+  topic: () => ({ publishMessage: async (msg) => { publicados.push(msg); return `pub-701-cap-${publicados.length}`; } }),
+});
+
 const CAJA = "CAJA-TEST-701";
 let servidor, base;
 let contadorTurnos = 0;
 
 async function limpiar() {
+  // TDSI-964: cada publicarDiferencia() de estas pruebas tambien queda en el log
+  // compartido de "Verificación de Pub/Sub" -- se limpia por el codigo de caja de prueba.
+  await query(`DELETE FROM pagos.pubsub_verificaciones WHERE payload_enviado->'datos'->>'caja' = $1`, [CAJA]);
   await query(`DELETE FROM caja.diferencias_resolucion WHERE turno_id IN (SELECT id FROM caja.turnos WHERE caja_id = $1)`, [CAJA]);
   await query(`DELETE FROM caja.turnos WHERE caja_id = $1`, [CAJA]);
   await query(`DELETE FROM caja.cajas WHERE codigo = $1`, [CAJA]);
@@ -117,6 +125,46 @@ test("TDSI-701: no deja reenviar un envio ya Enviado o sin resolver", async () =
   const id = await diferenciaPendiente(turno);
   await resolverDiferencia(id, { justificacion: "Todo cuadró a la segunda" });
   await assert.rejects(() => reenviarContabilidad(id), (e) => e.status === 409);
+});
+
+test("TDSI-964: 'Reenviar' puede simular que el aviso viene de otro grupo (grupo_origen), sin tocar el payload guardado, y queda en el log compartido", async () => {
+  const turno = await turnoCerrado();
+  const id = await diferenciaPendiente(turno, { tipo: "FALTANTE", monto: 40 });
+
+  publisher.usarClienteDePrueba(topicoQueFalla("sin conexion"));
+  await resolverDiferencia(id, { justificacion: "Se revisó con el cajero" });
+  const { rows: antes } = await query(`SELECT payload FROM caja.diferencias_envios_contabilidad WHERE diferencia_id = $1`, [id]);
+  assert.equal(antes[0].payload.sistema_origen, "GESTION_CAJA");
+
+  publisher.usarClienteDePrueba(topicoQueCaptura());
+  const r = await reenviarContabilidad(id, { grupoOrigen: "D", enviadoPor: "admin-test@correo.test" });
+  assert.equal(r.publicado, true);
+  assert.equal(r.contabilidad.estado, "Enviado");
+
+  const ultimo = publicados.at(-1);
+  assert.equal(ultimo.json.sistema_origen, "CONTABILIDAD");
+  assert.equal(ultimo.attributes.grupo, "D");
+
+  // el payload guardado en caja.diferencias_envios_contabilidad no cambia -- solo lo
+  // que efectivamente se publico esa vez.
+  const { rows: despues } = await query(`SELECT payload FROM caja.diferencias_envios_contabilidad WHERE diferencia_id = $1`, [id]);
+  assert.equal(despues[0].payload.sistema_origen, "GESTION_CAJA");
+
+  // TDSI-964: queda en el log compartido de "Verificación de Pub/Sub" con destino fijo (D = Contabilidad).
+  const { rows: log } = await query(
+    `SELECT grupo, grupo_origen, ok, enviado_por FROM pagos.pubsub_verificaciones
+      WHERE payload_enviado->>'referencia_externa' = $1 ORDER BY creado_en DESC LIMIT 1`,
+    [ultimo.json.referencia_externa]
+  );
+  assert.deepEqual(log[0], { grupo: "D", grupo_origen: "D", ok: true, enviado_por: "admin-test@correo.test" });
+});
+
+test("TDSI-964: un grupo_origen invalido al reenviar responde 400", async () => {
+  const turno = await turnoCerrado();
+  const id = await diferenciaPendiente(turno);
+  publisher.usarClienteDePrueba(topicoQueFalla("sin conexion"));
+  await resolverDiferencia(id, { justificacion: "Para probar origen invalido" });
+  await assert.rejects(() => reenviarContabilidad(id, { grupoOrigen: "Z" }), (e) => e.status === 400);
 });
 
 test("TDSI-701: GET /api/caja/diferencias y POST reenviar-contabilidad", async () => {

@@ -50,6 +50,12 @@ function suscripcionFalsa(textos) {
 const topicoQuePublicaBien = () => ({ topic: () => ({ publishMessage: async () => "pub-1" }) });
 const topicoQueFalla = (motivo) => ({ topic: () => ({ publishMessage: async () => { throw new Error(motivo); } }) });
 
+// TDSI-964: captura lo publicado de verdad (json + attributes) para comprobar el sobre.
+const publicadosMarketplace = [];
+const topicoQueCapturaMarketplace = () => ({
+  topic: () => ({ publishMessage: async (msg) => { publicadosMarketplace.push(msg); return `pub-mkt-${publicadosMarketplace.length}`; } }),
+});
+
 test.before(() => {
   publisher.usarClienteDePrueba(topicoQuePublicaBien());
   // El .env puede tener credenciales SMTP reales (produccion); en los tests se fuerza
@@ -69,6 +75,9 @@ test.after(async () => {
   // venta valida del topico (incluida la primera de una orden repetida) emite la suya.
   await query(`DELETE FROM facturacion.facturas WHERE cliente_nit = $1`, [NIT_PRUEBA]);
   await query(`DELETE FROM facturacion.clientes_frecuentes WHERE nit = $1`, [NIT_PRUEBA]);
+  // TDSI-964: cada aviso al Marketplace tambien queda en el log compartido de
+  // "Verificación de Pub/Sub" -- se limpia por el prefijo de orden de esta corrida.
+  await query(`DELETE FROM pagos.pubsub_verificaciones WHERE payload_enviado->'datos'->>'orden_id' LIKE $1`, [`${PREFIJO}%`]);
   await pool.end();
 });
 
@@ -232,6 +241,58 @@ test("TDSI-683: si facturacion no puede emitir la factura, la venta queda guarda
   );
   assert.equal(rows[0].numero_factura, null);
   assert.ok(rows[0].factura_error);
+});
+
+test("TDSI-964: el aviso al Marketplace va en el mismo sobre que Contabilidad/Verificación de Pub/Sub, y puede simular otro grupo origen sin cambiar el destino", async () => {
+  const orden = `${PREFIJO}-964`;
+  subscriber.usarClienteDePrueba(suscripcionFalsa([ventaMsg(orden)]));
+  const resultados = await procesarVentas();
+  const { rows } = await query(`SELECT id, orden_id FROM pagos.ventas_online WHERE orden_id = $1`, [orden]);
+  const idVenta = rows[0].id;
+
+  publisher.usarClienteDePrueba(topicoQueCapturaMarketplace());
+  const resultado = await reenviarAvisoMarketplace(idVenta);
+  assert.equal(resultado.publicado, true);
+
+  let ultimo = publicadosMarketplace.at(-1);
+  assert.equal(ultimo.json.sistema_origen, "GESTION_DE_PAGOS_Y_FACTURACION");
+  assert.equal(ultimo.json.tipo_operacion, "factura_emitida");
+  assert.equal(ultimo.json.referencia_externa, resultados[0].numeroFactura);
+  assert.match(ultimo.json.fecha_documento, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(ultimo.json.datos.orden_id, orden);
+  assert.equal(ultimo.json.datos.numero_factura, resultados[0].numeroFactura);
+  assert.ok(ultimo.json.datos.enlace_verificacion);
+  assert.equal(ultimo.attributes.grupo, "A");
+
+  // TDSI-964: se puede simular otro grupo origen (solo pruebas) -- el destino sigue siendo Marketplace.
+  const orden2 = `${PREFIJO}-964b`;
+  subscriber.usarClienteDePrueba(suscripcionFalsa([ventaMsg(orden2)]));
+  await procesarVentas();
+  const { rows: filas2 } = await query(`SELECT id FROM pagos.ventas_online WHERE orden_id = $1`, [orden2]);
+
+  const resultado2 = await reenviarAvisoMarketplace(filas2[0].id, { grupoOrigen: "c", enviadoPor: "admin-test@correo.test" });
+  assert.equal(resultado2.publicado, true);
+  ultimo = publicadosMarketplace.at(-1);
+  assert.equal(ultimo.json.sistema_origen, "GESTION_DE_COMPRAS_Y_PROVEEDORES");
+  assert.equal(ultimo.attributes.grupo, "C");
+
+  // Y queda en el log compartido con destino fijo E (Marketplace) y el origen simulado.
+  const { rows: log } = await query(
+    `SELECT grupo, grupo_origen, ok, enviado_por FROM pagos.pubsub_verificaciones
+      WHERE payload_enviado->>'referencia_externa' = $1 ORDER BY creado_en DESC LIMIT 1`,
+    [ultimo.json.referencia_externa]
+  );
+  assert.deepEqual(log[0], { grupo: "E", grupo_origen: "C", ok: true, enviado_por: "admin-test@correo.test" });
+
+  publisher.usarClienteDePrueba(topicoQuePublicaBien());
+});
+
+test("TDSI-964: un grupo_origen invalido al avisar al Marketplace responde 400", async () => {
+  const orden = `${PREFIJO}-964c`;
+  subscriber.usarClienteDePrueba(suscripcionFalsa([ventaMsg(orden)]));
+  await procesarVentas();
+  const { rows } = await query(`SELECT id FROM pagos.ventas_online WHERE orden_id = $1`, [orden]);
+  await assert.rejects(() => reenviarAvisoMarketplace(rows[0].id, { grupoOrigen: "Z" }), (e) => e.status === 400);
 });
 
 test("TDSI-179: la misma orden que llega dos veces no se duplica", async () => {

@@ -2,6 +2,9 @@ const { AppError } = require("../utils/AppError");
 const { aCentavos, aMonto } = require("../utils/money");
 const { ZONA } = require("../utils/fechas");
 const { publicar } = require("../clients/pubsubPublisher");
+const cfg = require("../config/contabilidad");
+const { GRUPOS, buscarPorGrupo, slugificarOrigen } = require("../config/pubsubGrupos");
+const pubsubVerificacionesRepo = require("../data/pubsubVerificacionesRepo");
 
 // Fecha del turno en hora de Bolivia (YYYY-MM-DD) -- un cierre de las 22:00 es de ese
 // dia, no del siguiente. Mismo criterio que fechaBolivia() en facturacion/contabilidadService.js.
@@ -48,20 +51,56 @@ function armarMensajeDiferencia({ diferencia, turno }) {
 }
 
 /**
- * TDSI-698: publica el mensaje "diferencia_caja" en el topico de Contabilidad,
- * reutilizando el publicador Pub/Sub (mismo cliente/patron que facturacion). No lanza
- * si Pub/Sub falla -- devuelve { ok:false, ... } para que el llamador decida (la
- * diferencia ya quedo resuelta en nuestro sistema de todos modos, ver diferenciasService.js).
+ * TDSI-698: publica el mensaje "diferencia_caja" en el topico de Contabilidad (siempre
+ * el mismo destino -- esto NO es seleccionable, Contabilidad siempre debe recibirlo).
+ * No lanza si Pub/Sub falla -- devuelve { ok:false, ... } para que el llamador decida
+ * (la diferencia ya quedo resuelta en nuestro sistema de todos modos, ver diferenciasService.js).
+ *
+ * TDSI-964: `grupoOrigen` (A-I) es, igual que en "Verificación de Pub/Sub", desde que
+ * grupo se simula que viene el aviso -- en la vida real siempre somos el Grupo A, esto
+ * es solo para pruebas. Si se indica, se manda una copia del mensaje con su
+ * sistema_origen recalculado (sin tocar el payload ya guardado en
+ * caja.diferencias_envios_contabilidad). Todo envio, con o sin origen simulado, queda
+ * ademas en el log compartido de "Verificación de Pub/Sub" (pagos.pubsub_verificaciones).
  */
-async function publicarDiferencia(mensaje) {
-  return publicar(mensaje, {
+async function publicarDiferencia(mensaje, { grupoOrigen, enviadoPor } = {}) {
+  let mensajeAEnviar = mensaje;
+  let grupo = "A";
+  if (grupoOrigen) {
+    const origen = buscarPorGrupo(grupoOrigen);
+    if (!origen) {
+      throw new AppError(`El tópico origen debe ser uno de: ${GRUPOS.map((g) => g.grupo).join(", ")}`, 400, { grupo_origen: grupoOrigen });
+    }
+    grupo = origen.grupo;
+    mensajeAEnviar = { ...mensaje, sistema_origen: slugificarOrigen(origen.nombre) };
+  }
+
+  const resultado = await publicar(mensajeAEnviar, {
     tipo: "DIFERENCIA_CAJA",
-    tipo_operacion: mensaje.tipo_operacion,
-    referencia_externa: mensaje.referencia_externa,
-    idempotency_key: mensaje.referencia_externa,
+    tipo_operacion: mensajeAEnviar.tipo_operacion,
+    referencia_externa: mensajeAEnviar.referencia_externa,
+    idempotency_key: mensajeAEnviar.referencia_externa,
     origen: "gestion_caja",
-    grupo: "A",
+    grupo,
   });
+
+  try {
+    await pubsubVerificacionesRepo.registrar({
+      grupo: "D",
+      grupo_origen: grupo,
+      topico: cfg.PUBSUB_TOPIC,
+      mensaje: `${mensajeAEnviar.tipo_operacion} ${mensajeAEnviar.referencia_externa}`,
+      payload_enviado: mensajeAEnviar,
+      ok: resultado.ok,
+      message_id: resultado.ok ? resultado.messageId : null,
+      error: resultado.ok ? null : resultado.error,
+      enviado_por: enviadoPor || null,
+    });
+  } catch (e) {
+    console.error("No se pudo registrar el envío a Contabilidad en el log de Pub/Sub:", e.message);
+  }
+
+  return resultado;
 }
 
 module.exports = { armarMensajeDiferencia, publicarDiferencia };

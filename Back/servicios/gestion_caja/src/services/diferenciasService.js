@@ -28,7 +28,7 @@ async function resolverDiferencia(id, { justificacion, resuelta_por } = {}) {
   const mensaje = armarMensajeDiferencia({ diferencia: resuelta, turno: actual.turno });
   await diferenciasEnviosRepo.crearPendiente(resuelta.id, mensaje);
 
-  const resultado = await publicarDiferencia(mensaje);
+  const resultado = await publicarDiferencia(mensaje, { enviadoPor: resuelta_por });
   const envio = resultado.ok
     ? await diferenciasEnviosRepo.marcarEnviado(resuelta.id, resultado.messageId)
     : await diferenciasEnviosRepo.marcarError(resuelta.id, resultado.error);
@@ -54,15 +54,20 @@ async function listarDiferencias({ estado } = {}) {
  * buen puerto (nunca se pudo publicar, o Contabilidad lo rechazo). Reusa el mismo
  * mensaje ya armado (el turno/caja/cajero de una diferencia no cambian despues de
  * resuelta), asi que no hace falta reconstruirlo.
+ *
+ * TDSI-964: `grupoOrigen` (opcional, A por defecto) permite simular -- igual que en
+ * "Verificación de Pub/Sub" -- que el reenvío viene de otro grupo del proyecto; el
+ * destino sigue siendo siempre Contabilidad, eso nunca cambia. No se toca el payload
+ * guardado en caja.diferencias_envios_contabilidad, solo lo que efectivamente se publica.
  */
-async function reenviarContabilidad(id) {
+async function reenviarContabilidad(id, { grupoOrigen, enviadoPor } = {}) {
   const envio = await diferenciasEnviosRepo.obtenerPorDiferencia(id);
   if (!envio) throw new AppError("Esta diferencia todavía no tiene un envío a Contabilidad (resuélvela primero).", 404, { id });
   if (!["Pendiente", "Rechazado"].includes(envio.estado)) {
     throw new AppError(`Solo se pueden reenviar envíos con estado Pendiente o Rechazado (este está ${envio.estado}).`, 409, { id, estado: envio.estado });
   }
 
-  const resultado = await publicarDiferencia(envio.payload);
+  const resultado = await publicarDiferencia(envio.payload, { grupoOrigen, enviadoPor });
   const actualizado = resultado.ok
     ? await diferenciasEnviosRepo.marcarEnviado(id, resultado.messageId)
     : await diferenciasEnviosRepo.marcarError(id, resultado.error);

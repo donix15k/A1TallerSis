@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listarVentasOnline, reenviarAvisoMarketplace } from '../api/ventasOnline.js'
+import { listarGruposPubSub } from '../api/pubsubVerificacion.js'
+import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 
 const ESTADOS = [
   { valor: '', etiqueta: 'Todos' },
@@ -28,6 +30,8 @@ const FILTROS_VACIOS = { desde: '', hasta: '', estado: '' }
 // Marketplace (Pub/Sub) queda pendiente de que el Administrador revise la factura en
 // "Ver factura" y la apruebe.
 function VentasOnline() {
+  const { administrador } = useAdminAuth()
+
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [estado, setEstado] = useState('')
@@ -40,6 +44,17 @@ function VentasOnline() {
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null)
   const [enviandoMarketplace, setEnviandoMarketplace] = useState(false)
   const [errorMarketplace, setErrorMarketplace] = useState(null)
+
+  // TDSI-964: "Tópico origen" -- igual que en "Verificación de Pub/Sub", solo para
+  // pruebas; el destino de este aviso siempre es el Marketplace, eso no se elige aca.
+  const [gruposOrigen, setGruposOrigen] = useState([])
+  const [grupoOrigen, setGrupoOrigen] = useState('A')
+
+  useEffect(() => {
+    listarGruposPubSub()
+      .then((r) => setGruposOrigen(r.data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     let vigente = true
@@ -86,7 +101,7 @@ function VentasOnline() {
     setEnviandoMarketplace(true)
     setErrorMarketplace(null)
     try {
-      const { data } = await reenviarAvisoMarketplace(id)
+      const { data } = await reenviarAvisoMarketplace(id, { grupo_origen: grupoOrigen, enviado_por: administrador?.email })
       const nuevoEstado = data.publicado ? 'Enviado' : 'Error'
       const nuevoEstadoCorreo = data.facturaEmail?.envio?.estado
       setVentaSeleccionada((v) => (v ? { ...v, aviso_marketplace_estado: nuevoEstado, ...(nuevoEstadoCorreo && { factura_email_estado: nuevoEstadoCorreo }) } : v))
@@ -246,6 +261,14 @@ function VentasOnline() {
                 alignItems: 'center',
               }}
             >
+              <label className="campo" title="En la vida real siempre somos el Grupo A -- esto solo sirve para simular, en nuestras propias pruebas, que el aviso viene de otro grupo. Al Marketplace (Grupo E) le llega igual, eso no cambia.">
+                Tópico origen
+                <select value={grupoOrigen} onChange={(e) => setGrupoOrigen(e.target.value)} disabled={gruposOrigen.length === 0}>
+                  {gruposOrigen.map((g) => (
+                    <option key={g.grupo} value={g.grupo}>{g.grupo} · {g.nombre}</option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="button"
                 className="btn"

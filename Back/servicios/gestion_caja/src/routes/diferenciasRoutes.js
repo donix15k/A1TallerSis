@@ -18,10 +18,15 @@ router.post("/diferencias/:id/resolver", wrap(async (req, res) => {
   res.json({ ok: true, mensaje: "Diferencia resuelta", data });
 }));
 
-// TDSI-52/701: boton "Reenviar" -- solo si el aviso anterior no se pudo publicar o
-// Contabilidad lo rechazo.
+// TDSI-52/701/964: boton "Reenviar" -- solo si el aviso anterior no se pudo publicar o
+// Contabilidad lo rechazo. grupo_origen (opcional) simula un envio desde otro grupo del
+// proyecto, igual que en "Verificación de Pub/Sub"; el destino siempre es Contabilidad.
 router.post("/diferencias/:id/reenviar-contabilidad", wrap(async (req, res) => {
-  const data = await reenviarContabilidad(req.params.id);
+  const cuerpo = req.body || {};
+  const data = await reenviarContabilidad(req.params.id, {
+    grupoOrigen: cuerpo.grupo_origen,
+    enviadoPor: cuerpo.enviado_por,
+  });
   res.json({ ok: true, mensaje: "Reenviado a Contabilidad", data });
 }));
 

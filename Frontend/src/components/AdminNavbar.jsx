@@ -24,6 +24,7 @@ const INTEGRACIONES = [
   { to: '/admin/ventas-online', etiqueta: 'Ventas online (Marketplace)' },
   { to: '/admin/productos-vendidos', etiqueta: 'Productos vendidos (Compras)' },
   { to: '/admin/diferencias', etiqueta: 'Diferencias de caja (Contabilidad)' },
+  { to: '/admin/pubsub-verificacion', etiqueta: 'Verificación de Pub/Sub' },
 ]
 
 function AdminNavbar() {

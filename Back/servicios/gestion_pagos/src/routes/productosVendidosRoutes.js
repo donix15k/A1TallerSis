@@ -10,9 +10,15 @@ router.get("/productos-vendidos", wrap(async (req, res) => {
   res.json({ ok: true, data });
 }));
 
-// TDSI-54/702: boton "Enviar a Compras".
+// TDSI-54/702/964: boton "Enviar a Compras". grupo_origen (opcional) simula -- solo para
+// pruebas, igual que en "Verificación de Pub/Sub" -- que el envio viene de otro grupo;
+// el destino siempre es Compras.
 router.post("/productos-vendidos/:fecha/enviar-compras", wrap(async (req, res) => {
-  const data = await enviarACompras(req.params.fecha);
+  const cuerpo = req.body || {};
+  const data = await enviarACompras(req.params.fecha, {
+    grupoOrigen: cuerpo.grupo_origen,
+    enviadoPor: cuerpo.enviado_por,
+  });
   res.json({ ok: true, mensaje: "Reporte enviado a Compras", data });
 }));
 

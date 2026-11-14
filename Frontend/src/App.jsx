@@ -23,6 +23,7 @@ import DiferenciasCaja from './pages/DiferenciasCaja.jsx'
 import VentasOnline from './pages/VentasOnline.jsx'
 import LibroVentas from './pages/LibroVentas.jsx'
 import Usuarios from './pages/Usuarios.jsx'
+import PubSubVerificacion from './pages/PubSubVerificacion.jsx'
 import './App.css'
 
 function RutaProtegida({ children }) {
@@ -71,6 +72,7 @@ function App() {
           <Route path="/admin/ventas-online" element={<RutaProtegidaAdmin><VentasOnline /></RutaProtegidaAdmin>} />
           <Route path="/admin/libro-ventas" element={<RutaProtegidaAdmin><LibroVentas /></RutaProtegidaAdmin>} />
           <Route path="/admin/usuarios" element={<RutaProtegidaAdmin><Usuarios /></RutaProtegidaAdmin>} />
+          <Route path="/admin/pubsub-verificacion" element={<RutaProtegidaAdmin><PubSubVerificacion /></RutaProtegidaAdmin>} />
         </Routes>
       </main>
     </>

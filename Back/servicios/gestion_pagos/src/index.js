@@ -17,6 +17,7 @@ const cobroQrRoutes = require("./routes/cobroQrRoutes");
 const productosVendidosRoutes = require("./routes/productosVendidosRoutes");
 const ventaOnlineRoutes = require("./routes/ventaOnlineRoutes");
 const libroVentasRoutes = require("./routes/libroVentasRoutes");
+const pubsubVerificacionRoutes = require("./routes/pubsubVerificacionRoutes");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { query } = require("./config/db");
 
@@ -55,6 +56,7 @@ app.use("/api/facturas", calculoFacturaRoutes); // TDSI-40/537
 app.use("/api", productosVendidosRoutes); // TDSI-54/702
 app.use("/api/pagos", ventaOnlineRoutes); // TDSI-51/685
 app.use("/api/libro-ventas", libroVentasRoutes); // TDSI-50/748/749
+app.use("/api/pagos", pubsubVerificacionRoutes); // TDSI-958
 
 app.use(errorHandler);
 

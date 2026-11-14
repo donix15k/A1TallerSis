@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listarDiferencias, resolverDiferencia, reenviarDiferenciaContabilidad } from '../api/caja.js'
+import { listarGruposPubSub } from '../api/pubsubVerificacion.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 
 const ETIQUETA_TIPO = { FALTANTE: 'Faltante', SOBRANTE: 'Sobrante' }
@@ -54,6 +55,17 @@ function DiferenciasCaja() {
 
   const [reenviandoId, setReenviandoId] = useState(null)
   const [errorReenviar, setErrorReenviar] = useState(null) // { id, mensaje } | null
+
+  // TDSI-964: "Tópico origen" -- igual que en "Verificación de Pub/Sub", solo para
+  // pruebas; el destino de "Reenviar" siempre es Contabilidad, eso no se elige aca.
+  const [gruposOrigen, setGruposOrigen] = useState([])
+  const [grupoOrigen, setGrupoOrigen] = useState('A')
+
+  useEffect(() => {
+    listarGruposPubSub()
+      .then((r) => setGruposOrigen(r.data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     let vigente = true
@@ -116,7 +128,7 @@ function DiferenciasCaja() {
     setReenviandoId(id)
     setErrorReenviar(null)
     try {
-      await reenviarDiferenciaContabilidad(id)
+      await reenviarDiferenciaContabilidad(id, { grupo_origen: grupoOrigen, enviado_por: administrador?.email })
       setMensaje({ ok: true, texto: 'Reenviado a Contabilidad.' })
       setRecargar((n) => n + 1)
     } catch (err) {
@@ -147,6 +159,14 @@ function DiferenciasCaja() {
           <select value={filtroContabilidad} onChange={(e) => setFiltroContabilidad(e.target.value)}>
             {FILTROS_CONTABILIDAD.map((o) => (
               <option key={o.valor} value={o.valor}>{o.etiqueta}</option>
+            ))}
+          </select>
+        </label>
+        <label className="campo campo-turno-dia" title="En la vida real siempre somos el Grupo A -- esto solo sirve para simular, en nuestras propias pruebas, que el 'Reenviar' viene de otro grupo. A Contabilidad le llega igual, eso no cambia.">
+          Tópico origen (Reenviar)
+          <select value={grupoOrigen} onChange={(e) => setGrupoOrigen(e.target.value)} disabled={gruposOrigen.length === 0}>
+            {gruposOrigen.map((g) => (
+              <option key={g.grupo} value={g.grupo}>{g.grupo} · {g.nombre}</option>
             ))}
           </select>
         </label>

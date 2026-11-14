@@ -17,6 +17,9 @@ let servidor, base;
 let contadorTurnos = 0;
 
 async function limpiar() {
+  // TDSI-964: cada publicarDiferencia() de estas pruebas tambien queda en el log
+  // compartido de "Verificación de Pub/Sub" -- se limpia por el codigo de caja de prueba.
+  await query(`DELETE FROM pagos.pubsub_verificaciones WHERE payload_enviado->'datos'->>'caja' = $1`, [CAJA]);
   await query(`DELETE FROM caja.diferencias_resolucion WHERE turno_id IN (SELECT id FROM caja.turnos WHERE caja_id = $1)`, [CAJA]);
   await query(`DELETE FROM caja.turnos WHERE caja_id = $1`, [CAJA]);
   await query(`DELETE FROM caja.cajas WHERE codigo = $1`, [CAJA]);

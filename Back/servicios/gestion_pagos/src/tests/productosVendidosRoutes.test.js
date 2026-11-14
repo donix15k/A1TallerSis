@@ -48,6 +48,11 @@ test.after(async () => {
   servidor.close();
   publisher.usarClienteDePrueba(null);
   await query(`DELETE FROM pagos.ventas_online WHERE orden_id LIKE $1`, [`${PREFIJO}%`]);
+  // TDSI-964: cada envio tambien queda en el log compartido de "Verificación de Pub/Sub".
+  await query(
+    `DELETE FROM pagos.pubsub_verificaciones WHERE payload_enviado->>'referencia_externa' LIKE ANY($1::text[])`,
+    [[`PV-${FECHA_CON_VENTAS}`, "PV-2021-11-07", "PV-2021-11-08"]]
+  );
   await query(`DELETE FROM pagos.envios_compras WHERE fecha = ANY($1::date[])`, [[FECHA_CON_VENTAS, FECHA_SIN_VENTAS]]);
   await pool.end();
 });
