@@ -81,7 +81,7 @@ test.after(async () => {
 const pedir = (ruta, token = TOKEN_ADMIN) => fetch(`${base}${ruta}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
 
 test("reune los mensajes de las SEIS fuentes en un formato comun (grupo, tipo, fecha, estado y messageId)", async () => {
-  const r = await pedir("/mensajes");
+  const r = await pedir("/mensajes?por_pagina=100");
   assert.equal(r.status, 200);
   const { fuentes, data } = await r.json();
   assert.deepEqual(fuentes.map((f) => [f.origen, f.ok]), [
@@ -110,7 +110,7 @@ test("reune los mensajes de las SEIS fuentes en un formato comun (grupo, tipo, f
 });
 
 test("van del mas reciente al mas antiguo y solo los Error se pueden reenviar", async () => {
-  const { data } = await (await pedir("/mensajes")).json();
+  const { data } = await (await pedir("/mensajes?por_pagina=100")).json();
   const fechas = data.map((m) => new Date(m.fecha || 0).getTime());
   assert.deepEqual(fechas, [...fechas].sort((a, b) => b - a));
   for (const m of data) assert.equal(m.puede_reenviar, m.estado === "Error", `${m.origen}:${m.id}`);
@@ -120,7 +120,7 @@ test("un servicio caido no deja ciega a la pantalla: se muestran los demas y se 
   const urlAntes = process.env.PAGOS_PROVEEDORES_URL;
   process.env.PAGOS_PROVEEDORES_URL = "http://localhost:1";
   try {
-    const { fuentes, data } = await (await pedir("/mensajes")).json();
+    const { fuentes, data } = await (await pedir("/mensajes?por_pagina=100")).json();
     const f = fuentes.find((x) => x.origen === "pagos_proveedores");
     assert.deepEqual([f.ok, f.total], [false, 0]);
     assert.match(f.error, /no se pudo conectar/);
@@ -140,7 +140,7 @@ test("solo el administrador: sin token 401, token invalido 401, cajero 403, Caja
   const antes = process.env.GESTION_CAJA_URL;
   process.env.GESTION_CAJA_URL = "http://localhost:1";
   try {
-    assert.equal((await pedir("/mensajes")).status, 503);
+    assert.equal((await pedir("/mensajes?por_pagina=100")).status, 503);
   } finally {
     process.env.GESTION_CAJA_URL = antes;
   }
@@ -149,6 +149,6 @@ test("solo el administrador: sin token 401, token invalido 401, cajero 403, Caja
 test("el token del administrador se reenvia a Devoluciones (que tambien lo valida)", async () => {
   const sin = await fetch(`${url(servicios.devoluciones)}/api/integraciones/mensajes`);
   assert.equal(sin.status, 401); // sin token, Devoluciones no responde: por eso el monitor se lo reenvia
-  const { fuentes } = await (await pedir("/mensajes")).json();
+  const { fuentes } = await (await pedir("/mensajes?por_pagina=100")).json();
   assert.equal(fuentes.find((f) => f.origen === "devoluciones").ok, true);
 });

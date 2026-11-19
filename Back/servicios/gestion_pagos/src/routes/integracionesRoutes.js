@@ -8,10 +8,11 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(nex
 // Todo el Monitor de integraciones es solo del administrador (Bearer token validado contra Gestion de Caja).
 router.use(requireAdministrador);
 
-// TDSI-126: los mensajes enviados a otros grupos por todos los microservicios (grupo, tipo, fecha, estado y messageId).
+// TDSI-126/127: los mensajes enviados a otros grupos por todos los microservicios (grupo, tipo, fecha, estado y messageId),
+// con filtros ?grupo=C|D|E, ?estado=, ?desde=, ?hasta= (AAAA-MM-DD, dia completo en Bolivia) y paginacion ?pagina=&por_pagina=.
 router.get("/mensajes", wrap(async (req, res) => {
-  const { total, fuentes, data } = await integraciones.listarMensajes({ token: req.tokenAdministrador });
-  res.json({ ok: true, total, fuentes, data });
+  const { total, pagina, por_pagina, total_paginas, fuentes, data } = await integraciones.listarMensajes({ ...req.query, token: req.tokenAdministrador });
+  res.json({ ok: true, total, pagina, por_pagina, total_paginas, fuentes, data });
 }));
 
 module.exports = router;
