@@ -127,6 +127,21 @@ ALTER TABLE devoluciones.reembolsos DROP CONSTRAINT IF EXISTS reembolsos_tipo_ch
 ALTER TABLE devoluciones.reembolsos ADD CONSTRAINT reembolsos_tipo_check CHECK (tipo IN ('EFECTIVO','REVERSION_TARJETA','REVERSION_QR','VALE'));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_vales_compra_devolucion ON devoluciones.vales_compra (devolucion_id);
 
+-- TDSI-71: cada cobro hecho con un vale queda registrado (idempotente por referencia: reintentar el mismo cobro no
+-- descuenta dos veces) y se puede revertir si el cobro no llega a registrarse.
+CREATE TABLE IF NOT EXISTS devoluciones.vales_usos (
+    id             BIGSERIAL PRIMARY KEY,
+    vale_id        BIGINT NOT NULL REFERENCES devoluciones.vales_compra(id) ON DELETE CASCADE,
+    monto          NUMERIC(14,2) NOT NULL CHECK (monto > 0),
+    referencia     VARCHAR(60) NOT NULL,
+    usado_en       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revertido_en   TIMESTAMPTZ
+);
+-- una referencia solo puede estar activa una vez por vale; si el uso se revierte, la referencia queda libre.
+ALTER TABLE devoluciones.vales_usos DROP CONSTRAINT IF EXISTS vales_usos_vale_id_referencia_key;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_vales_usos_activos ON devoluciones.vales_usos (vale_id, referencia) WHERE revertido_en IS NULL;
+ALTER TABLE devoluciones.vales_usos ENABLE ROW LEVEL SECURITY;
+
 -- TDSI-59: sin credenciales SMTP el correo se "simula" (se deja constancia pero no sale nada): estado propio SIMULADO.
 ALTER TABLE devoluciones.envios_comprobante DROP CONSTRAINT IF EXISTS envios_comprobante_estado_check;
 ALTER TABLE devoluciones.envios_comprobante ADD CONSTRAINT envios_comprobante_estado_check CHECK (estado IN ('PENDIENTE','ENVIADO','ERROR','SIMULADO'));

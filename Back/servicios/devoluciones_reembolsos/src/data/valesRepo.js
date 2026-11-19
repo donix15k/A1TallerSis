@@ -63,4 +63,58 @@ async function obtenerPorCodigo(codigo) {
   return rows[0] ? formatear(rows[0]) : null;
 }
 
-module.exports = { emitirVale, obtenerPorCodigo, formatear, codigoAleatorio, DIAS_VIGENCIA };
+/** Bloquea la fila del vale (FOR UPDATE) dentro de la transaccion `client`; null si no existe. */
+async function bloquearPorCodigo(client, codigo) {
+  const { rows } = await client.query(
+    `SELECT id, codigo, monto, saldo_disponible, estado, emitido_en, expira_en FROM devoluciones.vales_compra WHERE codigo = $1 FOR UPDATE`,
+    [codigo]
+  );
+  return rows[0] ? formatear(rows[0]) : null;
+}
+
+/** El uso (no revertido) de un vale con esa referencia, o null. */
+async function usoActivo(client, valeId, referencia) {
+  const { rows } = await client.query(
+    `SELECT id, monto, referencia, usado_en FROM devoluciones.vales_usos WHERE vale_id = $1 AND referencia = $2 AND revertido_en IS NULL`,
+    [valeId, referencia]
+  );
+  return rows[0] ? { ...rows[0], id: Number(rows[0].id), monto: Number(rows[0].monto) } : null;
+}
+
+/** Descuenta `monto` del saldo (en centavos exactos); al llegar a 0 el vale queda USADO. Deja constancia del uso. */
+async function descontar(client, vale, monto, referencia) {
+  const { rows } = await client.query(
+    `UPDATE devoluciones.vales_compra
+        SET saldo_disponible = saldo_disponible - $2,
+            estado = CASE WHEN saldo_disponible - $2 = 0 THEN 'USADO' ELSE estado END
+      WHERE id = $1
+      RETURNING id, codigo, monto, saldo_disponible, estado, emitido_en, expira_en`,
+    [vale.id, monto]
+  );
+  await client.query(`INSERT INTO devoluciones.vales_usos (vale_id, monto, referencia) VALUES ($1, $2, $3)`, [vale.id, monto, referencia]);
+  return formatear(rows[0]);
+}
+
+/** Devuelve el saldo de un uso (lo marca revertido) y reactiva el vale si estaba USADO y no ha vencido. */
+async function reintegrar(client, vale, uso) {
+  await client.query(`UPDATE devoluciones.vales_usos SET revertido_en = now() WHERE id = $1`, [uso.id]);
+  const { rows } = await client.query(
+    `UPDATE devoluciones.vales_compra
+        SET saldo_disponible = saldo_disponible + $2,
+            estado = CASE WHEN estado = 'USADO' AND (expira_en IS NULL OR expira_en > now()) THEN 'ACTIVO' ELSE estado END
+      WHERE id = $1
+      RETURNING id, codigo, monto, saldo_disponible, estado, emitido_en, expira_en`,
+    [vale.id, uso.monto]
+  );
+  return formatear(rows[0]);
+}
+
+/** TDSI-71: marca EXPIRADO los vales ACTIVOS cuya fecha de vencimiento ya paso. Devuelve cuantos. */
+async function marcarExpirados() {
+  const { rowCount } = await query(
+    `UPDATE devoluciones.vales_compra SET estado = 'EXPIRADO' WHERE estado = 'ACTIVO' AND expira_en IS NOT NULL AND expira_en <= now()`
+  );
+  return rowCount;
+}
+
+module.exports = { emitirVale, obtenerPorCodigo, bloquearPorCodigo, usoActivo, descontar, reintegrar, marcarExpirados, formatear, codigoAleatorio, DIAS_VIGENCIA };
