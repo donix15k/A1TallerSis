@@ -185,6 +185,45 @@ async function riesgo({ periodo, token, ahora } = {}) {
   return { ...rango, anulacion, devoluciones };
 }
 
+/**
+ * TDSI-151: el cuadro "Anulaciones por cajero" del mes: por cada cajero que anulo al menos una factura, su nombre, cuantas anulo
+ * ("anuladas"), que % es del total de anulaciones del periodo ("porcentaje": 3 de 4 = 75 %) y su propia tasa (anuladas / emitidas
+ * por el). De mayor a menor; el empate lo desempata el nombre. Un pago mixto anulado cuenta UNA vez. Sin anulaciones: lista vacia.
+ */
+async function anulacionesPorCajero({ periodo, ahora } = {}) {
+  const rango = rangoDelPeriodo(periodo, { ahora });
+  const { rows } = await query(
+    `WITH ventas AS (
+       SELECT id_transaccion,
+              BOOL_OR(estado = 'Anulado')                                                          AS anulada,
+              MAX(COALESCE(cajero_id::text, lower(trim(cajero)), ''))                              AS clave,
+              MAX(COALESCE(NULLIF(trim(cajero_nombre), ''), NULLIF(trim(cajero), ''), cajero_id::text, 'No registrado')) AS nombre
+         FROM pagos.transacciones
+        WHERE (fecha AT TIME ZONE '${ZONA}')::date BETWEEN $1::date AND $2::date
+        GROUP BY id_transaccion)
+     SELECT clave, MAX(nombre) AS cajero,
+            COUNT(*) FILTER (WHERE anulada)::int AS anuladas,
+            COUNT(*)::int                        AS emitidas
+       FROM ventas
+      GROUP BY clave
+     HAVING COUNT(*) FILTER (WHERE anulada) > 0
+      ORDER BY anuladas DESC, MAX(nombre) ASC`,
+    [rango.desde, rango.hasta]
+  );
+  const totalAnuladas = rows.reduce((a, r) => a + r.anuladas, 0);
+  return {
+    ...rango,
+    total_anuladas: totalAnuladas,
+    cajeros: rows.map((r) => ({
+      cajero: r.cajero,
+      anuladas: r.anuladas,
+      emitidas: r.emitidas,
+      porcentaje: calcularPorcentaje(r.anuladas, totalAnuladas),
+      tasa: calcularPorcentaje(r.anuladas, r.emitidas),
+    })),
+  };
+}
+
 const DIAS_GRAFICO = 30;
 
 /** Suma/resta dias a un AAAA-MM-DD (calendario puro, sin zona horaria). */
@@ -241,4 +280,4 @@ async function ventasVsMeta({ periodo, ahora } = {}) {
   };
 }
 
-module.exports = { riesgo, tasaDevoluciones, colorTasaDevoluciones, UMBRALES_DEVOLUCIONES, tasaAnulacion, calcularPorcentaje, colorTasaAnulacion, UMBRALES_ANULACION, ventasVsMeta, ventanaDelGrafico, sumarDias, resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };
+module.exports = { anulacionesPorCajero, riesgo, tasaDevoluciones, colorTasaDevoluciones, UMBRALES_DEVOLUCIONES, tasaAnulacion, calcularPorcentaje, colorTasaAnulacion, UMBRALES_ANULACION, ventasVsMeta, ventanaDelGrafico, sumarDias, resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };

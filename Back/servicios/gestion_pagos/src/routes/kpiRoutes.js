@@ -26,4 +26,9 @@ router.get("/riesgo", wrap(async (req, res) => {
   res.json({ ok: true, data: await kpi.riesgo({ periodo: req.query.periodo, token: req.tokenAdministrador }) });
 }));
 
+// TDSI-151: cuadro "Anulaciones por cajero": cajero, cantidad anulada y % del total, de mayor a menor. ?periodo=AAAA-MM.
+router.get("/anulaciones/por-cajero", wrap(async (req, res) => {
+  res.json({ ok: true, data: await kpi.anulacionesPorCajero({ periodo: req.query.periodo }) });
+}));
+
 module.exports = router;
