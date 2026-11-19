@@ -28,6 +28,18 @@ import Usuarios from './pages/Usuarios.jsx'
 import PubSubVerificacion from './pages/PubSubVerificacion.jsx'
 import './App.css'
 
+// Pantallas de lista: solo se desplaza la tabla (menu, titulo, filtros y buscador quedan fijos).
+const RUTAS_DE_LISTA = [
+  '/facturas',
+  '/admin/ventas-online',
+  '/admin/libro-ventas',
+  '/admin/diferencias',
+  '/admin/productos-vendidos',
+  '/admin/cajeros',
+  '/admin/supervisores',
+  '/admin/usuarios',
+]
+
 function RutaProtegida({ children }) {
   const { cajero } = useAuth()
   return cajero ? children : <Navigate to="/login" replace />
@@ -44,6 +56,8 @@ function App() {
   const esSeccionAdmin = pathname.startsWith('/admin')
   // TDSI-38: pagina publica (sin login) a la que lleva el QR de la factura.
   const esPaginaPublica = pathname.startsWith('/facturas/verificar/')
+  // Pantallas donde solo la tabla se desplaza (menu y filtros quedan fijos): ver .vx-app--fija.
+  const esPantallaFija = RUTAS_DE_LISTA.includes(pathname)
 
   // Pantalla de bienvenida de Vortrix: una vez al abrir la pagina, salvo en la pagina
   // publica del QR (un cliente que escanea una factura no debe esperar una animacion).
@@ -51,10 +65,11 @@ function App() {
   const terminarSplash = useCallback(() => setMostrarSplash(false), [])
 
   return (
-    <>
+    <div className={`vx-app${esPantallaFija ? ' vx-app--fija' : ''}`}>
       {mostrarSplash && <Splash onTerminada={terminarSplash} />}
       {!esPantallaLogin && !esPaginaPublica && (esSeccionAdmin ? <AdminNavbar /> : <Navbar />)}
-      <main className={esPantallaLogin || esPaginaPublica ? undefined : esSeccionAdmin ? 'container container-ancho' : 'container'}>
+      <div className="vx-scroll">
+      <main className={esPantallaLogin || esPaginaPublica ? undefined : esSeccionAdmin || esPantallaFija ? 'container container-ancho' : 'container'}>
         {/* key por ruta: cada pantalla entra con un fundido corto al navegar */}
         <div className="vx-pagina" key={pathname}>
         <Routes>
@@ -86,7 +101,8 @@ function App() {
         </Routes>
         </div>
       </main>
-    </>
+      </div>
+    </div>
   )
 }
 

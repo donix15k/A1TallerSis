@@ -3,6 +3,7 @@ import { listarVentasOnline, reenviarAvisoMarketplace } from '../api/ventasOnlin
 import { listarGruposPubSub } from '../api/pubsubVerificacion.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import Cargando from '../components/Cargando.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 const ESTADOS = [
   { valor: '', etiqueta: 'Todos' },
@@ -118,7 +119,7 @@ function VentasOnline() {
   const hayFiltros = filtros.desde || filtros.hasta || filtros.estado
 
   return (
-    <section>
+    <section className="vx-pantalla-fija">
       <h1>Ventas Online</h1>
       <p className="resumen-turno-actual">
         Órdenes recibidas del Marketplace y su factura, ya emitida. El aviso de vuelta al
@@ -159,7 +160,8 @@ function VentasOnline() {
       )}
 
       {!cargando && !error && ventas.length > 0 && (
-        <div className="reporte-tabla">
+        <TablaPaginada items={ventas} nombre="ventas" sinSaltos>
+          {(visibles) => (
           <table className="tabla-facturas">
             <thead>
               <tr>
@@ -177,7 +179,7 @@ function VentasOnline() {
               </tr>
             </thead>
             <tbody>
-              {ventas.map((v) => (
+              {visibles.map((v) => (
                 <tr key={v.id}>
                   <td className="celda-truncada" title={v.orden_id}>{v.orden_id}</td>
                   <td>{new Date(v.recibida_en).toLocaleString()}</td>
@@ -222,7 +224,8 @@ function VentasOnline() {
               ))}
             </tbody>
           </table>
-        </div>
+          )}
+        </TablaPaginada>
       )}
 
       {ventaSeleccionada && (

@@ -1,0 +1,217 @@
+/* ---------- Tarjeta de tabla con scroll propio + paginacion ---------- */
+/* La pagina no se desplaza: lo unico que hace scroll es .vx-tabla-scroll. El titulo, los filtros
+   y el buscador quedan fijos arriba; la barra de paginacion, fija abajo. */
+.vx-tabla-tarjeta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 140px;
+  overflow: hidden;
+  border: 1px solid #e3e8f0;
+  border-radius: var(--vx-radius);
+  background: #fff;
+  box-shadow: var(--vx-shadow-sm);
+}
+
+.vx-tabla-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vx-metal) transparent;
+  scroll-behavior: smooth;
+}
+
+/* Cabecera pegada arriba del area de scroll. */
+.vx-tabla-scroll .tabla-facturas {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.vx-tabla-scroll .tabla-facturas th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+.vx-tabla-scroll .tabla-facturas td {
+  vertical-align: middle;
+}
+
+.vx-tabla-tarjeta--nowrap .tabla-facturas th,
+.vx-tabla-tarjeta--nowrap .tabla-facturas td {
+  padding: 0.6rem 0.75rem;
+  white-space: nowrap;
+}
+
+.vx-tabla-scroll .tabla-facturas tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Acciones de cada fila: botones en linea (antes la celda era display:flex y rompia la fila). */
+.vx-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Salto rapido al final / al inicio de la lista visible. */
+.vx-saltar {
+  position: absolute;
+  right: 18px;
+  bottom: 64px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--vx-navy);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(6, 21, 47, 0.35);
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);
+}
+
+.vx-saltar:active {
+  transform: scale(0.94);
+}
+
+@starting-style {
+  .vx-saltar {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vx-saltar:hover {
+    background: var(--vx-steel);
+  }
+}
+
+/* ---------- Barra de paginacion ---------- */
+.vx-pag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1.25rem;
+  flex-shrink: 0;
+  padding: 0.65rem 1rem;
+  border-top: 1px solid #e3e8f0;
+  background: #fbfcfe;
+  font-size: 0.85rem;
+  color: #616e7c;
+}
+
+.vx-pag-resumen {
+  margin: 0;
+}
+
+.vx-pag-resumen strong {
+  color: var(--vx-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-pag-botones {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.vx-pag-boton {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #3e4c59;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+.vx-pag-boton:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.vx-pag-boton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.vx-pag-boton--icono {
+  padding: 0;
+}
+
+.vx-pag-boton--activa {
+  background: linear-gradient(135deg, var(--vx-steel), var(--vx-navy));
+  color: #fff;
+  box-shadow: 0 4px 10px -3px rgba(6, 21, 47, 0.5);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vx-pag-boton:hover:not(:disabled):not(.vx-pag-boton--activa) {
+    background: #e9eef6;
+    color: var(--vx-navy);
+  }
+}
+
+.vx-pag-puntos {
+  min-width: 22px;
+  color: var(--vx-gray);
+  text-align: center;
+}
+
+.vx-pag-filas {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.vx-pag-filas select {
+  height: 34px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--vx-metal);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--vx-navy);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vx-pag-filas select:focus-visible {
+  outline: 2px solid var(--vx-sky);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .vx-pag {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-tabla-scroll {
+    scroll-behavior: auto;
+  }
+}

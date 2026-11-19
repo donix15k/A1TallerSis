@@ -3,6 +3,7 @@ import { listarUsuarios, crearCajero, editarUsuario, cambiarPasswordCajero, camb
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import CampoPassword from '../components/CampoPassword.jsx'
 import Cargando from '../components/Cargando.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 const CLASE_ESTADO = { Activo: 'badge-estado--emitida', Inactivo: '', Bloqueado: 'badge-comparacion--faltante' }
 const FILTROS_ROL = [
@@ -160,7 +161,7 @@ function Usuarios() {
   }
 
   return (
-    <section>
+    <section className="vx-pantalla-fija">
       <h1>Usuarios</h1>
       <p className="resumen-turno-actual">Cuentas de cajeros y supervisores que usan el sistema.</p>
 
@@ -188,6 +189,8 @@ function Usuarios() {
       )}
 
       {!cargando && !error && usuariosFiltrados.length > 0 && (
+        <TablaPaginada items={usuariosFiltrados} nombre="usuarios">
+          {(visibles) => (
         <table className="tabla-facturas">
           <thead>
             <tr>
@@ -199,7 +202,7 @@ function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {usuariosFiltrados.map((u) => (
+            {visibles.map((u) => (
               <tr key={`${u.rol}-${u.id}`}>
                 <td>{u.usuario}</td>
                 <td>{u.nombre}</td>
@@ -223,6 +226,8 @@ function Usuarios() {
             ))}
           </tbody>
         </table>
+          )}
+        </TablaPaginada>
       )}
 
       {mostrandoNuevo && (

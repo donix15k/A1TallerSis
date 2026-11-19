@@ -3,6 +3,7 @@ import { listarDiferencias, resolverDiferencia, reenviarDiferenciaContabilidad }
 import { listarGruposPubSub } from '../api/pubsubVerificacion.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import Cargando from '../components/Cargando.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 const ETIQUETA_TIPO = { FALTANTE: 'Faltante', SOBRANTE: 'Sobrante' }
 
@@ -140,7 +141,7 @@ function DiferenciasCaja() {
   }
 
   return (
-    <section className="diferencias-caja">
+    <section className="vx-pantalla-fija diferencias-caja">
       <h1>Diferencias de caja</h1>
       <p className="resumen-turno-actual">
         Faltantes y sobrantes detectados al cerrar turnos, y el aviso enviado a Contabilidad al resolverlos.
@@ -183,7 +184,8 @@ function DiferenciasCaja() {
       )}
 
       {!cargando && !error && diferenciasFiltradas.length > 0 && (
-        <div className="reporte-tabla">
+        <TablaPaginada items={diferenciasFiltradas} nombre="diferencias" sinSaltos>
+          {(visibles) => (
           <table className="tabla-facturas">
             <thead>
               <tr>
@@ -199,7 +201,7 @@ function DiferenciasCaja() {
               </tr>
             </thead>
             <tbody>
-              {diferenciasFiltradas.map((d) => {
+              {visibles.map((d) => {
                 const contab = estadoContabilidad(d.contabilidad)
                 return (
                   <tr key={d.id}>
@@ -256,7 +258,8 @@ function DiferenciasCaja() {
               })}
             </tbody>
           </table>
-        </div>
+          )}
+        </TablaPaginada>
       )}
 
       {seleccionada && (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { obtenerLibroVentas, descargarLibroVentasExcel } from '../api/libroVentas.js'
 import Cargando from '../components/Cargando.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 const MESES = [
   { valor: 1, etiqueta: 'Enero' },
@@ -72,7 +73,7 @@ function LibroVentas() {
   const hayFilas = libro && libro.filas.length > 0
 
   return (
-    <section>
+    <section className="vx-pantalla-fija">
       <h1>Libro de Ventas</h1>
       <p className="resumen-turno-actual">
         IVA del mes elegido: importe base y débito fiscal (13%) de cada factura emitida.
@@ -112,7 +113,8 @@ function LibroVentas() {
       )}
 
       {!cargando && !error && hayFilas && (
-        <div className="reporte-tabla">
+        <TablaPaginada items={libro.filas} nombre="facturas" sinSaltos>
+          {(visibles) => (
           <table className="tabla-facturas">
             <thead>
               <tr>
@@ -129,7 +131,7 @@ function LibroVentas() {
               </tr>
             </thead>
             <tbody>
-              {libro.filas.map((f) => (
+              {visibles.map((f) => (
                 <tr key={f.numero_factura} className={f.estado === 'A' ? 'fila-anulada' : ''}>
                   <td>{f.numero}</td>
                   <td>{new Date(f.fecha).toLocaleDateString()}</td>
@@ -159,7 +161,8 @@ function LibroVentas() {
               </tr>
             </tfoot>
           </table>
-        </div>
+          )}
+        </TablaPaginada>
       )}
     </section>
   )

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { listarCajeros, listarMisFacturas } from '../api/pagos.js'
 import Cargando from '../components/Cargando.jsx'
 import BotonVerFactura from '../components/BotonVerFactura.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 // TDSI-329: el administrador ve todos los cajeros que han trabajado (registraron
 // al menos una venta) y, al elegir uno, lo que ha facturado desde que empezó,
@@ -42,7 +43,7 @@ function Cajeros() {
   }
 
   return (
-    <section>
+    <section className="vx-pantalla-fija">
       <h1>Cajeros</h1>
       <p className="resumen-turno-actual">
         Cajeros que han registrado ventas en el sistema. Elija uno para ver lo que ha facturado.
@@ -54,6 +55,8 @@ function Cajeros() {
       {!cargando && !error && cajeros.length === 0 && <p>Todavía no hay ventas registradas por ningún cajero.</p>}
 
       {cajeros.length > 0 && (
+        <TablaPaginada items={cajeros} nombre="cajeros">
+          {(visibles) => (
         <table className="tabla-facturas">
           <thead>
             <tr>
@@ -65,7 +68,7 @@ function Cajeros() {
             </tr>
           </thead>
           <tbody>
-            {cajeros.map((c) => (
+            {visibles.map((c) => (
               <tr key={c.cajero}>
                 <td>{c.cajero}</td>
                 <td>{c.cantidadVentas}</td>
@@ -84,6 +87,8 @@ function Cajeros() {
             ))}
           </tbody>
         </table>
+          )}
+        </TablaPaginada>
       )}
 
       {cajeroSeleccionado && (

@@ -21,10 +21,103 @@
   }
 }
 
+/* ---------- Armazon de la app: el menu queda FIJO arriba y solo se desplaza el contenido ----------
+   .vx-app ocupa exactamente la ventana; .vx-scroll es la region que se desplaza (su barra queda en el
+   borde de la ventana, no en el de la columna). Asi el menu nunca sale de la vista, en cualquier pantalla. */
+.vx-app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.vx-app > .navbar {
+  position: relative;
+  z-index: 40;
+  flex-shrink: 0;
+}
+
+.vx-scroll {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vx-metal) transparent;
+}
+
+.vx-scroll > main {
+  flex: 1 0 auto;
+  width: 100%;
+}
+
+/* ---------- Pantallas de lista (.vx-app--fija): ni siquiera el contenido se desplaza; titulo, filtros y
+   buscador quedan fijos y solo hace scroll la tabla (ver TablaPaginada). ---------- */
+.vx-app--fija .vx-scroll > main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 1.1rem;
+  padding-bottom: 1.25rem;
+}
+
+.vx-app--fija .vx-pagina {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 520px; /* si la ventana es muy baja, la region .vx-scroll se desplaza en vez de aplastar la tabla */
+}
+
+.vx-pantalla-fija {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.vx-pantalla-fija > * {
+  flex-shrink: 0;
+}
+
+.vx-pantalla-fija > .vx-tabla-tarjeta {
+  flex-shrink: 1;
+}
+
+.vx-pantalla-fija h1 {
+  margin: 0 0 0.15rem;
+  font-size: 1.6rem;
+}
+
+.vx-pantalla-fija .resumen-turno-actual {
+  margin: 0.2rem 0 0.8rem;
+}
+
+.vx-pantalla-fija .filtro-fechas {
+  margin-top: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.vx-pantalla-fija .buscador-facturas {
+  width: min(400px, 78vw);
+}
+
+/* ---------- Buscador con lupa: la lupa vive dentro del campo, el texto empieza despues de ella ---------- */
+.campo .buscador-facturas input,
+.buscador-facturas input {
+  padding-left: 40px;
+}
+
+.buscador-facturas-icono {
+  left: 13px;
+}
+
 /* ---------- Barra de navegacion ---------- */
 .navbar {
-  gap: 0.6rem 1.35rem;
-  padding: 0.7rem 1.75rem;
+  gap: 0.6rem 1.1rem;
+  padding: 0.65rem 1.25rem;
   background: linear-gradient(180deg, #091d40 0%, var(--vx-navy) 100%);
   border-bottom: 1px solid rgba(120, 152, 200, 0.2);
   box-shadow: 0 6px 24px rgba(6, 21, 47, 0.16);
@@ -33,14 +126,18 @@
 .navbar-brand {
   display: inline-flex;
   align-items: center;
-  margin-right: 0.5rem;
+  margin-right: 0.25rem;
+}
+
+.navbar-sesion {
+  gap: 0.5rem;
 }
 
 /* Enlaces directos: subrayado que crece desde la izquierda (solo transform). */
 .navbar > a {
   position: relative;
   padding: 0.35rem 0;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 500;
   transition: color 160ms var(--ease-out);
 }
@@ -78,7 +175,7 @@
 }
 
 .navbar-menu-boton--nav {
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 500;
   transition: color 160ms var(--ease-out);
 }

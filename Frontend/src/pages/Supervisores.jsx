@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { listarSupervisores, crearSupervisor, restablecerPinSupervisor, cambiarEstadoSupervisor } from '../api/supervisores.js'
 import CampoPassword from '../components/CampoPassword.jsx'
 import Cargando from '../components/Cargando.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 const PIN_REGEX = /^\d{4,6}$/
 const CLASE_ESTADO = { Activo: 'badge-estado--emitida', Inactivo: '', Bloqueado: 'badge-comparacion--faltante' }
@@ -135,7 +136,7 @@ function Supervisores() {
   }
 
   return (
-    <section>
+    <section className="vx-pantalla-fija">
       <h1>Supervisores</h1>
       <p className="resumen-turno-actual">
         Supervisores de caja que autorizan cierres, anulaciones y modificaciones con su usuario y PIN.
@@ -157,6 +158,8 @@ function Supervisores() {
       )}
 
       {!cargando && !error && supervisores.length > 0 && (
+        <TablaPaginada items={supervisores} nombre="supervisores">
+          {(visibles) => (
         <table className="tabla-facturas">
           <thead>
             <tr>
@@ -168,7 +171,7 @@ function Supervisores() {
             </tr>
           </thead>
           <tbody>
-            {supervisores.map((s) => (
+            {visibles.map((s) => (
               <tr key={s.id}>
                 <td>{s.usuario}</td>
                 <td>{s.nombre}</td>
@@ -192,6 +195,8 @@ function Supervisores() {
             ))}
           </tbody>
         </table>
+          )}
+        </TablaPaginada>
       )}
 
       {mostrandoNuevo && (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { obtenerProductosVendidos, enviarProductosACompras } from '../api/productosVendidos.js'
 import Cargando from '../components/Cargando.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 function hoyLocal() {
   const d = new Date()
@@ -67,7 +68,7 @@ function ProductosVendidos() {
   }
 
   return (
-    <section>
+    <section className="vx-pantalla-fija">
       <h1>Productos Vendidos</h1>
       <p className="resumen-turno-actual">
         Productos vendidos en el día (ventas del Marketplace) y el envío del reporte diario a Compras.
@@ -108,7 +109,8 @@ function ProductosVendidos() {
       )}
 
       {!cargando && !error && hayProductos && (
-        <div className="reporte-tabla">
+        <TablaPaginada items={datos.productos} nombre="productos" sinSaltos>
+          {(visibles) => (
           <table className="tabla-facturas">
             <thead>
               <tr>
@@ -118,7 +120,7 @@ function ProductosVendidos() {
               </tr>
             </thead>
             <tbody>
-              {datos.productos.map((p) => (
+              {visibles.map((p) => (
                 <tr key={p.sku}>
                   <td>{p.descripcion || p.sku}</td>
                   <td>{p.cantidad}</td>
@@ -134,7 +136,8 @@ function ProductosVendidos() {
               </tr>
             </tfoot>
           </table>
-        </div>
+          )}
+        </TablaPaginada>
       )}
 
       {confirmando && (

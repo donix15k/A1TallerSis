@@ -11,6 +11,7 @@ import useResumenFactura from '../hooks/useResumenFactura.js'
 import ResumenFactura from '../components/ResumenFactura.jsx'
 import ComparacionModificacion from '../components/ComparacionModificacion.jsx'
 import CampoPassword from '../components/CampoPassword.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 const PLAZO_ANULACION_MS = 2 * 60 * 60 * 1000 // 2 horas
 
@@ -68,6 +69,7 @@ function Facturas() {
   const busquedaDebounced = useDebounce(busqueda, 400)
   const termino = busqueda.trim() === '' ? '' : busquedaDebounced.trim() // vacío = todo al instante
   const peticionActual = useRef(0) // evita que una respuesta vieja pise a una más nueva
+
 
   // Paso 1: factura elegida + ventana emergente de credenciales del supervisor.
   const [facturaParaAnular, setFacturaParaAnular] = useState(null)
@@ -315,7 +317,7 @@ function Facturas() {
   }
 
   return (
-    <section>
+    <section className="vx-pantalla-fija">
       <h1>Facturas</h1>
       <p className="resumen-turno-actual">Ventas emitidas por {cajero ? cajero.nombre : 'sin sesión iniciada'}.</p>
       {cajero && (
@@ -364,6 +366,8 @@ function Facturas() {
       )}
 
       {facturas.length > 0 && (
+        <TablaPaginada items={facturas} nombre="facturas" claveReinicio={`${filtroDesde}|${filtroHasta}|${termino}`}>
+          {(facturasVisibles) => (
         <table className="tabla-facturas">
           <thead>
             <tr>
@@ -378,7 +382,7 @@ function Facturas() {
             </tr>
           </thead>
           <tbody>
-            {facturas.map((factura) => {
+            {facturasVisibles.map((factura) => {
               const estado = ESTADOS[factura.estado] ?? { texto: factura.estado, clase: '' }
               const puedeAnular = factura.estado === 'Registrado' && dentroDelPlazo(factura.fecha)
               return (
@@ -395,7 +399,8 @@ function Facturas() {
                   <td>
                     <span className={`badge-estado ${estado.clase}`}>{estado.texto}</span>
                   </td>
-                  <td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <td>
+                    <div className="vx-acciones">
                     <BotonVerFactura idTransaccion={factura.id_transaccion}>Ver</BotonVerFactura>
                     {puedeAnular && (
                       <button type="button" className="btn btn-secundario" onClick={() => abrirVentanaCredenciales(factura)}>
@@ -413,12 +418,15 @@ function Facturas() {
                     {factura.estado === 'Registrado' && !dentroDelPlazo(factura.fecha) && (
                       <span style={{ fontSize: '0.8rem', color: '#616e7c' }}>Fuera de plazo (2h)</span>
                     )}
+                    </div>
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
+          )}
+        </TablaPaginada>
       )}
 
       {/* Ventana emergente 1: usuario + PIN del supervisor de caja */}
