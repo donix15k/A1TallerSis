@@ -4,6 +4,7 @@ const cajaProxy = require("./cajaProxy");
 const reversionService = require("./reversionService");
 const devolucionesRepo = require("../data/devolucionesRepo");
 const reembolsosRepo = require("../data/reembolsosRepo");
+const notasCreditoRepo = require("../data/notasCreditoRepo");
 const { withTransaction, query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { tipoDeReembolso, repartirMonto, redondear } = require("../utils/reembolso");
@@ -148,7 +149,9 @@ async function reembolsar(codigo, cuerpo = {}) {
     }
     const reembolsos = await reembolsosRepo.guardarReembolsos(client, actual.id, plan);
     await devolucionesRepo.marcarProcesada(client, actual.id, cajero);
-    return { id: actual.id, reembolsos };
+    // TDSI-57: al quedar PROCESADA se emite su nota de credito (misma transaccion: o quedan las dos cosas o ninguna).
+    const nota = await notasCreditoRepo.emitirNota(client, actual.id, actual.monto_total);
+    return { id: actual.id, reembolsos, nota };
   });
 
   // Reversiones de tarjeta/QR: primer intento ya (si falla, el proceso periodico las reintenta).
@@ -162,6 +165,7 @@ async function reembolsar(codigo, cuerpo = {}) {
     estado: devolucion.estado,
     monto_total: devolucion.monto_total,
     reembolsos,
+    nota_credito: guardado.nota,
     mensajes: reembolsos.map(mensajeDe),
     historial: devolucion.historial,
   };

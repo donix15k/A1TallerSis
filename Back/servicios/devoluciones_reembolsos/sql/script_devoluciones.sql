@@ -97,6 +97,9 @@ CREATE TABLE IF NOT EXISTS devoluciones.notas_credito (
     enviada_en      TIMESTAMPTZ
 );
 
+-- TDSI-57: una devolucion procesada tiene una sola nota de credito (y la numeracion NC-000001 no se repite: UNIQUE(numero))
+CREATE UNIQUE INDEX IF NOT EXISTS uq_notas_credito_devolucion ON devoluciones.notas_credito (devolucion_id);
+
 -- TDSI-75: vales de compra / tarjetas de saldo digitales
 CREATE TABLE IF NOT EXISTS devoluciones.vales_compra (
     id                BIGSERIAL PRIMARY KEY,
