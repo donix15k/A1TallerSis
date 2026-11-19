@@ -2,6 +2,7 @@ const { Router } = require("express");
 const { cumplimientoMetas } = require("../services/kpiMetasService");
 const { cuadreCaja } = require("../services/kpiCuadreService");
 const { asientosContablesDelPeriodo } = require("../services/kpiAsientosService");
+const { listarMetasMensuales, guardarMetasMensuales } = require("../services/kpiMetasMensualesService");
 
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
@@ -22,6 +23,16 @@ router.get("/cuadre-caja", wrap(async (req, res) => {
 // rechazados). Lo consulta Facturacion para armar la aceptacion contable del Panel de KPIs.
 router.get("/asientos-contables", wrap(async (req, res) => {
   res.json({ ok: true, data: await asientosContablesDelPeriodo({ periodo: req.query.periodo }) });
+}));
+
+// TDSI-200/202: la meta MENSUAL de cada caja (filas "Meta Caja N" de "Configurar objetivos"). Gestion de Pagos arma con esto la ventana
+// y reenvia el PUT al guardar. Solo administrador (el montaje exige requireAdministrador).
+router.get("/metas-mensuales", wrap(async (req, res) => {
+  res.json({ ok: true, data: { cajas: await listarMetasMensuales() } });
+}));
+router.put("/metas-mensuales", wrap(async (req, res) => {
+  const quien = req.administrador ? req.administrador.nombre || req.administrador.administrador_id : null;
+  res.json({ ok: true, mensaje: "Metas mensuales guardadas", data: { cajas: await guardarMetasMensuales({ metas: req.body?.metas, actualizado_por: quien }) } });
 }));
 
 module.exports = router;

@@ -35,8 +35,19 @@ router.get("/anulaciones/por-cajero", wrap(async (req, res) => {
 
 // TDSI-190/191: los objetivos del semaforo (limite verde, amarillo y rojo y sentido de cada uno de los 7 KPIs). Los demas servicios de
 // KPIs (Caja, Facturacion, Pagos a Proveedores) los leen de aqui para pintar sus colores con los mismos rangos.
+// TDSI-200: con las metas mensuales de las cajas (los demas servicios piden ?metas=no: solo necesitan los limites).
 router.get("/objetivos", wrap(async (req, res) => {
-  res.json({ ok: true, data: { indicadores: await objetivos.listarObjetivos() } });
+  const conMetas = String(req.query.metas ?? "").toLowerCase() !== "no";
+  res.json({ ok: true, data: await objetivos.configuracion({ token: req.tokenAdministrador, conMetas }) });
+}));
+
+// TDSI-201/202: "Guardar" de "Configurar objetivos": limites de los KPIs ({ indicadores: [{ indicador, verde, amarillo, rojo }] }) y meta
+// mensual de cada caja ({ metas_cajas: [{ caja_id, monto_mensual }] }). Valida (amarillo entre verde y rojo, porcentajes de 0 a 100,
+// metas > 0) y es todo o nada; 400 con los errores por campo. Solo administrador (router.use(requireAdministrador) de arriba).
+router.put("/objetivos", wrap(async (req, res) => {
+  const quien = req.administrador ? req.administrador.nombre || req.administrador.administrador_id : null;
+  const data = await objetivos.guardarObjetivos({ indicadores: req.body?.indicadores, metas_cajas: req.body?.metas_cajas, actualizado_por: quien, token: req.tokenAdministrador });
+  res.json({ ok: true, mensaje: "Objetivos guardados", data });
 }));
 
 // TDSI-192: "Alertas del dia" del Resumen: KPIs, cajas, ordenes vencidas y asientos rechazados fuera de lo esperado, primero las ROJAS

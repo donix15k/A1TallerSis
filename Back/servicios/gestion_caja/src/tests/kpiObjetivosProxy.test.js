@@ -56,7 +56,7 @@ test("colorSegun: MAYOR (mas es mejor) y MENOR (menos es mejor); sin dato no hay
 test("pide los objetivos a Gestion de Pagos con el token del administrador y los guarda unos segundos", async () => {
   const a = await limitesDe("efectividad_cuadre", { token: "TOK" });
   assert.deepEqual([a.verde, a.amarillo], [90, 70]);
-  assert.equal(pedidos[0].url, "/api/kpis/objetivos");
+  assert.equal(pedidos[0].url, "/api/kpis/objetivos?metas=no"); // solo los limites, sin las metas de las cajas
   assert.equal(pedidos[0].token, "Bearer TOK");
   await limitesDe("cumplimiento_metas", { token: "TOK" });
   assert.equal(pedidos.length, 1); // la segunda salio del cache

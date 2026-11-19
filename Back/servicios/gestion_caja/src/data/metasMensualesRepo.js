@@ -24,4 +24,20 @@ async function guardarMeta(cajaId, { montoMensual, actualizadoPor }) {
   return normalizar(rows[0]);
 }
 
-module.exports = { listarTodas, guardarMeta };
+/**
+ * TDSI-202: guarda las metas mensuales de varias cajas en UNA sola sentencia (todas o ninguna). Cada caja tiene a lo sumo una meta
+ * (UNIQUE sobre caja_id): si ya tenia, se reemplaza y queda quien la cambio y cuando.
+ */
+async function guardarVarias(metas, actualizadoPor) {
+  const { rows } = await query(
+    `INSERT INTO caja.metas_mensuales (caja_id, monto_mensual, actualizado_por)
+     SELECT m.caja_id, m.monto_mensual, $3 FROM unnest($1::varchar[], $2::numeric[]) AS m(caja_id, monto_mensual)
+     ON CONFLICT (caja_id) DO UPDATE
+       SET monto_mensual = EXCLUDED.monto_mensual, actualizado_por = EXCLUDED.actualizado_por, actualizado_en = now()
+     RETURNING *`,
+    [metas.map((m) => m.caja_id), metas.map((m) => m.monto_mensual), actualizadoPor || null]
+  );
+  return rows.map(normalizar);
+}
+
+module.exports = { listarTodas, guardarMeta, guardarVarias };

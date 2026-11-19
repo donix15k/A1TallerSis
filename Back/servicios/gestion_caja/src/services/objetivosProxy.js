@@ -17,7 +17,7 @@ function reiniciarCache() {
 
 async function pedirObjetivos(token) {
   try {
-    const r = await fetch(`${process.env.GESTION_PAGOS_URL || "http://localhost:4005"}/api/kpis/objetivos`, {
+    const r = await fetch(`${process.env.GESTION_PAGOS_URL || "http://localhost:4005"}/api/kpis/objetivos?metas=no`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(timeoutMs()),
     });
