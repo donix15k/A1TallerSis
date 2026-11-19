@@ -4,6 +4,7 @@
 const { query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { aCentavos, aMonto } = require("../utils/money");
+const { obtenerMetaDiaria } = require("./metasProxy");
 
 const ZONA = "America/La_Paz";
 
@@ -95,4 +96,60 @@ async function resumen({ periodo, ahora } = {}) {
   };
 }
 
-module.exports = { resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };
+const DIAS_GRAFICO = 30;
+
+/** Suma/resta dias a un AAAA-MM-DD (calendario puro, sin zona horaria). */
+function sumarDias(dia, n) {
+  const d = new Date(`${dia}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Los 30 dias del grafico: terminan el ultimo dia del periodo, o HOY (Bolivia) si el periodo es el mes en curso (no se grafican
+ * dias que todavia no pasaron). Pueden empezar en el mes anterior.
+ */
+function ventanaDelGrafico(periodo, { ahora = new Date() } = {}) {
+  const rango = rangoDelPeriodo(periodo, { ahora });
+  const hoy = hoyBolivia(ahora);
+  const fin = hoy < rango.hasta ? (hoy >= rango.desde ? hoy : rango.hasta) : rango.hasta;
+  return { ...rango, serie_desde: sumarDias(fin, -(DIAS_GRAFICO - 1)), serie_hasta: fin };
+}
+
+/**
+ * TDSI-139: "Ventas diarias vs meta (ultimos 30 dias)": las ventas validas de CADA dia (los dias sin ventas van en 0, sin huecos)
+ * y la meta diaria (suma de las cajas activas con meta; null si no hay). Dias en hora de Bolivia; las anuladas no cuentan.
+ */
+async function ventasVsMeta({ periodo, ahora } = {}) {
+  const v = ventanaDelGrafico(periodo, { ahora });
+  const [{ rows }, meta] = await Promise.all([
+    query(
+      `SELECT d::date::text AS fecha, COALESCE(s.total, 0)::text AS ventas
+         FROM generate_series($1::date, $2::date, interval '1 day') d
+         LEFT JOIN (
+           SELECT (fecha AT TIME ZONE '${ZONA}')::date AS dia, SUM(monto) AS total
+             FROM pagos.transacciones
+            WHERE estado <> 'Anulado' AND (fecha AT TIME ZONE '${ZONA}')::date BETWEEN $1::date AND $2::date
+            GROUP BY 1
+         ) s ON s.dia = d::date
+        ORDER BY d`,
+      [v.serie_desde, v.serie_hasta]
+    ),
+    obtenerMetaDiaria(),
+  ]);
+  const serie = rows.map((r) => ({ fecha: r.fecha, ventas: Number(r.ventas) }));
+  const total = serie.reduce((a, x) => a + aCentavos(x.ventas), 0);
+  return {
+    periodo: v.periodo,
+    desde: v.serie_desde,
+    hasta: v.serie_hasta,
+    dias: serie.length,
+    meta_diaria: meta.meta_diaria,
+    meta_error: meta.error,
+    total_vendido: aMonto(total),
+    dias_sobre_meta: meta.meta_diaria === null ? null : serie.filter((x) => aCentavos(x.ventas) >= aCentavos(meta.meta_diaria)).length,
+    serie,
+  };
+}
+
+module.exports = { ventasVsMeta, ventanaDelGrafico, sumarDias, resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };

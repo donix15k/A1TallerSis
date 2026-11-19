@@ -72,4 +72,21 @@ async function obtenerAvancePorCaja(fecha) {
   });
 }
 
-module.exports = { actualizarMeta, obtenerAvancePorCaja, calcularPorcentajeAvance, aPublico };
+/**
+ * TDSI-139: la meta diaria de TODAS las cajas activas sumada (la linea roja del grafico "Ventas diarias vs meta" del Panel de KPIs).
+ * Solo cuentan las cajas activas que ya tienen meta; "meta_diaria_total" es null si ninguna la tiene (sin meta no hay linea).
+ */
+async function resumenMetas() {
+  const [metas, cajas] = await Promise.all([metasRepo.listarTodas(), cajasRepo.listarActivas()]);
+  const activas = new Set(cajas.map((c) => c.codigo));
+  const conMeta = metas.filter((m) => activas.has(m.caja_id));
+  const totalCentavos = conMeta.reduce((a, m) => a + Math.round(Number(m.monto_meta) * 100), 0);
+  return {
+    meta_diaria_total: conMeta.length ? totalCentavos / 100 : null,
+    cajas_activas: cajas.length,
+    cajas_con_meta: conMeta.length,
+    cajas: conMeta.map((m) => ({ caja_id: m.caja_id, monto_meta: Number(m.monto_meta) })),
+  };
+}
+
+module.exports = { resumenMetas, actualizarMeta, obtenerAvancePorCaja, calcularPorcentajeAvance, aPublico };
