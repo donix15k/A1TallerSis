@@ -374,9 +374,9 @@ async function rechazarDevolucion(codigo, cuerpo = {}) {
   const motivoRechazo = validarMotivoRechazo(cuerpo.motivo_rechazo ?? cuerpo.motivo);
 
   const { usuario, pin } = credencialesDelCuerpo(cuerpo);
-  await facturacionProxy.validarSupervisor(usuario, pin);
+  const supervisor = await facturacionProxy.validarSupervisor(usuario, pin);
 
-  const rechazada = await devolucionesRepo.rechazarPendiente(actual.codigo, motivoRechazo);
+  const rechazada = await devolucionesRepo.rechazarPendiente(actual.codigo, motivoRechazo, supervisor.supervisor_id);
   if (!rechazada) {
     const ahora = await devolucionesRepo.obtenerPorCodigo(actual.codigo);
     exigirPendiente(ahora, "rechazar");

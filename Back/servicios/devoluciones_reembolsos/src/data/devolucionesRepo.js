@@ -132,27 +132,52 @@ async function listarDevoluciones({ estado = null, limite = 200 } = {}) {
  * Devuelve true si la aprobo, false si ya no estaba pendiente (o no existe).
  */
 async function aprobarPendiente(codigo, supervisorId) {
-  const { rowCount } = await query(
+  return resolverPendiente(
+    codigo,
+    "APROBADA",
+    supervisorId,
     `UPDATE devoluciones.devoluciones
         SET estado = 'APROBADA', autorizado_por = $2, autorizado_en = now()
-      WHERE codigo = $1 AND estado = 'PENDIENTE'`,
+      WHERE codigo = $1 AND estado = 'PENDIENTE'
+      RETURNING id`,
     [codigo, supervisorId]
   );
-  return rowCount === 1;
+}
+
+/**
+ * TDSI-37: cambia el estado de una devolucion que SIGUE en PENDIENTE y registra el cambio en historial_estados
+ * (PENDIENTE -> nuevo estado, hecho por el supervisor) en la MISMA transaccion: o quedan los dos o ninguno.
+ * Si la devolucion ya no estaba pendiente (otro supervisor la resolvio justo antes) no cambia nada, no deja
+ * historial y devuelve false (el servicio responde 409).
+ */
+async function resolverPendiente(codigo, nuevoEstado, supervisorId, sqlUpdate, parametros) {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(sqlUpdate, parametros);
+    if (rows.length === 0) return false;
+    await client.query(
+      `INSERT INTO devoluciones.historial_estados (devolucion_id, estado_anterior, estado_nuevo, cambiado_por)
+       VALUES ($1, 'PENDIENTE', $2, $3)`,
+      [rows[0].id, nuevoEstado, supervisorId]
+    );
+    return true;
+  });
 }
 
 /**
  * TDSI-36: pasa una devolucion de PENDIENTE a RECHAZADA guardando el motivo del rechazo. Igual que al aprobar,
  * solo toca filas que SIGAN en PENDIENTE. Devuelve true si la rechazo, false si ya no estaba pendiente.
  */
-async function rechazarPendiente(codigo, motivoRechazo) {
-  const { rowCount } = await query(
+async function rechazarPendiente(codigo, motivoRechazo, supervisorId) {
+  return resolverPendiente(
+    codigo,
+    "RECHAZADA",
+    supervisorId,
     `UPDATE devoluciones.devoluciones
         SET estado = 'RECHAZADA', motivo_rechazo = $2
-      WHERE codigo = $1 AND estado = 'PENDIENTE'`,
+      WHERE codigo = $1 AND estado = 'PENDIENTE'
+      RETURNING id`,
     [codigo, motivoRechazo]
   );
-  return rowCount === 1;
 }
 
 const claveProducto = (descripcion, precio) => `${String(descripcion).trim().toLowerCase()}|${Number(precio).toFixed(2)}`;
