@@ -3,19 +3,20 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { query, pool, verificarEsquema } = require("../config/db");
 
+// Las tablas que el servicio necesita (se pueden agregar mas en tareas nuevas: vales_usos, envios_contabilidad_nc...).
 const TABLAS = [
   "devolucion_items", "devoluciones", "envios_comprobante", "envios_pasarela", "historial_estados",
-  "motivos", "notas_credito", "notificaciones_inventario", "reembolsos", "vales_compra",
+  "motivos", "notas_credito", "notificaciones_inventario", "reembolsos", "vales_compra", "vales_usos", "envios_contabilidad_nc",
 ];
 
 test.after(() => pool.end());
 
-test("el schema devoluciones existe con las 10 tablas del script", async () => {
+test("el schema devoluciones existe con todas las tablas del script", async () => {
   const { rows } = await query(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'devoluciones' ORDER BY table_name`
   );
-  assert.deepEqual(rows.map((r) => r.table_name), TABLAS);
-  assert.equal((await verificarEsquema()).tablas, 10);
+  assert.deepEqual(rows.map((r) => r.table_name), [...TABLAS].sort());
+  assert.equal((await verificarEsquema()).tablas, TABLAS.length);
 });
 
 test("los motivos predefinidos estan cargados", async () => {

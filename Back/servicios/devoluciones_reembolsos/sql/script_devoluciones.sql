@@ -168,3 +168,27 @@ ALTER TABLE devoluciones.notas_credito              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE devoluciones.vales_compra               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE devoluciones.envios_comprobante         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE devoluciones.notificaciones_inventario  ENABLE ROW LEVEL SECURITY;
+-- TDSI-92: envio de cada nota de credito a Contabilidad (Grupo D) por Pub/Sub. Una nota tiene un solo envio
+-- (idempotency_key nc-{numero}); guarda el messageId que devuelve Pub/Sub, los reintentos y, despues, la respuesta
+-- de Contabilidad (TDSI-94: registrado con N° de asiento, o rechazado con su motivo).
+CREATE TABLE IF NOT EXISTS devoluciones.envios_contabilidad_nc (
+    id                    BIGSERIAL PRIMARY KEY,
+    nota_credito_id       BIGINT       NOT NULL UNIQUE REFERENCES devoluciones.notas_credito(id) ON DELETE CASCADE,
+    idempotency_key       VARCHAR(60)  NOT NULL UNIQUE,
+    estado                VARCHAR(20)  NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente','Enviado','Error')),
+    intentos              INT          NOT NULL DEFAULT 0,
+    ultimo_intento_en     TIMESTAMPTZ,
+    ultimo_error          VARCHAR(400),
+    pubsub_message_id     VARCHAR(100),
+    proximo_intento_en    TIMESTAMPTZ,
+    enviado_en            TIMESTAMPTZ,
+    payload               JSONB        NOT NULL,
+    creado_en             TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    resultado             VARCHAR(20),
+    numero_asiento        VARCHAR(30),
+    resultado_motivo      VARCHAR(400),
+    resultado_en          TIMESTAMPTZ,
+    resultado_message_id  VARCHAR(100)
+);
+CREATE INDEX IF NOT EXISTS ix_envios_contabilidad_nc_pendientes ON devoluciones.envios_contabilidad_nc (proximo_intento_en) WHERE estado = 'Pendiente';
+ALTER TABLE devoluciones.envios_contabilidad_nc ENABLE ROW LEVEL SECURITY;

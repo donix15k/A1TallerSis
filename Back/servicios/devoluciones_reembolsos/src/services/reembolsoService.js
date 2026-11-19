@@ -6,6 +6,7 @@ const devolucionesRepo = require("../data/devolucionesRepo");
 const reembolsosRepo = require("../data/reembolsosRepo");
 const notasCreditoRepo = require("../data/notasCreditoRepo");
 const valesRepo = require("../data/valesRepo");
+const contabilidadService = require("./contabilidadService");
 const { withTransaction, query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { tipoDeReembolso, repartirMonto, redondear } = require("../utils/reembolso");
@@ -181,6 +182,10 @@ async function reembolsar(codigo, cuerpo = {}) {
   const pendientes = guardado.reembolsos.filter((r) => r.envio_id).map((r) => r.id);
   if (pendientes.length) await reversionService.procesarPendientes({ reembolsoIds: pendientes }).catch(() => {});
 
+  // TDSI-92: la nota de credito se informa a Contabilidad (asincrono: se publica y no se espera). Nunca hace fallar el
+  // reembolso: si Pub/Sub falla, el envio queda para los reintentos.
+  const contabilidad = await contabilidadService.enviarNotaSegura(codigo);
+
   const reembolsos = await reembolsosRepo.listarPorDevolucion(guardado.id);
   const devolucion = await devolucionService.obtenerDevolucion(codigo);
   return {
@@ -189,6 +194,9 @@ async function reembolsar(codigo, cuerpo = {}) {
     monto_total: devolucion.monto_total,
     reembolsos,
     nota_credito: guardado.nota,
+    contabilidad: contabilidad.estado
+      ? { estado: contabilidad.estado, intentos: contabilidad.intentos, pubsub_message_id: contabilidad.pubsub_message_id }
+      : { estado: null, publicado: false, motivo: contabilidad.motivo || contabilidad.error || null },
     vale: guardado.vale,
     mensajes: reembolsos.map((r) => mensajeDe(r, guardado.vale)),
     historial: devolucion.historial,

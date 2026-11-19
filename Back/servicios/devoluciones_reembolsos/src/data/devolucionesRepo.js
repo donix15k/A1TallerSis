@@ -1,5 +1,6 @@
 const { query, withTransaction } = require("../config/db");
 const { AppError } = require("../utils/AppError");
+const { estadoVisible } = require("./enviosContabilidadRepo");
 
 /** TDSI-20: motivos que el cajero puede elegir (solo los activos, en el orden del catalogo). */
 async function listarMotivosActivos() {
@@ -113,9 +114,12 @@ async function listarDevoluciones({ estado = null, desde = null, hasta = null, c
   const { rows: conteo } = await query(`SELECT count(*)::int AS total FROM devoluciones.devoluciones d ${filtro}`, parametros);
   const { rows } = await query(
     `SELECT d.codigo, d.estado, d.tipo, d.factura_numero, d.creado_por, d.monto_total, d.fecha_solicitud,
-            d.requiere_autorizacion, m.id AS motivo_id, m.nombre AS motivo
+            d.requiere_autorizacion, m.id AS motivo_id, m.nombre AS motivo,
+            e.estado AS cont_estado, e.resultado AS cont_resultado, e.numero_asiento AS cont_asiento, e.resultado_motivo AS cont_motivo
        FROM devoluciones.devoluciones d
        LEFT JOIN devoluciones.motivos m ON m.id = d.motivo_id
+       LEFT JOIN devoluciones.notas_credito nc ON nc.devolucion_id = d.id
+       LEFT JOIN devoluciones.envios_contabilidad_nc e ON e.nota_credito_id = nc.id
        ${filtro}
       ORDER BY ${orden}
       LIMIT ${Number(limite)} OFFSET ${Number(offset)}`,
@@ -133,6 +137,10 @@ async function listarDevoluciones({ estado = null, desde = null, hasta = null, c
       motivo: d.motivo_id ? { id: Number(d.motivo_id), nombre: d.motivo } : null,
       fecha_solicitud: d.fecha_solicitud,
       requiere_autorizacion: d.requiere_autorizacion,
+      // TDSI-92/94: como va su nota de credito en Contabilidad (null si todavia no tiene envio)
+      contabilidad: d.cont_estado
+        ? estadoVisible({ estado: d.cont_estado, resultado: d.cont_resultado, numero_asiento: d.cont_asiento, resultado_motivo: d.cont_motivo })
+        : null,
     })),
   };
 }
