@@ -10,8 +10,10 @@ const { errorHandler } = require("../middlewares/errorHandler");
 const { requireAdministrador } = require("../middlewares/requireAdministrador");
 const rutas = require("../routes/kpiRoutes");
 const { colorAceptacion, UMBRALES_ACEPTACION } = require("../services/kpiAceptacionService");
+const { reiniciarCache } = require("../services/objetivosProxy");
 
-let caja, devs, servidor, base;
+let caja, devs, pagos, servidor, base;
+let objetivos; // lo que responde Gestion de Pagos en /api/kpis/objetivos: lista de indicadores, o "caida"
 let nc; // lo que responde Devoluciones: objeto de datos, o "caida"
 let dif; // lo que responde Caja en /api/kpis/asientos-contables: objeto de datos, o "caida"
 let tokensRecibidos;
@@ -60,6 +62,13 @@ test.before(async () => {
   await new Promise((r) => caja.listen(0, r));
   process.env.GESTION_CAJA_URL = `http://localhost:${caja.address().port}`;
   delete process.env.ADMIN_VERIFICAR_URL;
+  pagos = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (objetivos === "caida") { res.statusCode = 500; return res.end("{}"); }
+    res.end(JSON.stringify({ ok: true, data: { indicadores: objetivos } }));
+  });
+  await new Promise((r) => pagos.listen(0, r));
+  process.env.GESTION_PAGOS_URL = `http://localhost:${pagos.address().port}`;
   devs = http.createServer((req, res) => {
     res.setHeader("Content-Type", "application/json");
     tokensRecibidos.push(req.headers.authorization || "");
@@ -99,6 +108,8 @@ test.before(async () => {
   base = `http://localhost:${servidor.address().port}/api/kpis/aceptacion-contable`;
 });
 test.beforeEach(() => {
+  reiniciarCache();
+  objetivos = "caida"; // por defecto: sin objetivos configurados, rige el rango inicial del PDF
   tokensRecibidos = [];
   nc = datos(3, 3, 0); // notas de credito: 3 enviadas, 3 registradas
   dif = datos(2, 1, 1, [{ id: "9", referencia: "DIF-9", tipo: "DIFERENCIA_CAJA", motivo: "cuenta de caja inexistente", enviado_en: "2008-05-25T14:00:00.000Z" }]);
@@ -107,6 +118,8 @@ test.after(async () => {
   servidor.close();
   caja.close();
   devs.close();
+  pagos.close();
+  delete process.env.GESTION_PAGOS_URL;
   delete process.env.GESTION_CAJA_URL;
   delete process.env.DEVOLUCIONES_URL;
   await limpiar();
@@ -193,6 +206,14 @@ test("un mes sin asientos: porcentaje y color null (sin_asientos), todo en 0 y l
   dif = datos(0, 0, 0);
   const d = (await pedir("?periodo=2008-09")).cuerpo.data;
   assert.deepEqual([d.enviados, d.registrados, d.rechazados, d.porcentaje, d.color, d.sin_asientos, d.rechazados_lista], [0, 0, 0, null, null, true, []]);
+});
+
+test("el color usa los objetivos vigentes de Gestion de Pagos: 66,67 % es ROJO con el rango del PDF y VERDE si el administrador lo cambia (TDSI-191)", async () => {
+  assert.equal((await pedir()).cuerpo.data.color, "ROJO");
+  reiniciarCache();
+  objetivos = [{ indicador: "aceptacion_contable", verde: 60, amarillo: 50, rojo: 0, sentido: "MAYOR" }];
+  const d = (await pedir()).cuerpo.data;
+  assert.deepEqual([d.porcentaje, d.color, d.umbrales], [66.67, "VERDE", { verde: 60, amarillo: 50 }]);
 });
 
 test("solo el administrador: sin token 401, cajero 403; periodo invalido 400; sin periodo usa el mes actual", async () => {

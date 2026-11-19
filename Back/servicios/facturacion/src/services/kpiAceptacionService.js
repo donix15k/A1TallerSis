@@ -1,6 +1,7 @@
 const { query } = require("../config/db");
 const { rangoDelPeriodo, ZONA } = require("../utils/periodo");
 const { asientosNotasCredito, asientosDiferenciasCaja } = require("./asientosProxy");
+const { limitesDe, colorSegun, INICIALES } = require("./objetivosProxy");
 
 // TDSI-179: KPI 6 · Aceptacion contable. VERDE >= 98 %, AMARILLO 95 - 97,9 %, ROJO < 95 %.
 const UMBRALES_ACEPTACION = { verde: 98, amarillo: 95 };
@@ -10,12 +11,9 @@ const LIMITE_MAXIMO = 200;
 const aCentavos = (n) => Math.round(Number(n) * 100);
 const porcentaje = (parte, total) => (total > 0 ? Math.round((parte / total) * 10000) / 100 : 0);
 
-/** VERDE desde 98 %, AMARILLO desde 95 % (hasta 97,99 %), ROJO por debajo de 95 %. */
-function colorAceptacion(pct) {
-  const p = aCentavos(pct);
-  if (p >= aCentavos(UMBRALES_ACEPTACION.verde)) return "VERDE";
-  if (p >= aCentavos(UMBRALES_ACEPTACION.amarillo)) return "AMARILLO";
-  return "ROJO";
+/** VERDE desde 98 %, AMARILLO desde 95 % (hasta 97,99 %), ROJO por debajo de 95 % (o los limites vigentes que se pasen: TDSI-191). */
+function colorAceptacion(pct, limites = INICIALES.aceptacion_contable) {
+  return colorSegun(pct, limites);
 }
 
 function validarLimite(valor) {
@@ -79,6 +77,7 @@ const vacio = () => ({ enviados: 0, registrados: 0, rechazados: 0, sin_respuesta
 async function aceptacionContable({ periodo, token, limite, ahora } = {}) {
   const rango = rangoDelPeriodo(periodo, { ahora });
   const tope = validarLimite(limite);
+  const limites = await limitesDe("aceptacion_contable", { token });
   const [facturas, nc, dif] = await Promise.all([
     asientosDeFacturas(rango),
     asientosNotasCredito({ periodo: rango.periodo, token }),
@@ -102,13 +101,13 @@ async function aceptacionContable({ periodo, token, limite, ahora } = {}) {
     ...rango,
     ...suma,
     porcentaje: pct,
-    color: pct === null ? null : colorAceptacion(pct),
+    color: pct === null ? null : colorAceptacion(pct, limites),
     sin_asientos: suma.enviados === 0,
     incompleto: disponibles.length < fuentes.length,
     por_tipo: Object.fromEntries(fuentes.map((f) => [f.clave, f.datos ? { disponible: true, ...conteo(f.datos) } : { disponible: false, error: f.error, ...conteo(vacio()) }])),
     rechazados_total: suma.rechazados,
     rechazados_lista: lista.slice(0, tope),
-    umbrales: UMBRALES_ACEPTACION,
+    umbrales: { verde: limites.verde, amarillo: limites.amarillo },
   };
 }
 

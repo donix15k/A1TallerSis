@@ -9,8 +9,10 @@ const { errorHandler } = require("../middlewares/errorHandler");
 const { requireAdministrador } = require("../middlewares/requireAdministrador");
 const rutas = require("../routes/kpiRoutes");
 const { diasPagoProveedores, colorDiasPago, UMBRALES_DIAS_PAGO } = require("../services/kpiDiasPagoService");
+const { reiniciarCache } = require("../services/objetivosProxy");
 
-let caja, servidor, base;
+let caja, pagos, servidor, base;
+let objetivos = "caida"; // lo que responde Gestion de Pagos en /api/kpis/objetivos: lista de indicadores, o "caida"
 let n = 0;
 
 /** Una orden aprobada (creada) el dia dado y, si se indica, pagada (liquidada) en otra fecha. Fechas con hora de Bolivia. */
@@ -35,6 +37,13 @@ test.before(async () => {
   });
   await new Promise((r) => caja.listen(0, r));
   process.env.ADMIN_VERIFICAR_URL = `http://localhost:${caja.address().port}`;
+  pagos = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (objetivos === "caida") { res.statusCode = 500; return res.end("{}"); }
+    res.end(JSON.stringify({ ok: true, data: { indicadores: objetivos } }));
+  });
+  await new Promise((r) => pagos.listen(0, r));
+  process.env.GESTION_PAGOS_URL = `http://localhost:${pagos.address().port}`;
 
   // abril de 2000: tres ordenes PAGADAS en el mes con 4, 6 y 8 dias -> promedio 6,0 (VERDE)
   await orden({ creada: "2000-04-01 10:00:00-04", pagada: "2000-04-05 10:00:00-04", monto: 500, proveedor: "Insumos del Sur" });
@@ -61,6 +70,8 @@ test.before(async () => {
 test.after(async () => {
   servidor.close();
   caja.close();
+  pagos.close();
+  delete process.env.GESTION_PAGOS_URL;
   delete process.env.ADMIN_VERIFICAR_URL;
   await limpiar();
   await pool.end();
@@ -133,6 +144,18 @@ test("las ordenes RECIBIDAS de Compras en el mes y cuando llego la ultima (para 
 test("un mes sin ordenes pagadas: promedio y color null (sin_ordenes_pagadas), listas vacias", async () => {
   const d = (await pedir("?periodo=2000-09")).cuerpo.data;
   assert.deepEqual([d.valor, d.color, d.sin_ordenes_pagadas, d.ordenes_pagadas, d.ordenes_pagadas_total], [null, null, true, [], 0]);
+});
+
+test("el color usa los objetivos vigentes de Gestion de Pagos: 6 dias es VERDE con el rango del PDF y AMARILLO si el administrador pide 5 (TDSI-191)", async () => {
+  reiniciarCache();
+  objetivos = "caida";
+  assert.equal((await pedir()).cuerpo.data.color, "VERDE");
+  reiniciarCache();
+  objetivos = [{ indicador: "dias_pago_proveedores", verde: 5, amarillo: 10, rojo: 20, sentido: "MENOR" }];
+  const d = (await pedir()).cuerpo.data;
+  assert.deepEqual([d.valor, d.color, d.umbrales], [6, "AMARILLO", { verde: 5, amarillo: 10 }]);
+  reiniciarCache();
+  objetivos = "caida";
 });
 
 test("solo el administrador: sin token 401, cajero 403; periodo invalido 400; sin periodo usa el mes actual", async () => {

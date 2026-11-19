@@ -1,6 +1,7 @@
 const cuadreRepo = require("../data/cuadreRepo");
 const { rangoDelPeriodo } = require("../utils/periodo");
 const { AppError } = require("../utils/AppError");
+const { limitesDe, colorSegun, INICIALES } = require("./objetivosProxy");
 
 // TDSI-169: KPI 5 · Efectividad de cuadre. VERDE >= 95 %, AMARILLO 85 - 94 %, ROJO < 85 %.
 const UMBRALES_CUADRE = { verde: 95, amarillo: 85 };
@@ -11,12 +12,9 @@ const aCentavos = (n) => Math.round(Number(n) * 100);
 const aMonto = (c) => c / 100;
 const porcentaje = (parte, total) => (total > 0 ? Math.round((parte / total) * 10000) / 100 : 0);
 
-/** TDSI-169: VERDE desde 95 %, AMARILLO desde 85 % (hasta 94,99 %), ROJO por debajo de 85 %. */
-function colorCuadre(pct) {
-  const p = aCentavos(pct);
-  if (p >= aCentavos(UMBRALES_CUADRE.verde)) return "VERDE";
-  if (p >= aCentavos(UMBRALES_CUADRE.amarillo)) return "AMARILLO";
-  return "ROJO";
+/** TDSI-169: VERDE desde 95 %, AMARILLO desde 85 % (hasta 94,99 %), ROJO por debajo de 85 % (o los limites vigentes que se pasen: TDSI-191). */
+function colorCuadre(pct, limites = INICIALES.efectividad_cuadre) {
+  return colorSegun(pct, limites);
 }
 
 /** Forma publica de un turno cerrado: quien lo cerro, en que caja, su diferencia (con signo) y como quedo. */
@@ -51,8 +49,9 @@ function validarUltimos(valor) {
  *  - turnos_con_diferencia: los turnos SOBRANTE o FALTANTE, el de mayor diferencia (en valor absoluto) primero.
  *  - ultimos_turnos: los ultimos turnos cerrados del periodo (?ultimos=, 5 por defecto, maximo 20) con su estado.
  */
-async function cuadreCaja({ periodo, ultimos, hoy } = {}) {
+async function cuadreCaja({ periodo, ultimos, hoy, token } = {}) {
   const rango = rangoDelPeriodo(periodo, { hoy });
+  const limites = await limitesDe("efectividad_cuadre", { token });
   const cuantos = validarUltimos(ultimos);
   const turnos = await cuadreRepo.turnosCerradosConArqueo(rango.desde, rango.hasta);
 
@@ -77,13 +76,13 @@ async function cuadreCaja({ periodo, ultimos, hoy } = {}) {
     turnos_cerrados: turnos.length,
     turnos_cuadran: cuadran,
     porcentaje: pct,
-    color: pct === null ? null : colorCuadre(pct),
+    color: pct === null ? null : colorCuadre(pct, limites),
     sin_turnos: turnos.length === 0,
     sobrantes: aMonto(sobrantes),
     faltantes: aMonto(faltantes),
     turnos_con_diferencia: conDiferencia.map(aTurno),
     ultimos_turnos: turnos.slice(0, cuantos).map(aTurno),
-    umbrales: UMBRALES_CUADRE,
+    umbrales: { verde: limites.verde, amarillo: limites.amarillo },
   };
 }
 

@@ -2,6 +2,7 @@ const { query } = require("../config/db");
 const { ZONA_HORARIA } = require("../utils/fecha");
 const { rangoDelPeriodo } = require("../utils/periodo");
 const { AppError } = require("../utils/AppError");
+const { limitesDe, colorSegun, INICIALES } = require("./objetivosProxy");
 
 // TDSI-181: KPI 7 · Dias promedio de pago a proveedores. VERDE <= 7 dias, AMARILLO 8 - 15 dias, ROJO > 15 dias.
 const UMBRALES_DIAS_PAGO = { verde: 7, amarillo: 15 };
@@ -11,12 +12,9 @@ const LIMITE_MAXIMO = 100;
 
 const redondear1 = (n) => Math.round(Number(n) * 10) / 10;
 
-/** VERDE hasta 7 dias, AMARILLO por encima de 7 y hasta 15, ROJO por encima de 15 (el valor ya va a 1 decimal). */
-function colorDiasPago(dias) {
-  const d = Math.round(Number(dias) * 10);
-  if (d <= UMBRALES_DIAS_PAGO.verde * 10) return "VERDE";
-  if (d <= UMBRALES_DIAS_PAGO.amarillo * 10) return "AMARILLO";
-  return "ROJO";
+/** VERDE hasta 7 dias, AMARILLO por encima de 7 y hasta 15, ROJO por encima de 15 (o los limites vigentes que se pasen: TDSI-191). */
+function colorDiasPago(dias, limites = INICIALES.dias_pago_proveedores) {
+  return colorSegun(dias, limites);
 }
 
 function validarLimite(valor) {
@@ -47,8 +45,9 @@ const aOrden = (r, estado) => ({
  *    atrasada primero. "ahora" mide su antiguedad.
  *  - ordenes_pagadas: las pagadas del periodo, la mas reciente primero (?limite=, 20 por defecto, maximo 100).
  */
-async function diasPagoProveedores({ periodo, limite, hoy, ahora = new Date() } = {}) {
+async function diasPagoProveedores({ periodo, limite, hoy, ahora = new Date(), token } = {}) {
   const rango = rangoDelPeriodo(periodo, { hoy });
+  const limites = await limitesDe("dias_pago_proveedores", { token });
   const tope = validarLimite(limite);
 
   const pagadas = await query(
@@ -86,7 +85,7 @@ async function diasPagoProveedores({ periodo, limite, hoy, ahora = new Date() } 
   return {
     ...rango,
     valor,
-    color: valor === null ? null : colorDiasPago(valor),
+    color: valor === null ? null : colorDiasPago(valor, limites),
     ordenes_recibidas: recibidas.rows[0].total,
     ultima_orden_recibida_en: recibidas.rows[0].ultima,
     ordenes_pagadas_total: n,
@@ -94,7 +93,7 @@ async function diasPagoProveedores({ periodo, limite, hoy, ahora = new Date() } 
     ordenes_vencidas_total: vencidas.rows.length,
     ordenes_vencidas: vencidas.rows.slice(0, LIMITE_MAXIMO).map((r) => aOrden(r, "VENCIDA")),
     ordenes_pagadas: pagadas.rows.slice(0, tope).map((r) => aOrden(r, "PAGADA")),
-    umbrales: UMBRALES_DIAS_PAGO,
+    umbrales: { verde: limites.verde, amarillo: limites.amarillo },
     dias_para_vencer: DIAS_PARA_VENCER,
   };
 }

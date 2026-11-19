@@ -3,6 +3,7 @@ const metasRepo = require("../data/metasVentaRepo");
 const cajasRepo = require("../data/cajasRepo");
 const { calcularRecaudadoPorCaja } = require("./recaudadoService");
 const { rangoDelPeriodo } = require("../utils/periodo");
+const { limitesDe, colorSegun, INICIALES } = require("./objetivosProxy");
 
 // TDSI-160: KPI 4 · Cumplimiento de metas. VERDE >= 100 %, AMARILLO 70 - 99 %, ROJO < 70 %.
 const UMBRALES_METAS = { verde: 100, amarillo: 70 };
@@ -11,12 +12,9 @@ const aCentavos = (n) => Math.round(Number(n) * 100);
 const aMonto = (c) => c / 100;
 const porcentaje = (parte, total) => (total > 0 ? Math.round((parte / total) * 10000) / 100 : 0);
 
-/** TDSI-160: VERDE desde 100 %, AMARILLO desde 70 % (hasta 99,99 %), ROJO por debajo de 70 %. */
-function colorCumplimiento(pct) {
-  const p = aCentavos(pct);
-  if (p >= aCentavos(UMBRALES_METAS.verde)) return "VERDE";
-  if (p >= aCentavos(UMBRALES_METAS.amarillo)) return "AMARILLO";
-  return "ROJO";
+/** TDSI-160: VERDE desde 100 %, AMARILLO desde 70 % (hasta 99,99 %), ROJO por debajo de 70 % (o los limites vigentes que se pasen: TDSI-191). */
+function colorCumplimiento(pct, limites = INICIALES.cumplimiento_metas) {
+  return colorSegun(pct, limites);
 }
 
 /**
@@ -34,8 +32,9 @@ function metaDelMes(mensual, diaria, dias) {
  * vendido de las cajas con meta / suma de sus metas x 100. Una caja sin meta se informa (con meta null) pero no entra al general.
  * Sin ninguna meta el general es null (no hay contra que comparar).
  */
-async function cumplimientoMetas({ periodo, hoy } = {}) {
+async function cumplimientoMetas({ periodo, hoy, token } = {}) {
   const rango = rangoDelPeriodo(periodo, { hoy });
+  const limites = await limitesDe("cumplimiento_metas", { token });
   const [recaudados, mensuales, diarias, cajas] = await Promise.all([
     calcularRecaudadoPorCaja({ desde: rango.desde, hasta: rango.hasta }),
     metasMensualesRepo.listarTodas(),
@@ -57,7 +56,7 @@ async function cumplimientoMetas({ periodo, hoy } = {}) {
     vendidoConMeta += vendido;
     sumaMetas += meta.monto;
     const pct = porcentaje(vendido, meta.monto);
-    return { caja_id: caja.codigo, caja_nombre: caja.nombre, vendido: aMonto(vendido), meta: aMonto(meta.monto), porcentaje: pct, color: colorCumplimiento(pct), meta_origen: meta.origen };
+    return { caja_id: caja.codigo, caja_nombre: caja.nombre, vendido: aMonto(vendido), meta: aMonto(meta.monto), porcentaje: pct, color: colorCumplimiento(pct, limites), meta_origen: meta.origen };
   });
 
   const general = sumaMetas > 0 ? porcentaje(vendidoConMeta, sumaMetas) : null;
@@ -67,13 +66,13 @@ async function cumplimientoMetas({ periodo, hoy } = {}) {
     hasta: rango.hasta,
     general: {
       porcentaje: general,
-      color: general === null ? null : colorCumplimiento(general),
+      color: general === null ? null : colorCumplimiento(general, limites),
       vendido: aMonto(vendidoConMeta),
       meta: aMonto(sumaMetas),
       cajas_con_meta: lista.filter((c) => c.meta !== null).length,
     },
     cajas: lista,
-    umbrales: UMBRALES_METAS,
+    umbrales: { verde: limites.verde, amarillo: limites.amarillo },
   };
 }
 

@@ -36,6 +36,7 @@ async function requireAdministrador(req, res, next) {
       return res.status(403).json({ ok: false, mensaje: "Esta accion requiere permisos de Administrador." });
     }
     req.administrador = { administrador_id: usuario.id, nombre: administrador.nombre };
+    req.tokenAdministrador = token; // TDSI-191: los KPIs lo reenvian para leer los objetivos del semaforo
     next();
   } catch (e) {
     next(e);
