@@ -20,4 +20,11 @@ router.get("/resumen", wrap(async (req, res) => {
   res.json({ ok: true, data: await integraciones.resumen({ token: req.tokenAdministrador }) });
 }));
 
+// TDSI-129: boton "Reenviar" de los mensajes con Error: llama al reenvio del microservicio dueno del mensaje
+// (origen: facturacion, gestion_caja, pagos_proveedores, devoluciones, gestion_pagos_compras o gestion_pagos_marketplace).
+router.post("/mensajes/:origen/:id/reenviar", wrap(async (req, res) => {
+  const data = await integraciones.reenviarMensaje({ origen: req.params.origen, id: req.params.id, token: req.tokenAdministrador });
+  res.json({ ok: true, mensaje: data.estado === "Error" ? "El reenvío volvió a fallar" : "Mensaje reenviado", data });
+}));
+
 module.exports = router;

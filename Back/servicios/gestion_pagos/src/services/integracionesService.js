@@ -120,4 +120,21 @@ async function resumen({ token = null } = {}) {
   return { grupos, total, fuentes: estadoFuentes, actualizado_en: new Date().toISOString() };
 }
 
-module.exports = { reunirMensajes, listarMensajes, resumen, validarFiltros, GRUPOS };
+/**
+ * TDSI-129: reenvia un mensaje que quedo en Error llamando al endpoint de reenvio del microservicio DUENO del mensaje
+ * (el monitor no publica nada por su cuenta). Cada dueno reutiliza el mismo identificador del mensaje (idempotency_key), asi
+ * el otro grupo no recibe duplicados. Errores del dueno se propagan con su estado: 404 no existe, 409 no esta en Error.
+ * Devuelve el mensaje ya actualizado (formato comun) para refrescar la fila.
+ */
+async function reenviarMensaje({ origen, id, token = null }) {
+  const fuente = fuentes().find((f) => f.origen === String(origen));
+  if (!fuente) throw new AppError(`El origen "${origen}" no existe. Use: ${fuentes().map((f) => f.origen).join(", ")}.`, 400, { origen });
+  const idLimpio = String(id ?? "").trim();
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(idLimpio)) throw new AppError("El id del mensaje no es válido.", 400, { id });
+
+  await fuente.reenviar(idLimpio, { token }); // el dueno valida (404 / 409) y publica con la misma idempotency_key
+  const actualizado = (await fuente.listar({ token })).find((m) => m.id === idLimpio);
+  return actualizado || { origen: fuente.origen, id: idLimpio, reenviado: true };
+}
+
+module.exports = { reunirMensajes, listarMensajes, resumen, reenviarMensaje, validarFiltros, GRUPOS };
