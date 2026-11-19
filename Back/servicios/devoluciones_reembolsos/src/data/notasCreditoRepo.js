@@ -44,4 +44,14 @@ async function obtenerPorDevolucion(devolucionId) {
   return rows[0] ? formatear(rows[0]) : null;
 }
 
-module.exports = { emitirNota, obtenerPorDevolucion, numeroNC, FORMATO };
+/** TDSI-60: la nota ya se envio por correo: enviada_por_correo = true y la hora (se actualiza en cada reenvio exitoso). */
+async function marcarEnviada(notaId) {
+  const { rows } = await query(
+    `UPDATE devoluciones.notas_credito SET enviada_por_correo = true, enviada_en = now() WHERE id = $1
+     RETURNING id, numero, monto, estado, emitida_en, enviada_por_correo, enviada_en`,
+    [notaId]
+  );
+  return formatear(rows[0]);
+}
+
+module.exports = { emitirNota, obtenerPorDevolucion, marcarEnviada, numeroNC, FORMATO };

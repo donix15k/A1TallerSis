@@ -106,3 +106,50 @@ test("se puede reenviar a otro correo: cada envio queda registrado", async () =>
   await entorno.post(`/api/devoluciones/${codigo}/nota-credito/enviar`, { email: "otro@correo.com" });
   assert.deepEqual((await registrados(codigo)).map((f) => f.email_destino), ["cliente@correo.com", "otro@correo.com"]);
 });
+
+// ---------- TDSI-60 ----------
+const mal = ["sin-arroba.com", "a@b", "a b@c.com", "@c.com", "a@.com", "a@b@c.com", "x@y.z ".repeat(1) + "x".repeat(200) + "@a.com"];
+
+test("TDSI-60: un correo mal escrito da 400 'El correo no es válido': no se envia y NO se registra el envio", async () => {
+  const { codigo } = await procesada();
+  for (const email of mal) {
+    const r = await entorno.post(`/api/devoluciones/${codigo}/nota-credito/enviar`, { email });
+    assert.equal(r.status, 400, email.slice(0, 30));
+    assert.equal(r.cuerpo.mensaje, "El correo no es válido");
+  }
+  assert.equal(enviados.length, 0);
+  assert.equal((await registrados(codigo)).length, 0);
+});
+
+test("TDSI-60: tras un envio exitoso la nota queda con enviada_por_correo = true, la hora y el correo", async () => {
+  const { codigo } = await procesada();
+  const antes = (await entorno.get(`/api/devoluciones/${codigo}/nota-credito`)).cuerpo.data;
+  assert.deepEqual([antes.enviada_por_correo, antes.enviada_en, antes.enviada_a, antes.envios], [false, null, null, []]);
+
+  const r = await entorno.post(`/api/devoluciones/${codigo}/nota-credito/enviar`, { email: "  cliente@correo.com  " }); // se recorta
+  assert.equal(r.cuerpo.data.enviada_por_correo, true);
+  const despues = (await entorno.get(`/api/devoluciones/${codigo}/nota-credito`)).cuerpo.data;
+  assert.equal(despues.enviada_por_correo, true);
+  assert.ok(despues.enviada_en);
+  assert.equal(despues.enviada_a, "cliente@correo.com");
+  assert.deepEqual(despues.envios.map((e) => e.estado), ["ENVIADO"]);
+});
+
+test("TDSI-60: si el envio falla o es simulado, la nota NO queda marcada como enviada", async () => {
+  const { codigo } = await procesada();
+  falla = new Error("smtp caido");
+  await envio(codigo);
+  falla = null;
+  emailService.usarTransportadorDePrueba(null);
+  await envio(codigo);
+  const n = (await entorno.get(`/api/devoluciones/${codigo}/nota-credito`)).cuerpo.data;
+  assert.deepEqual([n.enviada_por_correo, n.enviada_en, n.enviada_a], [false, null, null]);
+  assert.deepEqual(n.envios.map((e) => e.estado), ["SIMULADO", "ERROR"]); // mas reciente primero
+});
+
+test("TDSI-60: GET de la nota de una devolucion sin nota: 409; inexistente: 404", async () => {
+  const numero = entorno.agregarFactura(770 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  assert.equal((await entorno.get(`/api/devoluciones/${cuerpo.data.codigo}/nota-credito`)).status, 409);
+  assert.equal((await entorno.get("/api/devoluciones/DEV-999999/nota-credito")).status, 404);
+});

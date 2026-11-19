@@ -5,6 +5,7 @@ const facturacionProxy = require("./facturacionProxy");
 const notasCreditoRepo = require("../data/notasCreditoRepo");
 const comprobantesRepo = require("../data/comprobantesRepo");
 const emailService = require("./emailService");
+const { emailValido } = require("../utils/email");
 const { query } = require("../config/db");
 const { montoEnLetras } = require("../utils/numeroALetras");
 const { AppError } = require("../utils/AppError");
@@ -139,6 +140,8 @@ async function generarPdf(codigo) {
 async function enviarPorCorreo(codigo, cuerpo = {}) {
   const email = typeof cuerpo.email === "string" ? cuerpo.email.trim() : "";
   if (!email) throw new AppError("Falta el correo al que se enviará la nota de crédito.", 400);
+  // TDSI-60: un correo mal escrito no se envía y NO se registra ningún envío.
+  if (!emailValido(email)) throw new AppError("El correo no es válido", 400, { email });
 
   const datos = await armarNota(codigo); // 404 / 409 si no tiene nota
   const pdf = await generarPdf(codigo);
@@ -150,7 +153,27 @@ async function enviarPorCorreo(codigo, cuerpo = {}) {
   if (resultado.estado === "ERROR") {
     throw new AppError("No se pudo enviar el correo. Intente de nuevo.", 502, { envio_id: envio.id, causa: resultado.error });
   }
-  return { numero: datos.nota.numero, email, estado: resultado.estado, enviado_en: envio.enviado_en };
+  // TDSI-60: solo un envio REAL marca la nota como enviada (uno simulado no salio de verdad).
+  const nota = resultado.estado === "ENVIADO" ? await notasCreditoRepo.marcarEnviada(datos.nota.id) : datos.nota;
+  return { numero: nota.numero, email, estado: resultado.estado, enviado_en: envio.enviado_en, enviada_por_correo: nota.enviada_por_correo };
 }
 
-module.exports = { armarNota, generarPdf, dibujar, enviarPorCorreo };
+/**
+ * La nota de credito de una devolucion con su estado de envio: si ya se envio por correo, a cual y cuando
+ * (ultimo envio exitoso) y el historial de intentos. Es lo que muestra el detalle de la devolucion.
+ */
+async function consultarNota(codigo) {
+  const { nota, devolucion } = await armarNota(codigo);
+  const { rows } = await query(`SELECT id FROM devoluciones.devoluciones WHERE codigo = $1`, [devolucion.codigo]);
+  const envios = await comprobantesRepo.listarEnvios(Number(rows[0].id));
+  const ultimo = envios.find((e) => e.estado === "ENVIADO") || null;
+  return {
+    ...nota,
+    devolucion: devolucion.codigo,
+    factura_numero: devolucion.factura_numero,
+    enviada_a: ultimo ? ultimo.email_destino : null,
+    envios,
+  };
+}
+
+module.exports = { armarNota, generarPdf, dibujar, enviarPorCorreo, consultarNota };

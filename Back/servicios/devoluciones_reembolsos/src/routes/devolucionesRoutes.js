@@ -61,6 +61,11 @@ router.get("/:codigo/nota-credito.pdf", wrap(async (req, res) => {
   res.send(pdf);
 }));
 
+// TDSI-60: la nota de credito con su estado de envio (enviada_por_correo, enviada_en, a que correo).
+router.get("/:codigo/nota-credito", wrap(async (req, res) => {
+  res.json({ ok: true, data: await notaCreditoService.consultarNota(req.params.codigo) });
+}));
+
 // TDSI-59: envia por correo el PDF de la nota de credito y registra el envio.
 router.post("/:codigo/nota-credito/enviar", wrap(async (req, res) => {
   const data = await notaCreditoService.enviarPorCorreo(req.params.codigo, req.body);
