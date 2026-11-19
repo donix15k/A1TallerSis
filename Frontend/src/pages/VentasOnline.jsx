@@ -50,7 +50,7 @@ function VentasOnline() {
   // TDSI-964: "Tópico origen" -- igual que en "Verificación de Pub/Sub", solo para
   // pruebas; el destino de este aviso siempre es el Marketplace, eso no se elige aca.
   const [gruposOrigen, setGruposOrigen] = useState([])
-  const [grupoOrigen, setGrupoOrigen] = useState('A')
+  const [grupoOrigen, setGrupoOrigen] = useState('A1')
 
   useEffect(() => {
     listarGruposPubSub()
@@ -265,7 +265,7 @@ function VentasOnline() {
                 alignItems: 'center',
               }}
             >
-              <label className="campo" title="En la vida real siempre somos el Grupo A -- esto solo sirve para simular, en nuestras propias pruebas, que el aviso viene de otro grupo. Al Marketplace (Grupo E) le llega igual, eso no cambia.">
+              <label className="campo" title="Por defecto el aviso sale desde nuestro grupo (A1). Puedes elegir otro grupo de origen si hace falta (para pruebas o para evitar problemas de integración). Al Marketplace (Grupo E) le llega igual, eso no cambia.">
                 Tópico origen
                 <select value={grupoOrigen} onChange={(e) => setGrupoOrigen(e.target.value)} disabled={gruposOrigen.length === 0}>
                   {gruposOrigen.map((g) => (

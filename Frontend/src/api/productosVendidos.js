@@ -13,8 +13,10 @@ export function obtenerProductosVendidos(fecha) {
 }
 
 // TDSI-54/702/718: boton "Enviar a Compras" (una vez por dia, salvo que haya quedado en Error).
-export function enviarProductosACompras(fecha) {
+// grupo_origen (opcional, A1 por defecto: somos el grupo A1) es desde que grupo sale el reporte.
+export function enviarProductosACompras(fecha, { grupo_origen } = {}) {
   return apiFetch(`/api/productos-vendidos/${encodeURIComponent(fecha)}/enviar-compras`, {
     method: 'POST',
+    body: JSON.stringify({ grupo_origen }),
   }, GESTION_PAGOS_API_BASE_URL)
 }

@@ -18,7 +18,7 @@ export function listarVentasOnline({ desde, hasta, estado } = {}) {
 
 // TDSI-51/964: boton "Enviar a Marketplace" del modal "Ver factura" -- reenvia el aviso
 // Pub/Sub de esa factura, para demostrar la integracion sin esperar una orden nueva.
-// grupo_origen (opcional, A por defecto) simula -- solo para pruebas, igual que en
+// grupo_origen (opcional, A1 por defecto) simula -- solo para pruebas, igual que en
 // "Verificación de Pub/Sub" -- que el aviso viene de otro grupo; el destino siempre es
 // el Marketplace, eso no cambia.
 export function reenviarAvisoMarketplace(id, { grupo_origen, enviado_por } = {}) {

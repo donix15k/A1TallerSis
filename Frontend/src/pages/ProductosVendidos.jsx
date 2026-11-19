@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { obtenerProductosVendidos, enviarProductosACompras } from '../api/productosVendidos.js'
+import { listarGruposPubSub } from '../api/pubsubVerificacion.js'
 import Cargando from '../components/Cargando.jsx'
 import TablaPaginada from '../components/TablaPaginada.jsx'
 
@@ -30,6 +31,17 @@ function ProductosVendidos() {
   const [errorEnvio, setErrorEnvio] = useState(null)
   const [mensaje, setMensaje] = useState(null)
 
+  // "Tópico origen": por defecto el reporte sale desde nuestro grupo (A1); se puede elegir otro. El destino
+  // siempre es Compras (Grupo C), eso no se elige aquí.
+  const [gruposOrigen, setGruposOrigen] = useState([])
+  const [grupoOrigen, setGrupoOrigen] = useState('A1')
+
+  useEffect(() => {
+    listarGruposPubSub()
+      .then((r) => setGruposOrigen(r.data))
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     let vigente = true
     setCargando(true)
@@ -56,7 +68,7 @@ function ProductosVendidos() {
     setEnviando(true)
     setErrorEnvio(null)
     try {
-      await enviarProductosACompras(fecha)
+      await enviarProductosACompras(fecha, { grupo_origen: grupoOrigen })
       setConfirmando(false)
       setMensaje('Reporte enviado a Compras.')
       setRecargar((n) => n + 1)
@@ -147,6 +159,15 @@ function ProductosVendidos() {
             <p>
               Se va a enviar el reporte de productos vendidos del {fecha} ({totalUnidades} unidades, Bs. {bs(totalMonto)}) a Compras.
             </p>
+
+            <label className="campo" title="Por defecto el reporte sale desde nuestro grupo (A1). Puedes elegir otro grupo de origen si hace falta. A Compras (Grupo C) le llega igual, eso no cambia.">
+              Tópico origen
+              <select value={grupoOrigen} onChange={(e) => setGrupoOrigen(e.target.value)} disabled={gruposOrigen.length === 0 || enviando}>
+                {gruposOrigen.map((g) => (
+                  <option key={g.grupo} value={g.grupo}>{g.grupo} · {g.nombre}</option>
+                ))}
+              </select>
+            </label>
 
             {errorEnvio && <p className="error">{errorEnvio}</p>}
 

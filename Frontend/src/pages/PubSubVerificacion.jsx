@@ -15,8 +15,8 @@ function PubSubVerificacion() {
   const [cargandoGrupos, setCargandoGrupos] = useState(true)
   const [errorGrupos, setErrorGrupos] = useState(null)
 
-  // TDSI-963: de qué grupo se simula que viene el mensaje (A por defecto, el real).
-  const [grupoOrigen, setGrupoOrigen] = useState('A')
+  // TDSI-963: de qué grupo se simula que viene el mensaje (A1 por defecto: somos el grupo A1).
+  const [grupoOrigen, setGrupoOrigen] = useState('A1')
   const [grupo, setGrupo] = useState('')
   // TDSI-962: para descartar si un envio que falla es culpa del topico o de nuestro
   // codigo, se puede mandar a un topico cualquiera en vez de a uno de los grupos
@@ -104,8 +104,8 @@ function PubSubVerificacion() {
         Manda cualquier mensaje al tópico de otro grupo del proyecto para comprobar si hay conexión real.
         Lo que llega como "Enviado" quedó aceptado por Google Pub/Sub; que el otro grupo lo haya
         recibido de verdad solo se confirma con ellos (o revisando su suscripción en la consola de GCP).
-        El "Tópico origen" es solo para nuestras propias pruebas (en la vida real siempre somos el
-        Grupo A); y si sospechas que un tópico puntual está fallando, usa el tópico personalizado
+        El "Tópico origen" es el grupo desde el que sale el mensaje: por defecto somos el Grupo A1, y puedes
+        elegir otro si hace falta; y si sospechas que un tópico puntual está fallando, usa el tópico personalizado
         para probar otro distinto y así distinguir si el problema es ese tópico o nuestro código.
       </p>
 
@@ -119,7 +119,7 @@ function PubSubVerificacion() {
       </label>
 
       <form className="filtro-fechas" onSubmit={enviar} style={{ alignItems: 'flex-start' }}>
-        <label className="campo" title="En la vida real siempre somos el Grupo A -- esto solo sirve para simular, en nuestras propias pruebas, que el mensaje viene de otro grupo.">
+        <label className="campo" title="Por defecto el mensaje sale desde nuestro grupo (A1). Puedes elegir otro grupo de origen si hace falta (para pruebas o para evitar problemas de integración).">
           Tópico origen
           <select value={grupoOrigen} onChange={(e) => setGrupoOrigen(e.target.value)} disabled={cargandoGrupos}>
             {cargandoGrupos && <option value="">Cargando...</option>}

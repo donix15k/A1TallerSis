@@ -61,7 +61,7 @@ function DiferenciasCaja() {
   // TDSI-964: "Tópico origen" -- igual que en "Verificación de Pub/Sub", solo para
   // pruebas; el destino de "Reenviar" siempre es Contabilidad, eso no se elige aca.
   const [gruposOrigen, setGruposOrigen] = useState([])
-  const [grupoOrigen, setGrupoOrigen] = useState('A')
+  const [grupoOrigen, setGrupoOrigen] = useState('A1')
 
   useEffect(() => {
     listarGruposPubSub()
@@ -164,7 +164,7 @@ function DiferenciasCaja() {
             ))}
           </select>
         </label>
-        <label className="campo campo-turno-dia" title="En la vida real siempre somos el Grupo A -- esto solo sirve para simular, en nuestras propias pruebas, que el 'Reenviar' viene de otro grupo. A Contabilidad le llega igual, eso no cambia.">
+        <label className="campo campo-turno-dia" title="Por defecto el 'Reenviar' sale desde nuestro grupo (A1). Puedes elegir otro grupo de origen si hace falta (para pruebas o para evitar problemas de integración). A Contabilidad le llega igual, eso no cambia.">
           Tópico origen (Reenviar)
           <select value={grupoOrigen} onChange={(e) => setGrupoOrigen(e.target.value)} disabled={gruposOrigen.length === 0}>
             {gruposOrigen.map((g) => (
