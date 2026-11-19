@@ -1,6 +1,7 @@
 const { Router } = require("express");
 const { cumplimientoMetas } = require("../services/kpiMetasService");
 const { cuadreCaja } = require("../services/kpiCuadreService");
+const { asientosContablesDelPeriodo } = require("../services/kpiAsientosService");
 
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
@@ -15,6 +16,12 @@ router.get("/cumplimiento-metas", wrap(async (req, res) => {
 // sobrantes y faltantes en Bs, turnos con diferencia y ultimos turnos cerrados.
 router.get("/cuadre-caja", wrap(async (req, res) => {
   res.json({ ok: true, data: await cuadreCaja({ periodo: req.query.periodo, ultimos: req.query.ultimos }) });
+}));
+
+// TDSI-180: los asientos de diferencias de caja enviados a Contabilidad en el periodo (enviados, registrados, rechazados y la lista de
+// rechazados). Lo consulta Facturacion para armar la aceptacion contable del Panel de KPIs.
+router.get("/asientos-contables", wrap(async (req, res) => {
+  res.json({ ok: true, data: await asientosContablesDelPeriodo({ periodo: req.query.periodo }) });
 }));
 
 module.exports = router;
