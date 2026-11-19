@@ -75,4 +75,9 @@ async function consultarFacturaParaDevolucion(numero, { ahora = new Date() } = {
   };
 }
 
-module.exports = { consultarFacturaParaDevolucion, repartirYaDevuelto };
+/** TDSI-20: motivos activos para el desplegable de "Registrar devolucion". */
+async function listarMotivos() {
+  return devolucionesRepo.listarMotivosActivos();
+}
+
+module.exports = { consultarFacturaParaDevolucion, repartirYaDevuelto, listarMotivos };

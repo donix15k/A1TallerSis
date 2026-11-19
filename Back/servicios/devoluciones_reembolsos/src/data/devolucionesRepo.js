@@ -1,5 +1,11 @@
 const { query } = require("../config/db");
 
+/** TDSI-20: motivos que el cajero puede elegir (solo los activos, en el orden del catalogo). */
+async function listarMotivosActivos() {
+  const { rows } = await query(`SELECT id, nombre FROM devoluciones.motivos WHERE activo ORDER BY id`);
+  return rows.map((r) => ({ id: Number(r.id), nombre: r.nombre }));
+}
+
 /**
  * TDSI-12: lo que YA se devolvio de una factura, sumado por producto (descripcion + precio unitario,
  * que es lo que identifica una linea de la factura en Facturacion). Cuentan las devoluciones que
@@ -22,4 +28,4 @@ async function cantidadesYaDevueltas(facturaNumero) {
   }));
 }
 
-module.exports = { cantidadesYaDevueltas };
+module.exports = { listarMotivosActivos, cantidadesYaDevueltas };
