@@ -53,6 +53,7 @@ async function obtenerFactura(numero) {
     cliente_nit: f.cliente_nit ?? null,
     cliente_nombre: f.cliente_nombre ?? null,
     estado: f.estado,
+    canal: f.canal ?? "Presencial", // Presencial u Online (Marketplace)
     total: aNumero(f.total),
     items: (f.items ?? []).map((it) => ({
       descripcion: it.descripcion,

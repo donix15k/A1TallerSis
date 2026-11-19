@@ -9,13 +9,14 @@ const app = require("../../app");
 
 const hace = (dias) => new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
 
-function facturaDe(numero, { fecha = hace(1), estado = "Emitida", items, metodosPago } = {}) {
+function facturaDe(numero, { fecha = hace(1), estado = "Emitida", items, metodosPago, canal = "Presencial" } = {}) {
   return {
     numero,
     fecha,
     cliente_nit: "1234567",
     cliente_nombre: "Cliente de prueba",
     estado,
+    canal,
     total: "100.00",
     items: items ?? [
       { descripcion: "Producto A", cantidad: "5.00", precio_unitario: "10.00", subtotal: "50.00" },
