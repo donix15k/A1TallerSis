@@ -1,5 +1,6 @@
 const { Router } = require("express");
 const kpi = require("../services/kpiService");
+const objetivos = require("../services/kpiObjetivosService");
 const { requireAdministrador } = require("../middlewares/requireAdministrador");
 
 const router = Router();
@@ -29,6 +30,12 @@ router.get("/riesgo", wrap(async (req, res) => {
 // TDSI-151: cuadro "Anulaciones por cajero": cajero, cantidad anulada y % del total, de mayor a menor. ?periodo=AAAA-MM.
 router.get("/anulaciones/por-cajero", wrap(async (req, res) => {
   res.json({ ok: true, data: await kpi.anulacionesPorCajero({ periodo: req.query.periodo }) });
+}));
+
+// TDSI-190/191: los objetivos del semaforo (limite verde, amarillo y rojo y sentido de cada uno de los 7 KPIs). Los demas servicios de
+// KPIs (Caja, Facturacion, Pagos a Proveedores) los leen de aqui para pintar sus colores con los mismos rangos.
+router.get("/objetivos", wrap(async (req, res) => {
+  res.json({ ok: true, data: { indicadores: await objetivos.listarObjetivos() } });
 }));
 
 module.exports = router;

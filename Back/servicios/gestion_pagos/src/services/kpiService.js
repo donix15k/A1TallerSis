@@ -6,17 +6,27 @@ const { AppError } = require("../utils/AppError");
 const { aCentavos, aMonto } = require("../utils/money");
 const { obtenerMetaDiaria } = require("./metasProxy");
 const { obtenerDevolucionesDelPeriodo } = require("./devolucionesProxy");
+const { colorSegun, limitesPorDefecto, limitesDe } = require("./kpiObjetivosService");
 
 const ZONA = "America/La_Paz";
 
+// TDSI-190/191: los rangos de color INICIALES de cada indicador (los del PDF). Los vigentes los guarda pagos.kpi_objetivos y el
+// administrador los cambia en "Configurar objetivos"; estas constantes son el valor por defecto.
+const umbralesIniciales = (indicador) => {
+  const { verde, amarillo } = limitesPorDefecto(indicador);
+  return { verde, amarillo };
+};
 // KPI 1 · Ticket promedio: VERDE >= Bs 45, AMARILLO Bs 35 - 44,99, ROJO < Bs 35.
-const UMBRALES_TICKET = { verde: 45, amarillo: 35 };
+const UMBRALES_TICKET = umbralesIniciales("ticket_promedio");
 
 // KPI 2 · Tasa de anulacion: VERDE <= 2 %, AMARILLO 2 - 5 %, ROJO > 5 %.
-const UMBRALES_ANULACION = { verde: 2, amarillo: 5 };
+const UMBRALES_ANULACION = umbralesIniciales("tasa_anulacion");
 
 // KPI 3 · Tasa de devoluciones (monto devuelto / monto vendido): VERDE <= 1,5 %, AMARILLO 1,5 - 3 %, ROJO > 3 %.
-const UMBRALES_DEVOLUCIONES = { verde: 1.5, amarillo: 3 };
+const UMBRALES_DEVOLUCIONES = umbralesIniciales("tasa_devoluciones");
+
+/** Los limites vigentes que se muestran junto a cada KPI ({ verde, amarillo }). */
+const umbrales = (l) => ({ verde: l.verde, amarillo: l.amarillo });
 
 const hoyBolivia = (ahora = new Date()) => ahora.toLocaleDateString("en-CA", { timeZone: ZONA });
 
@@ -44,12 +54,9 @@ function calcularTicketPromedio(totalVendido, ventasValidas) {
   return aMonto(Math.round(aCentavos(totalVendido) / ventas));
 }
 
-/** Semaforo del ticket promedio: VERDE desde Bs 45, AMARILLO de Bs 35 a 44,99 y ROJO por debajo de Bs 35. */
-function colorTicketPromedio(valor) {
-  const v = aCentavos(valor);
-  if (v >= aCentavos(UMBRALES_TICKET.verde)) return "VERDE";
-  if (v >= aCentavos(UMBRALES_TICKET.amarillo)) return "AMARILLO";
-  return "ROJO";
+/** Semaforo del ticket promedio: VERDE desde Bs 45, AMARILLO de Bs 35 a 44,99 y ROJO por debajo de Bs 35 (o los limites que se pasen). */
+function colorTicketPromedio(valor, limites = limitesPorDefecto("ticket_promedio")) {
+  return colorSegun(valor, limites);
 }
 
 /** Un porcentaje a 2 decimales: parte / total x 100. Sin total es 0 % (nunca NaN ni division por cero). */
@@ -60,19 +67,13 @@ function calcularPorcentaje(parte, total) {
 }
 
 /** Semaforo de la tasa de anulacion: VERDE hasta 2 %, AMARILLO por encima de 2 % y hasta 5 %, ROJO por encima de 5 %. */
-function colorTasaAnulacion(tasa) {
-  const t = aCentavos(tasa);
-  if (t <= aCentavos(UMBRALES_ANULACION.verde)) return "VERDE";
-  if (t <= aCentavos(UMBRALES_ANULACION.amarillo)) return "AMARILLO";
-  return "ROJO";
+function colorTasaAnulacion(tasa, limites = limitesPorDefecto("tasa_anulacion")) {
+  return colorSegun(tasa, limites);
 }
 
 /** Semaforo de la tasa de devoluciones: VERDE hasta 1,5 %, AMARILLO por encima de 1,5 % y hasta 3 %, ROJO por encima de 3 %. */
-function colorTasaDevoluciones(tasa) {
-  const t = aCentavos(tasa);
-  if (t <= aCentavos(UMBRALES_DEVOLUCIONES.verde)) return "VERDE";
-  if (t <= aCentavos(UMBRALES_DEVOLUCIONES.amarillo)) return "AMARILLO";
-  return "ROJO";
+function colorTasaDevoluciones(tasa, limites = limitesPorDefecto("tasa_devoluciones")) {
+  return colorSegun(tasa, limites);
 }
 
 /**
@@ -100,7 +101,8 @@ async function ticketPromedio({ periodo, ahora } = {}) {
   const rango = rangoDelPeriodo(periodo, { ahora });
   const v = await ventasEntre(rango.desde, rango.hasta);
   const valor = calcularTicketPromedio(v.total_vendido, v.ventas_validas);
-  return { ...rango, ...v, total_vendido: aMonto(aCentavos(v.total_vendido)), valor, color: colorTicketPromedio(valor), sin_ventas: v.ventas_validas === 0, umbrales: UMBRALES_TICKET };
+  const limites = await limitesDe("ticket_promedio");
+  return { ...rango, ...v, total_vendido: aMonto(aCentavos(v.total_vendido)), valor, color: colorTicketPromedio(valor, limites), sin_ventas: v.ventas_validas === 0, umbrales: umbrales(limites) };
 }
 
 /**
@@ -152,7 +154,8 @@ async function tasaAnulacion({ periodo, ahora } = {}) {
   const v = await ventasEntre(rango.desde, rango.hasta);
   const emitidas = v.ventas_validas + v.ventas_anuladas;
   const valor = calcularPorcentaje(v.ventas_anuladas, emitidas);
-  return { ...rango, anuladas: v.ventas_anuladas, emitidas, valor, color: colorTasaAnulacion(valor), sin_facturas: emitidas === 0, umbrales: UMBRALES_ANULACION };
+  const limites = await limitesDe("tasa_anulacion");
+  return { ...rango, anuladas: v.ventas_anuladas, emitidas, valor, color: colorTasaAnulacion(valor, limites), sin_facturas: emitidas === 0, umbrales: umbrales(limites) };
 }
 
 /**
@@ -162,15 +165,15 @@ async function tasaAnulacion({ periodo, ahora } = {}) {
  */
 async function tasaDevoluciones({ periodo, token, ahora } = {}) {
   const rango = rangoDelPeriodo(periodo, { ahora });
-  const [v, dev] = await Promise.all([ventasEntre(rango.desde, rango.hasta), obtenerDevolucionesDelPeriodo({ periodo: rango.periodo, token })]);
+  const [v, dev, limites] = await Promise.all([ventasEntre(rango.desde, rango.hasta), obtenerDevolucionesDelPeriodo({ periodo: rango.periodo, token }), limitesDe("tasa_devoluciones")]);
   if (!dev.datos) {
-    return { ...rango, disponible: false, error: dev.error, valor: null, color: null, monto_devuelto: null, monto_vendido: aMonto(aCentavos(v.total_vendido)), cantidad: null, motivos: [], umbrales: UMBRALES_DEVOLUCIONES };
+    return { ...rango, disponible: false, error: dev.error, valor: null, color: null, monto_devuelto: null, monto_vendido: aMonto(aCentavos(v.total_vendido)), cantidad: null, motivos: [], umbrales: umbrales(limites) };
   }
   const montoVendido = aMonto(aCentavos(v.total_vendido));
   const valor = calcularPorcentaje(dev.datos.monto_devuelto, montoVendido);
   return {
-    ...rango, disponible: true, error: null, valor, color: colorTasaDevoluciones(valor), monto_devuelto: dev.datos.monto_devuelto, monto_vendido: montoVendido,
-    cantidad: dev.datos.cantidad, motivos: dev.datos.motivos, sin_ventas: v.ventas_validas === 0, umbrales: UMBRALES_DEVOLUCIONES,
+    ...rango, disponible: true, error: null, valor, color: colorTasaDevoluciones(valor, limites), monto_devuelto: dev.datos.monto_devuelto, monto_vendido: montoVendido,
+    cantidad: dev.datos.cantidad, motivos: dev.datos.motivos, sin_ventas: v.ventas_validas === 0, umbrales: umbrales(limites),
   };
 }
 

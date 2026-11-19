@@ -668,3 +668,36 @@ ALTER TABLE pagos.transacciones ADD CONSTRAINT transacciones_metodo_check CHECK 
 ALTER TABLE pagos.detalles_pago DROP CONSTRAINT IF EXISTS detalles_pago_metodo_check;
 ALTER TABLE pagos.detalles_pago ADD CONSTRAINT detalles_pago_metodo_check CHECK (metodo IN ('Efectivo','Tarjeta','QR','Vale'));
 ALTER TABLE pagos.transacciones ADD COLUMN IF NOT EXISTS codigo_vale VARCHAR(30);
+
+-- ==========================================================================
+-- TDSI-190: objetivos del semaforo del Panel de KPIs (los rangos de color de cada uno de los 7 indicadores). IDEMPOTENTE.
+--   sentido MAYOR (mas es mejor):  VERDE si valor >= limite_verde;  AMARILLO si valor >= limite_amarillo;  si no, ROJO.
+--   sentido MENOR (menos es mejor): VERDE si valor <= limite_verde; AMARILLO si valor <= limite_amarillo;  si no, ROJO.
+--   limite_rojo es el extremo de la zona roja (el tope de la barra semaforo): el amarillo siempre queda ENTRE el verde y el rojo
+--   (MAYOR: rojo <= amarillo <= verde; MENOR: verde <= amarillo <= rojo). Se cambian desde "Configurar objetivos" (TDSI-199).
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS pagos.kpi_objetivos (
+    indicador        VARCHAR(30)   PRIMARY KEY,
+    nombre           VARCHAR(60)   NOT NULL,
+    unidad           VARCHAR(10)   NOT NULL,
+    limite_verde     NUMERIC(10,2) NOT NULL,
+    limite_amarillo  NUMERIC(10,2) NOT NULL,
+    limite_rojo      NUMERIC(10,2) NOT NULL,
+    sentido          VARCHAR(5)    NOT NULL CHECK (sentido IN ('MAYOR','MENOR')),
+    actualizado_por  VARCHAR(60),
+    actualizado_en   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    CHECK ((sentido = 'MAYOR' AND limite_rojo <= limite_amarillo AND limite_amarillo <= limite_verde)
+        OR (sentido = 'MENOR' AND limite_verde <= limite_amarillo AND limite_amarillo <= limite_rojo))
+);
+
+INSERT INTO pagos.kpi_objetivos (indicador, nombre, unidad, limite_verde, limite_amarillo, limite_rojo, sentido) VALUES
+    ('ticket_promedio',        'Ticket promedio',                 'Bs',   45,   35,   0, 'MAYOR'),
+    ('tasa_anulacion',         'Tasa de anulación',               '%',     2,    5,  10, 'MENOR'),
+    ('tasa_devoluciones',      'Tasa de devoluciones',            '%',   1.5,    3,   6, 'MENOR'),
+    ('cumplimiento_metas',     'Cumplimiento de metas',           '%',   100,   70,   0, 'MAYOR'),
+    ('efectividad_cuadre',     'Efectividad de cuadre',           '%',    95,   85,   0, 'MAYOR'),
+    ('aceptacion_contable',    'Aceptación contable',             '%',    98,   95,   0, 'MAYOR'),
+    ('dias_pago_proveedores',  'Días de pago a proveedores',      'días',  7,   15,  30, 'MENOR')
+ON CONFLICT (indicador) DO NOTHING;
+
+ALTER TABLE pagos.kpi_objetivos ENABLE ROW LEVEL SECURITY;
