@@ -1,7 +1,6 @@
 // TDSI-192: "⚠ Alertas del día" del Resumen del Panel de KPIs: lo que esta fuera de lo esperado, primero lo ROJO y despues lo AMARILLO.
 // Junta (en paralelo, tolerando que un servicio no responda) los KPIs propios y los de Caja, Facturacion y Pagos a Proveedores.
-const { resumen, rangoDelPeriodo } = require("./kpiService");
-const externos = require("./kpiExternos");
+const { reunirPanel } = require("./kpiPanelService");
 
 const NIVELES = ["ROJO", "AMARILLO"];
 const PRIORIDAD_TIPO = ["CAJA", "CUADRE", "ORDEN_VENCIDA", "ASIENTOS_RECHAZADOS", "KPI"]; // el orden del mockup dentro de cada color
@@ -68,6 +67,21 @@ function alertasContabilidad(datos) {
   return [];
 }
 
+/** Las alertas de un panel ya reunido ({ propios, metas, cuadre, proveedores, aceptacion }), primero las ROJAS y despues las AMARILLAS. */
+function armarAlertas({ propios, metas, cuadre, proveedores, aceptacion }) {
+  const todas = [
+    ...(propios.datos ? alertasPropias(propios.datos.tarjetas) : []),
+    ...alertasCajas(metas.datos),
+    ...alertasCuadre(cuadre.datos),
+    ...alertasProveedores(proveedores.datos),
+    ...alertasContabilidad(aceptacion.datos),
+  ];
+  return todas
+    .map((a, i) => ({ a, i }))
+    .sort((x, y) => NIVELES.indexOf(x.a.nivel) - NIVELES.indexOf(y.a.nivel) || PRIORIDAD_TIPO.indexOf(x.a.tipo) - PRIORIDAD_TIPO.indexOf(y.a.tipo) || x.i - y.i)
+    .map((x) => x.a);
+}
+
 /**
  * TDSI-192: GET /api/kpis/alertas?periodo=AAAA-MM. Una linea por alerta, primero las ROJAS y luego las AMARILLAS:
  *   - KPIs del periodo en ROJO o AMARILLO (ticket promedio, anulacion, devoluciones, cuadre, aceptacion, dias de pago),
@@ -76,29 +90,10 @@ function alertasContabilidad(datos) {
  * Un indicador sin datos no genera alerta. Si un servicio no responde, sus alertas no aparecen y se informa en "fuentes".
  */
 async function alertas({ periodo, token, ahora } = {}) {
-  const rango = rangoDelPeriodo(periodo, { ahora });
-  const p = rango.periodo;
-  const [propios, metas, cuadre, proveedores, contabilidad] = await Promise.all([
-    resumen({ periodo: p, token, ahora }).then((r) => ({ datos: r, error: null }), (e) => ({ datos: null, error: e.message })),
-    externos.cumplimientoMetas({ periodo: p, token }),
-    externos.cuadreCaja({ periodo: p, token }),
-    externos.diasPagoProveedores({ periodo: p, token, limite: 1 }),
-    externos.aceptacionContable({ periodo: p, token, limite: 1 }),
-  ]);
+  const { rango, propios, metas, cuadre, proveedores, aceptacion: contabilidad, fuentes } = await reunirPanel({ periodo, token, ahora, ultimos: 1, limiteAsientos: 1, limiteOrdenes: 1 });
 
-  const todas = [
-    ...(propios.datos ? alertasPropias(propios.datos.tarjetas) : []),
-    ...alertasCajas(metas.datos),
-    ...alertasCuadre(cuadre.datos),
-    ...alertasProveedores(proveedores.datos),
-    ...alertasContabilidad(contabilidad.datos),
-  ];
-  const ordenadas = todas
-    .map((a, i) => ({ a, i }))
-    .sort((x, y) => NIVELES.indexOf(x.a.nivel) - NIVELES.indexOf(y.a.nivel) || PRIORIDAD_TIPO.indexOf(x.a.tipo) - PRIORIDAD_TIPO.indexOf(y.a.tipo) || x.i - y.i)
-    .map((x) => x.a);
+  const ordenadas = armarAlertas({ propios, metas, cuadre, proveedores, aceptacion: contabilidad });
 
-  const fuente = (origen, r) => ({ origen, ok: !r.error, error: r.error });
   return {
     ...rango,
     generado_en: new Date().toISOString(),
@@ -106,8 +101,8 @@ async function alertas({ periodo, token, ahora } = {}) {
     rojas: ordenadas.filter((a) => a.nivel === "ROJO").length,
     amarillas: ordenadas.filter((a) => a.nivel === "AMARILLO").length,
     alertas: ordenadas,
-    fuentes: [fuente("gestion_pagos", propios), fuente("gestion_caja_metas", metas), fuente("gestion_caja_cuadre", cuadre), fuente("pagos_proveedores", proveedores), fuente("facturacion", contabilidad)],
+    fuentes,
   };
 }
 
-module.exports = { alertas, numero };
+module.exports = { alertas, armarAlertas, numero, pct };

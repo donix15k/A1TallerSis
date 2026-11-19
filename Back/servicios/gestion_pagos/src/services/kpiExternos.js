@@ -23,7 +23,7 @@ const q = (periodo) => encodeURIComponent(periodo);
 /** KPI 4 · cumplimiento de metas por caja (Gestion de Caja). */
 const cumplimientoMetas = ({ periodo, token }) => pedirKpi(`${urlCaja()}/api/kpis/cumplimiento-metas?periodo=${q(periodo)}`, { token, nombre: "Gestión de Caja" });
 /** KPI 5 · efectividad de cuadre (Gestion de Caja). Solo hace falta el resumen: 1 ultimo turno. */
-const cuadreCaja = ({ periodo, token }) => pedirKpi(`${urlCaja()}/api/kpis/cuadre-caja?periodo=${q(periodo)}&ultimos=1`, { token, nombre: "Gestión de Caja" });
+const cuadreCaja = ({ periodo, token, ultimos = 1 }) => pedirKpi(`${urlCaja()}/api/kpis/cuadre-caja?periodo=${q(periodo)}&ultimos=${ultimos}`, { token, nombre: "Gestión de Caja" });
 /** KPI 6 · aceptacion contable (Facturacion). */
 const aceptacionContable = ({ periodo, token, limite = 1 }) => pedirKpi(`${urlFacturacion()}/api/kpis/aceptacion-contable?periodo=${q(periodo)}&limite=${limite}`, { token, nombre: "Facturación" });
 /** KPI 7 · dias de pago a proveedores (Pagos a Proveedores). */

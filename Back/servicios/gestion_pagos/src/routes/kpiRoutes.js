@@ -2,6 +2,9 @@ const { Router } = require("express");
 const kpi = require("../services/kpiService");
 const objetivos = require("../services/kpiObjetivosService");
 const alertasService = require("../services/kpiAlertasService");
+const reporteService = require("../services/kpiReporteService");
+const { generarReportePdf } = require("../services/kpiReportePdfService");
+const { generarReporteExcel } = require("../services/kpiReporteExcelService");
 const { requireAdministrador } = require("../middlewares/requireAdministrador");
 
 const router = Router();
@@ -55,5 +58,27 @@ router.put("/objetivos", wrap(async (req, res) => {
 router.get("/alertas", wrap(async (req, res) => {
   res.json({ ok: true, data: await alertasService.alertas({ periodo: req.query.periodo, token: req.tokenAdministrador }) });
 }));
+
+// TDSI-209/210/211/212: exportar el Panel de KPIs a PDF o Excel. ?desde=AAAA-MM-DD&hasta=AAAA-MM-DD (un mes completo; o ?periodo=AAAA-MM) y
+// ?secciones=resumen,cajas,integraciones (al menos una). El archivo se llama KPIs_[periodo] y los valores salen de los MISMOS servicios de
+// calculo del panel. Content-Disposition va expuesto para que el Frontend (otro origen) lea el nombre del archivo.
+const TIPOS = {
+  pdf: { mime: "application/pdf", generar: (modelo) => generarReportePdf(modelo) },
+  xlsx: { mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", generar: (modelo) => generarReporteExcel(modelo) },
+};
+for (const [extension, tipo] of Object.entries(TIPOS)) {
+  router.get(`/exportar.${extension}`, wrap(async (req, res) => {
+    const modelo = await reporteService.construirReporte({ desde: req.query.desde, hasta: req.query.hasta, periodo: req.query.periodo, secciones: req.query.secciones, token: req.tokenAdministrador });
+    const archivo = Buffer.from(await tipo.generar(modelo));
+    res.set({
+      "Content-Type": tipo.mime,
+      "Content-Disposition": `attachment; filename="${modelo.nombre_archivo}.${extension}"`,
+      "Content-Length": String(archivo.length),
+      "Access-Control-Expose-Headers": "Content-Disposition",
+      "Cache-Control": "no-store",
+    });
+    res.end(archivo);
+  }));
+}
 
 module.exports = router;
