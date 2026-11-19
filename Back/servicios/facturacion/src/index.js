@@ -30,6 +30,7 @@ app.get("/health", async (req, res) => {
 app.use("/api/facturas", facturacionRoutes);
 app.use("/api/clientes", clientesRoutes);
 app.use("/api/supervisores", supervisoresRoutes);
+app.use("/api/kpis", require("./middlewares/requireAdministrador").requireAdministrador, require("./routes/kpiRoutes")); // TDSI-179: Panel de KPIs (solo administrador)
 
 app.use(errorHandler);
 
