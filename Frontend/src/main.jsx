@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext.jsx'
 import { AdminAuthProvider } from './context/AdminAuthContext.jsx'
 import { BloqueoProvider } from './context/BloqueoContext.jsx'
 import './index.css'
+import './styles/vortrix.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import ArqueoEfectivo, { ResumenArqueo } from '../components/ArqueoEfectivo.jsx'
 import CampoPassword from '../components/CampoPassword.jsx'
 import { arqueoEsValido, arqueoTieneConteo, totalContadoCentavos, detalleArqueo } from '../utils/arqueo.js'
+import Cargando from '../components/Cargando.jsx'
 
 function CierreCaja() {
   const { cajero, cerrarSesion } = useAuth()
@@ -265,7 +266,7 @@ function CierreCaja() {
             </button>
             <h3 style={{ marginTop: 0 }}>Facturas anuladas del turno</h3>
 
-            {cargandoAnuladas && <p>Cargando...</p>}
+            {cargandoAnuladas && <Cargando />}
 
             {!cargandoAnuladas && errorAnuladas && (
               <div className="error" style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '8px' }}>

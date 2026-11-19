@@ -8,6 +8,7 @@ import {
   MAXIMO_RESPUESTAS_ANULACION,
   LARGO_MAXIMO_ANULACION,
 } from '../api/respuestasAnulacion.js'
+import Cargando from './Cargando.jsx'
 
 // Las clases respuestas-* son las del panel de TDSI-44 (mismo enfoque y mismo aspecto).
 
@@ -145,7 +146,7 @@ function PanelRespuestasAnulacion({ cajeroId, onCerrar }) {
           conservan el motivo que tenían.
         </p>
 
-        {cargando && <p>Cargando...</p>}
+        {cargando && <Cargando />}
 
         {!cargando && errorCarga && (
           <p className="error">

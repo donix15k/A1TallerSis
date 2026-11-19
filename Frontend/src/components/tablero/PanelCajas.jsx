@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { obtenerEstadoCajas } from '../../api/caja.js'
+import Cargando from '../Cargando.jsx'
 
 // TDSI-126: estado de cada caja (terminal).
 // TDSI-495: una tarjeta por caja.
@@ -88,7 +89,7 @@ function PanelCajas() {
         )}
       </div>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
 
       {!cargando && error && (
         <div className="orden-mensaje orden-mensaje-error cajas-mensaje">

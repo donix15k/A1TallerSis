@@ -1,6 +1,6 @@
 // Grafico de area ("montañitas"): serie de valores en el tiempo, sin libreria,
 // via SVG puro (polyline + poligono de relleno). Los dias en 0 se ven como valle.
-function GraficoArea({ items, color = '#345c32', formatoValor = (v) => v }) {
+function GraficoArea({ items, color = '#315a91', formatoValor = (v) => v }) {
   const w = 600
   const h = 220
   const padding = 20

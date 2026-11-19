@@ -1,0 +1,604 @@
+/* Login de Vortrix (TDSI-1 / TDSI-84 / TDSI-261).
+   Tarjeta con esquinas redondeadas y overflow:hidden donde un panel azul curvo cruza de lado a
+   lado al cambiar de modo:
+     - Cajero:        formulario a la IZQUIERDA, panel azul a la derecha.
+     - Administrador: formulario a la DERECHA,   panel azul a la izquierda.
+   --vx-d (duracion del cambio) la fija Login.jsx. El formulario "salta" al otro lado a la
+   mitad del recorrido (0.5 * --vx-d), cuando el panel azul tapa la tarjeta completa. */
+
+.vx-login-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 24px;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 12% 0%, #14336a 0%, var(--vx-navy) 58%);
+}
+
+/* Fondo: dos manchas de color que derivan muy despacio (solo transform, decorativo). */
+.vx-login-fondo::before,
+.vx-login-fondo::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+.vx-login-fondo::before {
+  width: 46vw;
+  height: 46vw;
+  top: -14vw;
+  right: -10vw;
+  background: rgba(49, 90, 145, 0.55);
+  animation: vx-deriva 22s ease-in-out infinite alternate;
+}
+
+.vx-login-fondo::after {
+  width: 38vw;
+  height: 38vw;
+  bottom: -16vw;
+  left: -10vw;
+  background: rgba(120, 152, 200, 0.28);
+  animation: vx-deriva 26s ease-in-out -8s infinite alternate-reverse;
+}
+
+@keyframes vx-deriva {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(5vw, 4vw, 0) scale(1.12);
+  }
+}
+
+/* ---------- Tarjeta ---------- */
+.vx-auth {
+  --vx-d: 1000ms;
+  position: relative;
+  z-index: 1;
+  width: min(1000px, 100%);
+  height: 640px;
+  background: #fff;
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: vx-tarjeta-entra 700ms var(--ease-out) backwards;
+}
+
+@keyframes vx-tarjeta-entra {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+}
+
+/* ---------- Mitad del formulario ---------- */
+.vx-form-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 3.25rem;
+  /* salto instantaneo al otro lado, a mitad del recorrido del panel azul */
+  transition: transform 0ms linear calc(var(--vx-d) * 0.5);
+}
+
+.vx-auth--admin .vx-form-box {
+  transform: translateX(100%);
+}
+
+.vx-form-inner {
+  width: 100%;
+  max-width: 340px;
+}
+
+.vx-login-marca {
+  margin-bottom: 1.5rem;
+}
+
+.vx-login-marca .vx-isotipo {
+  --vx-iso-w: 2.6rem;
+}
+
+.vx-login-marca .vx-marca-logotipo {
+  height: 1.1rem;
+}
+
+/* Entrada escalonada (una sola vez, al cargar): cada bloque sube y aparece. */
+.vx-form-inner > *,
+.vx-form-inner .login-form > * {
+  animation: vx-sube 560ms var(--ease-out) backwards;
+}
+
+.vx-form-inner > :nth-child(1) {
+  animation-delay: 120ms;
+}
+.vx-form-inner > :nth-child(2) {
+  animation-delay: 180ms;
+}
+.vx-form-inner .login-form > :nth-child(1) {
+  animation-delay: 230ms;
+}
+.vx-form-inner .login-form > :nth-child(2) {
+  animation-delay: 270ms;
+}
+.vx-form-inner .login-form > :nth-child(3) {
+  animation-delay: 310ms;
+}
+.vx-form-inner .login-form > :nth-child(4) {
+  animation-delay: 345ms;
+}
+.vx-form-inner .login-form > :nth-child(5) {
+  animation-delay: 375ms;
+}
+.vx-form-inner .login-form > :nth-child(6) {
+  animation-delay: 400ms;
+}
+
+/* el <form> en si no se anima: lo hacen sus hijos, cada uno con su retraso */
+.vx-form-inner > .login-form {
+  animation: none;
+}
+
+@keyframes vx-sube {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ---------- Selector Cajero / Administrador (mismo boton de siempre) ---------- */
+.selector-modo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 46px;
+  padding: 4px;
+  margin-bottom: 1.6rem;
+  border: none;
+  border-radius: 999px;
+  background: #e9eef6;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+
+.selector-modo:active {
+  transform: scale(0.985);
+}
+
+.selector-modo:focus-visible {
+  outline: 3px solid rgba(49, 90, 145, 0.35);
+  outline-offset: 2px;
+}
+
+.selector-modo-opcion {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--vx-gray);
+  transition: color 280ms var(--ease-out);
+}
+
+.selector-modo-opcion.activo {
+  color: #fff;
+}
+
+.selector-modo-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--vx-steel), var(--vx-navy));
+  box-shadow: 0 4px 12px rgba(6, 21, 47, 0.32);
+  transition: transform 420ms var(--ease-out);
+}
+
+.selector-modo--admin .selector-modo-thumb {
+  transform: translateX(100%);
+}
+
+/* ---------- Formulario ---------- */
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-titulo {
+  margin: 0 0 0.35rem;
+  font-size: 1.65rem;
+  font-weight: 700;
+}
+
+.login-subtitulo {
+  margin: 0 0 1.6rem;
+  color: #616e7c;
+  font-size: 0.9rem;
+}
+
+.vx-auth .campo {
+  gap: 0.4rem;
+  margin: 0 0 0.95rem;
+  color: #3e4c59;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.vx-auth .campo input,
+.vx-auth .campo select {
+  width: 100%;
+  height: 46px;
+  padding: 0 0.95rem;
+  background-color: #f4f6fa;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--vx-navy);
+  transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out);
+}
+
+.vx-auth .campo input:focus,
+.vx-auth .campo select:focus {
+  outline: none;
+  background-color: #fff;
+  border-color: var(--vx-steel);
+  box-shadow: 0 0 0 4px rgba(49, 90, 145, 0.15);
+}
+
+.vx-auth .campo-password input {
+  padding-right: 2.75rem;
+}
+
+.vx-auth .campo-password-boton {
+  right: 0.55rem;
+  padding: 0.4rem;
+  border-radius: 8px;
+  transition: color 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+
+.vx-auth .campo-password-boton:hover {
+  background-color: rgba(49, 90, 145, 0.1);
+}
+
+.vx-alerta {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #dc2626;
+  border-radius: 10px;
+  color: #991b1b;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.vx-auth .login-btn {
+  width: 100%;
+  height: 50px;
+  margin-top: 0.35rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--vx-steel), var(--vx-navy));
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 22px -8px rgba(6, 21, 47, 0.6);
+  transition: transform 160ms var(--ease-out), box-shadow 220ms var(--ease-out), filter 220ms var(--ease-out);
+}
+
+.vx-auth .login-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.vx-auth .login-btn:disabled {
+  opacity: 1;
+  cursor: progress;
+  filter: saturate(0.7) brightness(0.95);
+}
+
+/* Mientras se envia: el isotipo-spinner de siempre, sin cambiar el texto del boton. */
+.vx-auth .login-btn:disabled::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 0.6rem;
+  vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: vx-gira 700ms linear infinite;
+}
+
+@keyframes vx-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vx-auth .login-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+    box-shadow: 0 14px 26px -8px rgba(6, 21, 47, 0.65);
+  }
+}
+
+/* ---------- Panel azul curvo ---------- */
+.vx-toggle-box {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.vx-toggle-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  width: 300%;
+  height: 100%;
+  background: linear-gradient(135deg, #3a68a6 0%, var(--vx-steel) 40%, #1c3d6e 100%);
+  border-radius: 150px;
+  transition: transform var(--vx-d) var(--ease-flip);
+  will-change: transform;
+}
+
+.vx-auth--admin .vx-toggle-box::before {
+  transform: translateX(-100%);
+}
+
+.vx-toggle-panel {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  color: #fff;
+  pointer-events: auto;
+}
+
+/* Reflejos suaves del panel (viajan con el texto). */
+.vx-toggle-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(70% 45% at 30% 12%, rgba(255, 255, 255, 0.14), transparent 70%),
+    radial-gradient(60% 40% at 80% 100%, rgba(6, 21, 47, 0.35), transparent 70%);
+  pointer-events: none;
+}
+
+.vx-toggle-panel h2 {
+  margin: 1.4rem 0 0.6rem;
+  color: #fff;
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.vx-toggle-panel p {
+  max-width: 300px;
+  margin: 0 0 1.6rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.vx-panel-isotipo {
+  --vx-iso-w: 88px;
+  filter: drop-shadow(0 12px 22px rgba(6, 21, 47, 0.45));
+}
+
+.vx-panel-boton {
+  height: 46px;
+  padding: 0 1.6rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.vx-panel-boton:active {
+  transform: scale(0.97);
+}
+
+.vx-panel-boton:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vx-panel-boton:hover {
+    background: #fff;
+    color: var(--vx-navy);
+  }
+}
+
+/* Cada panel entra tarde y sale temprano, para que el texto no choque con el recorrido del azul.
+   (La transicion que manda es la del estado al que se va: "salir" = estado oculto.) */
+.vx-toggle-panel--izq {
+  left: 0;
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform calc(var(--vx-d) * 0.3) var(--ease-in-out) calc(var(--vx-d) * 0.04),
+    opacity calc(var(--vx-d) * 0.2) ease calc(var(--vx-d) * 0.04);
+}
+
+.vx-auth--admin .vx-toggle-panel--izq {
+  transform: none;
+  opacity: 1;
+  transition: transform calc(var(--vx-d) * 0.45) var(--ease-out) calc(var(--vx-d) * 0.55),
+    opacity calc(var(--vx-d) * 0.3) ease calc(var(--vx-d) * 0.55);
+}
+
+.vx-toggle-panel--der {
+  right: 0;
+  transition: transform calc(var(--vx-d) * 0.45) var(--ease-out) calc(var(--vx-d) * 0.55),
+    opacity calc(var(--vx-d) * 0.3) ease calc(var(--vx-d) * 0.55);
+}
+
+.vx-auth--admin .vx-toggle-panel--der {
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform calc(var(--vx-d) * 0.3) var(--ease-in-out) calc(var(--vx-d) * 0.04),
+    opacity calc(var(--vx-d) * 0.2) ease calc(var(--vx-d) * 0.04);
+}
+
+.vx-login-pie {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.8rem;
+}
+
+/* ---------- Celular: el mismo efecto, en vertical ---------- */
+@media (max-width: 760px) {
+  .vx-login-page {
+    justify-content: flex-start;
+    padding: 16px;
+  }
+
+  .vx-auth {
+    height: 820px;
+    border-radius: 24px;
+  }
+
+  .vx-form-box {
+    width: 100%;
+    height: 70%;
+    padding: 1.5rem 1.5rem 1rem;
+  }
+
+  .vx-auth--admin .vx-form-box {
+    /* el formulario baja el 30% de la tarjeta (= 3/7 de su propio alto) */
+    transform: translateY(42.857%);
+  }
+
+  .vx-login-marca {
+    margin-bottom: 1rem;
+  }
+
+  .selector-modo {
+    margin-bottom: 1.1rem;
+  }
+
+  .login-subtitulo {
+    margin-bottom: 1.1rem;
+  }
+
+  .vx-toggle-box::before {
+    left: 0;
+    top: 70%;
+    width: 100%;
+    height: 300%;
+    border-radius: 22vw;
+  }
+
+  .vx-auth--admin .vx-toggle-box::before {
+    /* sube hasta cubrir solo el 30% de arriba: 340% de la tarjeta = 113.33% de su propio alto */
+    transform: translateY(-113.333%);
+  }
+
+  .vx-toggle-panel {
+    width: 100%;
+    height: 30%;
+    padding: 1rem 1.5rem;
+  }
+
+  .vx-toggle-panel h2 {
+    margin: 0.6rem 0 0.9rem;
+    font-size: 1.25rem;
+  }
+
+  .vx-toggle-panel p {
+    display: none;
+  }
+
+  .vx-panel-isotipo {
+    --vx-iso-w: 46px;
+  }
+
+  .vx-toggle-panel--izq {
+    left: 0;
+    top: 0;
+    transform: translateY(-100%);
+  }
+
+  .vx-auth--admin .vx-toggle-panel--izq {
+    transform: none;
+  }
+
+  .vx-toggle-panel--der {
+    right: auto;
+    left: 0;
+    top: 70%;
+  }
+
+  .vx-auth--admin .vx-toggle-panel--der {
+    transform: translateY(100%);
+  }
+}
+
+/* Movimiento reducido: el cambio es instantaneo y sin desplazamientos (solo fundidos). */
+@media (prefers-reduced-motion: reduce) {
+  .vx-auth {
+    --vx-d: 0ms !important;
+    animation: vx-fade-simple 300ms ease backwards;
+  }
+
+  .vx-login-fondo::before,
+  .vx-login-fondo::after {
+    animation: none;
+  }
+
+  .vx-form-inner > *,
+  .vx-form-inner .login-form > * {
+    animation: vx-fade-simple 300ms ease backwards;
+  }
+
+  .vx-toggle-panel {
+    transition: opacity 200ms ease !important;
+  }
+
+  @keyframes vx-fade-simple {
+    from {
+      opacity: 0;
+    }
+  }
+}

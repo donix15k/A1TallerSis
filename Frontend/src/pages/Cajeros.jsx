@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listarCajeros, listarMisFacturas, urlFacturaPdf } from '../api/pagos.js'
+import Cargando from '../components/Cargando.jsx'
 
 // TDSI-329: el administrador ve todos los cajeros que han trabajado (registraron
 // al menos una venta) y, al elegir uno, lo que ha facturado desde que empezó,
@@ -46,7 +47,7 @@ function Cajeros() {
         Cajeros que han registrado ventas en el sistema. Elija uno para ver lo que ha facturado.
       </p>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && cajeros.length === 0 && <p>Todavía no hay ventas registradas por ningún cajero.</p>}
@@ -131,7 +132,7 @@ function Cajeros() {
             )}
           </div>
 
-          {cargandoFacturas && <p>Cargando...</p>}
+          {cargandoFacturas && <Cargando />}
           {errorFacturas && <p className="error">Error: {errorFacturas}</p>}
           {!cargandoFacturas && !errorFacturas && facturas.length === 0 && (
             <p>{filtroDesde || filtroHasta ? 'No hay facturas en ese rango de fechas.' : 'Este cajero todavía no tiene facturas.'}</p>

@@ -8,6 +8,7 @@ import {
   MAXIMO_RESPUESTAS,
   LARGO_MAXIMO,
 } from '../api/respuestasRapidas.js'
+import Cargando from './Cargando.jsx'
 
 // Campo de texto con contador de caracteres, para crear y para editar una respuesta.
 function CampoRespuesta({ id, valor, onCambiar, autoFocus }) {
@@ -151,7 +152,7 @@ function MisRespuestasRapidas({ cajeroId, onCerrar }) {
           conservan el texto que tenían.
         </p>
 
-        {cargando && <p>Cargando...</p>}
+        {cargando && <Cargando />}
 
         {!cargando && errorCarga && (
           <p className="error">

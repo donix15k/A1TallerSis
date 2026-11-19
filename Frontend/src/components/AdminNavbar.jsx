@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import AdminNavDropdown from './AdminNavDropdown.jsx'
+import Marca from './Marca.jsx'
 
 // TDSI-62 y otras pantallas fueron sumando enlaces sueltos hasta 14: se agrupan aqui
 // en 6 botones (3 directos + 3 desplegables) sin sacar ninguna pantalla del menu.
@@ -38,7 +39,9 @@ function AdminNavbar() {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">TallerSis · Administración</span>
+      <span className="navbar-brand">
+        <Marca sufijo="Administración" />
+      </span>
       <NavLink to="/admin/tablero">Tablero</NavLink>
       <NavLink to="/admin/cierre-diario">Cierre diario</NavLink>
       <NavLink to="/admin/historial-operaciones">Historial de operaciones</NavLink>

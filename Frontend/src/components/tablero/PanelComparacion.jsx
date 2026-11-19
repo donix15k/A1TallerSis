@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listarCajas, obtenerComparacionMontos } from '../../api/caja.js'
+import Cargando from '../Cargando.jsx'
 
 const ETIQUETA_TIPO = {
   CUADRA: 'Cuadra',
@@ -124,7 +125,7 @@ function PanelComparacion() {
         )}
       </div>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
 
       {!cargando && error && (
         <div className="orden-mensaje orden-mensaje-error cajas-mensaje">

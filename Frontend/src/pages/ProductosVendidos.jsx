@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { obtenerProductosVendidos, enviarProductosACompras } from '../api/productosVendidos.js'
+import Cargando from '../components/Cargando.jsx'
 
 function hoyLocal() {
   const d = new Date()
@@ -99,7 +100,7 @@ function ProductosVendidos() {
 
       {mensaje && <p className="mensaje-exito">{mensaje}</p>}
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && !hayProductos && (

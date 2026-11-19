@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { listarUsuarios, crearCajero, editarUsuario, cambiarPasswordCajero, cambiarEstadoUsuario } from '../api/usuarios.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import CampoPassword from '../components/CampoPassword.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 const CLASE_ESTADO = { Activo: 'badge-estado--emitida', Inactivo: '', Bloqueado: 'badge-comparacion--faltante' }
 const FILTROS_ROL = [
@@ -179,7 +180,7 @@ function Usuarios() {
 
       {mensaje && <p className={mensaje.ok ? 'mensaje-exito' : 'error'}>{mensaje.texto}</p>}
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && usuariosFiltrados.length === 0 && (

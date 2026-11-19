@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { obtenerRecaudadoPorCaja } from '../../api/caja.js'
+import Cargando from '../Cargando.jsx'
 
 const METODOS = ['Efectivo', 'Tarjeta', 'QR']
 
@@ -60,7 +61,7 @@ function PanelRecaudado() {
         )}
       </div>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
 
       {!cargando && error && (
         <div className="orden-mensaje orden-mensaje-error cajas-mensaje">

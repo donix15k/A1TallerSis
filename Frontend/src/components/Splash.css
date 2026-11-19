@@ -1,0 +1,136 @@
+/* Pantalla de entrada de Vortrix. Linea de tiempo (en ms):
+   0     fondo + brillo aparecen
+   150   el logotipo se revela de izquierda a derecha
+   650   el isotipo se arma a su lado (3 piezas, 110 ms entre una y otra)
+   1350  aparece el lema
+   2400  empieza a irse (fundido + leve zoom) */
+
+.vx-splash-pantalla {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--vx-navy);
+  cursor: pointer;
+  transition: opacity 380ms var(--ease-out), transform 380ms var(--ease-out);
+}
+
+.vx-splash-pantalla--saliendo {
+  opacity: 0;
+  transform: scale(1.03);
+  pointer-events: none;
+}
+
+.vx-splash-brillo {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 48%, rgba(49, 90, 145, 0.5), transparent 70%),
+    radial-gradient(40% 35% at 78% 90%, rgba(120, 152, 200, 0.18), transparent 70%);
+  opacity: 0;
+  animation: vx-splash-fade 900ms var(--ease-out) forwards;
+}
+
+.vx-splash-lockup {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 2.4vw, 1.6rem);
+  padding: 0 1.25rem;
+}
+
+.vx-splash-isotipo {
+  --vx-iso-w: clamp(76px, 15vw, 150px);
+  --vx-iso-delay: 650ms;
+  /* el isotipo ocupa su lugar desde el principio: el lockup no se corre al armarse */
+}
+
+.vx-splash-texto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.5rem, 1.6vw, 0.9rem);
+}
+
+.vx-splash-logotipo {
+  display: block;
+  width: clamp(190px, 40vw, 400px);
+  height: auto;
+  clip-path: inset(0 100% 0 0);
+  animation: vx-splash-revela 800ms var(--ease-in-out) 150ms forwards;
+}
+
+.vx-splash-lema {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(0.5rem, 1.35vw, 0.78rem);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: vx-splash-sube 600ms var(--ease-out) 1350ms forwards;
+}
+
+.vx-splash-linea {
+  height: 1px;
+  width: clamp(14px, 3vw, 36px);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+@keyframes vx-splash-revela {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes vx-splash-sube {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes vx-splash-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Mientras el splash esta visible, el login de abajo no arranca sus animaciones de entrada. */
+html.vx-splash .vx-login-page *,
+html.vx-splash .vx-login-page *::before,
+html.vx-splash .vx-login-page *::after {
+  animation-play-state: paused !important;
+}
+
+@media (max-width: 560px) {
+  /* En pantallas angostas el isotipo va arriba del logotipo. */
+  .vx-splash-lockup {
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-splash-logotipo {
+    clip-path: none;
+    opacity: 0;
+    animation: vx-splash-fade 300ms ease forwards;
+  }
+
+  .vx-splash-lema {
+    transform: none;
+    animation: vx-splash-fade 300ms ease 300ms forwards;
+  }
+
+  .vx-splash-pantalla--saliendo {
+    transform: none;
+  }
+}

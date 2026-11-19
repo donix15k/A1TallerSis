@@ -1,0 +1,129 @@
+/* Isotipo y marca de Vortrix. */
+
+.vx-isotipo {
+  --vx-iso-w: 2rem;
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--vx-iso-w);
+  aspect-ratio: 640 / 538;
+  user-select: none;
+}
+
+.vx-isotipo-pieza {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Entrada: cada pieza llega desde un lado distinto y se acomoda en su lugar. */
+.vx-isotipo--armar .vx-isotipo-pieza {
+  opacity: 0;
+  animation: vx-pieza-entra 700ms var(--ease-out) forwards;
+  animation-delay: var(--vx-iso-delay, 0ms);
+}
+
+.vx-isotipo--armar .vx-isotipo-pieza--izq {
+  --from: translate3d(-16%, -10%, 0) scale(0.96);
+}
+
+.vx-isotipo--armar .vx-isotipo-pieza--ala {
+  --from: translate3d(14%, -18%, 0) scale(0.96);
+  animation-delay: calc(var(--vx-iso-delay, 0ms) + 110ms);
+}
+
+.vx-isotipo--armar .vx-isotipo-pieza--azul {
+  --from: translate3d(10%, 18%, 0) scale(0.96);
+  animation-delay: calc(var(--vx-iso-delay, 0ms) + 220ms);
+}
+
+@keyframes vx-pieza-entra {
+  from {
+    opacity: 0;
+    transform: var(--from);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Carga: las 3 piezas se encienden una tras otra, en bucle. */
+.vx-isotipo--pulso .vx-isotipo-pieza {
+  animation: vx-pieza-pulso 1.3s ease-in-out infinite;
+}
+
+.vx-isotipo--pulso .vx-isotipo-pieza--ala {
+  animation-delay: 0.16s;
+}
+
+.vx-isotipo--pulso .vx-isotipo-pieza--azul {
+  animation-delay: 0.32s;
+}
+
+@keyframes vx-pieza-pulso {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* Isologo horizontal (isotipo + logotipo). */
+.vx-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  line-height: 1;
+}
+
+.vx-marca .vx-isotipo {
+  --vx-iso-w: 2.1rem;
+}
+
+.vx-marca-logotipo {
+  display: block;
+  height: 0.95rem;
+  width: auto;
+  user-select: none;
+}
+
+.vx-marca-sufijo {
+  padding-left: 0.65rem;
+  border-left: 1px solid currentColor;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.vx-marca--claro .vx-marca-sufijo {
+  color: var(--vx-sky);
+  border-left-color: rgba(255, 255, 255, 0.22);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-isotipo--armar .vx-isotipo-pieza {
+    animation: vx-pieza-fade 300ms ease forwards;
+    animation-delay: 0ms !important;
+  }
+
+  .vx-isotipo--pulso .vx-isotipo-pieza {
+    animation: vx-pieza-pulso 2.4s ease-in-out infinite;
+  }
+
+  @keyframes vx-pieza-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

@@ -5,7 +5,7 @@ const BASE_URL = import.meta.env.VITE_GESTION_PAGOS_API_BASE_URL || 'http://loca
 const CAJEROS_URL = `${BASE_URL}/api/pagos/revision/cajeros`
 const METODOS_URL = `${BASE_URL}/api/pagos/metodos`
 
-const COLORES = ['#2f5d31', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6', '#ec4899']
+const COLORES = ['#315a91', '#10b981', '#f59e0b', '#7898c8', '#8b5cf6', '#ef4444', '#14b8a6', '#ec4899']
 
 const aFechaLocal = (fecha) => {
   const offset = fecha.getTimezoneOffset()

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { listarDiferencias, resolverDiferencia, reenviarDiferenciaContabilidad } from '../api/caja.js'
 import { listarGruposPubSub } from '../api/pubsubVerificacion.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 const ETIQUETA_TIPO = { FALTANTE: 'Faltante', SOBRANTE: 'Sobrante' }
 
@@ -174,7 +175,7 @@ function DiferenciasCaja() {
 
       {mensaje && <p className={mensaje.ok ? 'mensaje-exito' : 'error'}>{mensaje.texto}</p>}
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && diferenciasFiltradas.length === 0 && (

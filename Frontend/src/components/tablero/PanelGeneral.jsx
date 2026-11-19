@@ -5,6 +5,7 @@ import { listarCajas } from '../../api/caja.js'
 import GraficoBarras from '../GraficoBarras.jsx'
 import GraficoArea from '../GraficoArea.jsx'
 import GraficoPastel from '../GraficoPastel.jsx'
+import Cargando from '../Cargando.jsx'
 
 // Paleta de datos (no la de marca): estas dos pasan el validador de contraste/CVD
 // para uso como color categorico, cosa que el verde/oliva/menta de la marca no logra.
@@ -185,7 +186,7 @@ function PanelGeneral() {
 
       {totalHistorico && (
         <div className="tablero-resumen" style={{ marginBottom: '2rem' }}>
-          <StatCard icono={ICONOS.trofeo} color="#345c32" etiqueta="Total histórico ganado" valor={formatoBs(totalHistorico.totalGeneral)} />
+          <StatCard icono={ICONOS.trofeo} color="#315a91" etiqueta="Total histórico ganado" valor={formatoBs(totalHistorico.totalGeneral)} />
           <StatCard icono={ICONOS.efectivo} color={COLOR_FISICO} etiqueta="Efectivo" valor={formatoBs(totalHistorico.totalEfectivo)} />
           <StatCard icono={ICONOS.tarjeta} color={COLOR_VIRTUAL} etiqueta="Digital (Tarjeta + QR)" valor={formatoBs(totalHistorico.totalDigital)} />
           <StatCard icono={ICONOS.recibo} color={COLOR_CAJERO} etiqueta="Ventas totales" valor={totalHistorico.cantidadVentas} />
@@ -197,7 +198,7 @@ function PanelGeneral() {
         <div className="tablero-grafico" style={{ marginBottom: 0 }}>
           <h2>Ventas de los últimos 14 días</h2>
           {errorSerie && <p className="error">{errorSerie}</p>}
-          {serieItems.length > 0 && <GraficoArea items={serieItems} color="#345c32" formatoValor={formatoBs} />}
+          {serieItems.length > 0 && <GraficoArea items={serieItems} color="#315a91" formatoValor={formatoBs} />}
         </div>
 
         <div className="tablero-grafico" style={{ marginBottom: 0 }}>
@@ -236,7 +237,7 @@ function PanelGeneral() {
         {esHoy && !error && <span className="tablero-en-vivo">En vivo</span>}
       </div>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {error && <p className="error">Error: {error}</p>}
 
       {/* TDSI-382 */}

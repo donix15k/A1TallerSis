@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { verificarFactura } from '../api/facturaPublica.js'
+import Marca from '../components/Marca.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 // TDSI-38/551-554: pagina publica (sin login) a la que lleva el QR impreso en
 // la factura. De solo lectura, pensada para abrirse desde el celular del cliente.
@@ -27,9 +29,11 @@ function VerificarFactura() {
   return (
     <div className="verificar-factura-pagina">
       <div className="verificar-factura-tarjeta">
-        <div className="verificar-factura-marca">TallerSis</div>
+        <div className="verificar-factura-marca">
+          <Marca tema="oscuro" />
+        </div>
 
-        {cargando && <p>Cargando...</p>}
+        {cargando && <Cargando />}
 
         {/* TDSI-554 */}
         {!cargando && error && (
@@ -84,7 +88,7 @@ function VerificarFactura() {
               </tfoot>
             </table>
 
-            <p className="verificar-factura-pie">Documento generado por el sistema TallerSis. Uso académico.</p>
+            <p className="verificar-factura-pie">Documento generado por el sistema Vortrix. Uso académico.</p>
           </>
         )}
       </div>

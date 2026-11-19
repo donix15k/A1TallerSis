@@ -1,5 +1,7 @@
+import { useCallback, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
+import Splash from './components/Splash.jsx'
 import AdminNavbar from './components/AdminNavbar.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
@@ -43,10 +45,18 @@ function App() {
   // TDSI-38: pagina publica (sin login) a la que lleva el QR de la factura.
   const esPaginaPublica = pathname.startsWith('/facturas/verificar/')
 
+  // Pantalla de bienvenida de Vortrix: una vez al abrir la pagina, salvo en la pagina
+  // publica del QR (un cliente que escanea una factura no debe esperar una animacion).
+  const [mostrarSplash, setMostrarSplash] = useState(() => !pathname.startsWith('/facturas/verificar/'))
+  const terminarSplash = useCallback(() => setMostrarSplash(false), [])
+
   return (
     <>
+      {mostrarSplash && <Splash onTerminada={terminarSplash} />}
       {!esPantallaLogin && !esPaginaPublica && (esSeccionAdmin ? <AdminNavbar /> : <Navbar />)}
       <main className={esPantallaLogin || esPaginaPublica ? undefined : esSeccionAdmin ? 'container container-ancho' : 'container'}>
+        {/* key por ruta: cada pantalla entra con un fundido corto al navegar */}
+        <div className="vx-pagina" key={pathname}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/facturas/verificar/:token" element={<VerificarFactura />} />
@@ -74,6 +84,7 @@ function App() {
           <Route path="/admin/usuarios" element={<RutaProtegidaAdmin><Usuarios /></RutaProtegidaAdmin>} />
           <Route path="/admin/pubsub-verificacion" element={<RutaProtegidaAdmin><PubSubVerificacion /></RutaProtegidaAdmin>} />
         </Routes>
+        </div>
       </main>
     </>
   )

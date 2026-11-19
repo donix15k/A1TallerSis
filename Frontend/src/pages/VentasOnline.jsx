@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { listarVentasOnline, reenviarAvisoMarketplace } from '../api/ventasOnline.js'
 import { listarGruposPubSub } from '../api/pubsubVerificacion.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 const ESTADOS = [
   { valor: '', etiqueta: 'Todos' },
@@ -148,7 +149,7 @@ function VentasOnline() {
         )}
       </form>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && ventas.length === 0 && (

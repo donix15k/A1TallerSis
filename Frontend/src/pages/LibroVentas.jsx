@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { obtenerLibroVentas, descargarLibroVentasExcel } from '../api/libroVentas.js'
+import Cargando from '../components/Cargando.jsx'
 
 const MESES = [
   { valor: 1, etiqueta: 'Enero' },
@@ -103,7 +104,7 @@ function LibroVentas() {
 
       {errorDescarga && <p className="error">No se pudo descargar el Excel: {errorDescarga}</p>}
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && !hayFilas && (

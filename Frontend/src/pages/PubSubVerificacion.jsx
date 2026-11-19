@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listarGruposPubSub, listarVerificacionesPubSub, enviarVerificacionPubSub } from '../api/pubsubVerificacion.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 const LARGO_MAXIMO_MENSAJE = 2000
 
@@ -184,7 +185,7 @@ function PubSubVerificacion() {
 
       <h2 style={{ marginTop: '2rem' }}>Historial de envíos</h2>
 
-      {cargandoLog && <p>Cargando...</p>}
+      {cargandoLog && <Cargando />}
       {errorLog && <p className="error">Error: {errorLog}</p>}
 
       {!cargandoLog && !errorLog && log.length === 0 && <p>Todavía no enviaste ninguna verificación.</p>}

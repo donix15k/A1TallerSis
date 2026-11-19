@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listarCajas, obtenerReporteCaja, descargarReporteCajaCsv } from '../../api/caja.js'
+import Cargando from '../Cargando.jsx'
 
 // TDSI-150 / TDSI-523: "Reportes de caja" con rango de fechas y caja.
 // TDSI-524: reporte en pantalla (totales por metodo, turnos y diferencias).
@@ -154,7 +155,7 @@ function PanelReportes() {
         </button>
       </form>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
 
       {!cargando && error && (
         <div className="orden-mensaje orden-mensaje-error cajas-mensaje">

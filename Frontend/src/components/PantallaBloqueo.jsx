@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { desbloquearPantalla } from '../api/auth.js'
 import CampoPassword from './CampoPassword.jsx'
+import Marca from './Marca.jsx'
 import './PantallaBloqueo.css'
 
 const MAXIMO_INTENTOS = 3
@@ -63,6 +64,7 @@ function PantallaBloqueo({ intentos, onIntentoFallido, onDesbloqueada }) {
   return (
     <div className="pantalla-bloqueo" role="dialog" aria-modal="true" aria-labelledby="titulo-bloqueo">
       <form className="pantalla-bloqueo-caja" onSubmit={desbloquear}>
+        <Marca tema="oscuro" className="pantalla-bloqueo-marca" />
         <svg className="pantalla-bloqueo-icono" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <rect x="4" y="11" width="16" height="10" rx="2" />
           <path d="M8 11V7a4 4 0 0 1 8 0v4" />

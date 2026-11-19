@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { obtenerHorasPico } from '../api/tablero.js'
 import { listarCajas } from '../api/caja.js'
 import GraficoBarras from '../components/GraficoBarras.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 const HORA_INICIO = 7
 const HORA_FIN = 23
@@ -97,7 +98,7 @@ function HorasPico() {
         </label>
       </div>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && !hayVentas && (

@@ -1,0 +1,21 @@
+.vx-cargando {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  color: var(--vx-gray);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.vx-cargando .vx-isotipo {
+  --vx-iso-w: 1.9rem;
+}
+
+/* Variante a todo el ancho, para centrar la carga de una pantalla completa. */
+.vx-cargando--centrado {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 2rem 0;
+}

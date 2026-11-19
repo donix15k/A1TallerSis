@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listarSupervisores, crearSupervisor, restablecerPinSupervisor, cambiarEstadoSupervisor } from '../api/supervisores.js'
 import CampoPassword from '../components/CampoPassword.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 const PIN_REGEX = /^\d{4,6}$/
 const CLASE_ESTADO = { Activo: 'badge-estado--emitida', Inactivo: '', Bloqueado: 'badge-comparacion--faltante' }
@@ -148,7 +149,7 @@ function Supervisores() {
 
       {mensaje && <p className={mensaje.ok ? 'mensaje-exito' : 'error'}>{mensaje.texto}</p>}
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && supervisores.length === 0 && (

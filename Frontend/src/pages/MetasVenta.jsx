@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { obtenerAvanceMetas, definirMeta } from '../api/metas.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 function hoyLocal() {
   const d = new Date()
@@ -94,7 +95,7 @@ function MetasVenta() {
         </label>
       </div>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && cajas.length === 0 && (

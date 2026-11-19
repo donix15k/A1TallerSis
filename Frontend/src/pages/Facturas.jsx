@@ -23,6 +23,7 @@ const ESTADOS = {
 // TDSI-48: panel "Mis respuestas de anulación" (va aparte de los imports de arriba para no
 // chocar al unir ramas que tambien los modifican).
 import MisRespuestasAnulacion from '../components/MisRespuestasAnulacion.jsx'
+import Cargando from '../components/Cargando.jsx'
 
 function dentroDelPlazo(fecha) {
   return Date.now() - new Date(fecha).getTime() <= PLAZO_ANULACION_MS
@@ -348,7 +349,7 @@ function Facturas() {
 
       {mensaje && <p className={mensaje.ok ? 'mensaje-exito' : 'error'}>{mensaje.texto}</p>}
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {errorCarga && <p className="error">Error: {errorCarga}</p>}
 
       {!cargando && !errorCarga && facturas.length === 0 && (
@@ -635,7 +636,7 @@ function Facturas() {
             </button>
             <h3 style={{ marginTop: 0 }}>Anuladas en el turno</h3>
 
-            {cargandoAnuladasTurno && <p>Cargando...</p>}
+            {cargandoAnuladasTurno && <Cargando />}
 
             {!cargandoAnuladasTurno && errorAnuladasTurno && (
               <div className="error" style={{ padding: '1rem', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '8px' }}>

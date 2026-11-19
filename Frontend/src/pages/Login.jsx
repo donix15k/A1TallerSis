@@ -5,6 +5,14 @@ import { loginAdministrador } from '../api/authAdministrador.js'
 import { listarCajas } from '../api/caja.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
+import Marca from '../components/Marca.jsx'
+import Isotipo from '../components/Isotipo.jsx'
+import './Login.css'
+
+// Duracion del cambio Cajero <-> Administrador (panel azul que cruza la tarjeta). Es la
+// unica fuente de verdad: se pasa al CSS como --vx-d, y el contenido del formulario se
+// cambia justo a la mitad, cuando el panel azul lo tapa por completo.
+const DURACION_CAMBIO_MS = 1000
 
 const ESTADO_INICIAL = {
   email: '',
@@ -59,6 +67,11 @@ function SelectorModo({ modo, onCambiar }) {
 // TDSI-84: pantalla de inicio de sesión, tanto para el terminal POS (cajero) como para el panel de administración.
 function Login() {
   const [modo, setModo] = useState('CAJERO') // 'CAJERO' | 'ADMINISTRADOR'
+  // Lo que muestra el formulario (titulos, campo de caja). Va un instante detras de "modo":
+  // se actualiza a mitad del cambio, mientras el panel azul tapa la tarjeta, para que el texto
+  // no salte a la vista antes de tiempo. La logica (validar, enviar) siempre usa "modo".
+  const [modoVisible, setModoVisible] = useState('CAJERO')
+  const timerContenido = useRef(null)
   const [datos, setDatos] = useState(ESTADO_INICIAL)
   const [cajas, setCajas] = useState([])
   const [errorValidacion, setErrorValidacion] = useState(null)
@@ -95,10 +108,16 @@ function Login() {
     return () => clearTimeout(timeout)
   }, [])
 
+  useEffect(() => () => clearTimeout(timerContenido.current), [])
+
   function cambiarModo(nuevoModo) {
+    if (nuevoModo === modo) return
     setModo(nuevoModo)
     setErrorValidacion(null)
     setErrorApi(null)
+    const reducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    clearTimeout(timerContenido.current)
+    timerContenido.current = setTimeout(() => setModoVisible(nuevoModo), reducido ? 0 : DURACION_CAMBIO_MS / 2)
   }
 
   function actualizarCampo(campo, valor) {
@@ -143,131 +162,123 @@ function Login() {
   }
 
   const esAdmin = modo === 'ADMINISTRADOR'
+  const esAdminVisible = modoVisible === 'ADMINISTRADOR'
 
   return (
-    <div className="login-page">
-      <aside className="login-hero">
-        <div className="login-hero-content">
-          <svg
-            className="login-hero-logo"
-            width="36"
-            height="36"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
-            <line x1="12" y1="2" x2="12" y2="22" />
-            <line x1="4" y1="7" x2="20" y2="17" />
-            <line x1="20" y1="7" x2="4" y2="17" />
-          </svg>
-          {esAdmin ? (
-            <>
-              <h1>
-                Panel de
-                <br />
-                Administración
-              </h1>
-              <p>Tablero de ingresos, documentos de factura y egresos a proveedores.</p>
-            </>
-          ) : (
-            <>
-              <h1>
-                Hola
-                <br />
-                TallerSis!
-              </h1>
-              <p>Inicia sesión para habilitar la caja y empezar a atender en el terminal POS.</p>
-            </>
-          )}
-        </div>
-        <p className="login-hero-footer">© 2026 TallerSis. Todos los derechos reservados.</p>
-      </aside>
+    <div className="vx-login-page">
+      <div className="vx-login-fondo" aria-hidden="true" />
 
-      <div className="login-panel">
-        <div className="login-panel-inner">
-          <span className="login-brand">TallerSis</span>
+      {/* Cajero: formulario a la izquierda y panel azul a la derecha. Administrador: al reves. */}
+      <div
+        className={`vx-auth${esAdmin ? ' vx-auth--admin' : ''}`}
+        style={{ '--vx-d': `${DURACION_CAMBIO_MS}ms` }}
+      >
+        <div className="vx-form-box">
+          <div className="vx-form-inner">
+            <Marca tema="oscuro" className="vx-login-marca" />
 
-          <SelectorModo modo={modo} onCambiar={cambiarModo} />
+            <SelectorModo modo={modo} onCambiar={cambiarModo} />
 
-          <form className="login-form" onSubmit={handleSubmit} autoComplete="off">
-            <h2 className="login-titulo">{esAdmin ? 'Acceso de administrador' : 'Bienvenido de nuevo'}</h2>
-            <p className="login-subtitulo">
-              {esAdmin ? 'Ingresa tus credenciales para continuar.' : 'Ingresa tus credenciales de cajero para continuar.'}
-            </p>
+            <form className="login-form" onSubmit={handleSubmit} autoComplete="off">
+              <h2 className="login-titulo">{esAdminVisible ? 'Acceso de administrador' : 'Bienvenido de nuevo'}</h2>
+              <p className="login-subtitulo">
+                {esAdminVisible ? 'Ingresa tus credenciales para continuar.' : 'Ingresa tus credenciales de cajero para continuar.'}
+              </p>
 
-            <label className="campo">
-              Usuario (correo)
-              <input
-                ref={emailRef}
-                type="email"
-                autoComplete="off"
-                value={datos.email}
-                onChange={(e) => actualizarCampo('email', e.target.value)}
-              />
-            </label>
-
-            <label className="campo">
-              Contraseña
-              <div className="campo-password">
-                <input
-                  ref={passwordRef}
-                  type={mostrarPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={datos.password}
-                  onChange={(e) => actualizarCampo('password', e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="campo-password-boton"
-                  onClick={() => setMostrarPassword((v) => !v)}
-                  aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  tabIndex={-1}
-                >
-                  {mostrarPassword ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.68 3.68M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </label>
-
-            {!esAdmin && (
               <label className="campo">
-                Caja / terminal
-                <select value={datos.caja_id} onChange={(e) => actualizarCampo('caja_id', e.target.value)}>
-                  <option value="" disabled>
-                    Selecciona una caja...
-                  </option>
-                  {cajas.map((caja) => (
-                    <option key={caja.codigo} value={caja.codigo}>
-                      {caja.codigo} — {caja.nombre}
-                    </option>
-                  ))}
-                </select>
+                Usuario (correo)
+                <input
+                  ref={emailRef}
+                  type="email"
+                  autoComplete="off"
+                  value={datos.email}
+                  onChange={(e) => actualizarCampo('email', e.target.value)}
+                />
               </label>
-            )}
 
-            {errorValidacion && <p className="error">{errorValidacion}</p>}
-            {errorApi && <p className="error">Error: {errorApi}</p>}
-            {/* TDSI-858: aviso cuando la sesion se cerro por fallar el desbloqueo 3 veces */}
-            {!errorApi && location.state?.mensaje && <p className="error">{location.state.mensaje}</p>}
+              <label className="campo">
+                Contraseña
+                <div className="campo-password">
+                  <input
+                    ref={passwordRef}
+                    type={mostrarPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={datos.password}
+                    onChange={(e) => actualizarCampo('password', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="campo-password-boton"
+                    onClick={() => setMostrarPassword((v) => !v)}
+                    aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    tabIndex={-1}
+                  >
+                    {mostrarPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.68 3.68M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </label>
 
-            <button type="submit" className="btn login-btn" disabled={enviando}>
-              {enviando ? 'Ingresando...' : 'Ingresar'}
+              {!esAdminVisible && (
+                <label className="campo">
+                  Caja / terminal
+                  <select value={datos.caja_id} onChange={(e) => actualizarCampo('caja_id', e.target.value)}>
+                    <option value="" disabled>
+                      Selecciona una caja...
+                    </option>
+                    {cajas.map((caja) => (
+                      <option key={caja.codigo} value={caja.codigo}>
+                        {caja.codigo} — {caja.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {errorValidacion && <p className="error vx-alerta">{errorValidacion}</p>}
+              {errorApi && <p className="error vx-alerta">Error: {errorApi}</p>}
+              {/* TDSI-858: aviso cuando la sesion se cerro por fallar el desbloqueo 3 veces */}
+              {!errorApi && location.state?.mensaje && <p className="error vx-alerta">{location.state.mensaje}</p>}
+
+              <button type="submit" className="btn login-btn" disabled={enviando}>
+                {enviando ? 'Ingresando...' : 'Ingresar'}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Panel azul curvo: cruza la tarjeta de un lado al otro al cambiar de modo. */}
+        <div className="vx-toggle-box">
+          <div className="vx-toggle-panel vx-toggle-panel--izq" inert={esAdmin ? undefined : ''}>
+            <Isotipo className="vx-panel-isotipo" />
+            <h2>¿Vas a atender en caja?</h2>
+            <p>Inicia sesión para habilitar la caja y empezar a atender en el terminal POS.</p>
+            <button type="button" className="vx-panel-boton" onClick={() => cambiarModo('CAJERO')}>
+              Terminal POS (cajero)
             </button>
-          </form>
+          </div>
+
+          <div className="vx-toggle-panel vx-toggle-panel--der" inert={esAdmin ? '' : undefined}>
+            <Isotipo className="vx-panel-isotipo" />
+            <h2>¿Eres administrador?</h2>
+            <p>Entra al tablero de ingresos, los documentos de factura y los egresos a proveedores.</p>
+            <button type="button" className="vx-panel-boton" onClick={() => cambiarModo('ADMINISTRADOR')}>
+              Panel de administración
+            </button>
+          </div>
         </div>
       </div>
+
+      <p className="vx-login-pie">© 2026 Vortrix. Todos los derechos reservados.</p>
     </div>
   )
 }

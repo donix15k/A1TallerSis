@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { obtenerComparativoMensual } from '../api/tablero.js'
+import Cargando from '../components/Cargando.jsx'
 
 const MESES = [
   { valor: 1, etiqueta: 'Enero' }, { valor: 2, etiqueta: 'Febrero' }, { valor: 3, etiqueta: 'Marzo' },
@@ -66,7 +67,7 @@ function ComparativoMensual() {
         </label>
       </div>
 
-      {cargando && <p>Cargando...</p>}
+      {cargando && <Cargando />}
       {!cargando && error && <p className="error">Error: {error}</p>}
 
       {!cargando && !error && datos && (

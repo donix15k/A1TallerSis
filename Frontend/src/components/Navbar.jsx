@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useBloqueo } from '../context/BloqueoContext.jsx'
+import Marca from './Marca.jsx'
 
 // "Cerrar sesión" y "Cerrar caja" son 2 acciones distintas: cerrar sesión solo
 // vuelve al login (el turno sigue activo, se puede volver a entrar); cerrar caja
@@ -37,7 +38,9 @@ function Navbar() {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">TallerSis</span>
+      <span className="navbar-brand">
+        <Marca />
+      </span>
       {cajero && (
         <>
           <NavLink to="/" end>Inicio</NavLink>
