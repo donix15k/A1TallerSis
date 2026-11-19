@@ -24,8 +24,8 @@ const numeroDe = (codigo) => Number(codigo.replace("DEV-", ""));
 test("guarda la devolucion PENDIENTE con su codigo DEV-NNNN, sus items y quien la registro", async () => {
   const numero = entorno.agregarFactura(1);
   const { status, cuerpo } = await registrar(numero, [
-    { descripcion: "Producto A", cantidad: 2 },
-    { descripcion: "Producto B", cantidad: 1 },
+    { descripcion: "Producto A", cantidad: 2, estado_producto: "BUEN_ESTADO" },
+    { descripcion: "Producto B", cantidad: 1, estado_producto: "BUEN_ESTADO" },
   ], { observaciones: "Llego roto" });
 
   assert.equal(status, 201);
@@ -59,14 +59,14 @@ test("guarda la devolucion PENDIENTE con su codigo DEV-NNNN, sus items y quien l
 });
 
 test("el codigo es correlativo: cada devolucion recibe el siguiente numero", async () => {
-  const a = await registrar(entorno.agregarFactura(2), [{ descripcion: "Producto A", cantidad: 1 }]);
-  const b = await registrar(entorno.agregarFactura(3), [{ descripcion: "Producto A", cantidad: 1 }]);
+  const a = await registrar(entorno.agregarFactura(2), [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }]);
+  const b = await registrar(entorno.agregarFactura(3), [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }]);
   assert.equal(numeroDe(b.cuerpo.data.codigo), numeroDe(a.cuerpo.data.codigo) + 1);
 });
 
 test("varias devoluciones al mismo tiempo reciben codigos distintos y seguidos", async () => {
   const numeros = [4, 5, 6, 7, 8, 9].map((n) => entorno.agregarFactura(n));
-  const respuestas = await Promise.all(numeros.map((n) => registrar(n, [{ descripcion: "Producto A", cantidad: 1 }])));
+  const respuestas = await Promise.all(numeros.map((n) => registrar(n, [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }])));
   assert.ok(respuestas.every((r) => r.status === 201), JSON.stringify(respuestas.map((r) => r.status)));
   const codigos = respuestas.map((r) => numeroDe(r.cuerpo.data.codigo)).sort((x, y) => x - y);
   assert.equal(new Set(codigos).size, 6, "codigos repetidos: " + codigos);
@@ -75,7 +75,7 @@ test("varias devoluciones al mismo tiempo reciben codigos distintos y seguidos",
 
 test("dos devoluciones simultaneas de lo mismo: solo una cabe, la otra recibe 409", async () => {
   const numero = entorno.agregarFactura(10); // Producto A: 5 comprados
-  const items = [{ descripcion: "Producto A", cantidad: 3 }];
+  const items = [{ descripcion: "Producto A", cantidad: 3, estado_producto: "BUEN_ESTADO" }];
   const [r1, r2] = await Promise.all([registrar(numero, items), registrar(numero, items)]);
   const estados = [r1.status, r2.status].sort();
   assert.deepEqual(estados, [201, 409]);
@@ -90,21 +90,21 @@ test("si algo falla al guardar, no queda nada a medias ni se gasta un codigo", a
   // una descripcion de mas de 200 caracteres no cabe en devolucion_items.descripcion: falla DESPUES de insertar la cabecera
   const larga = "X".repeat(250);
   const numero = entorno.agregarFactura(11, { items: [{ descripcion: larga, cantidad: "2.00", precio_unitario: "10.00", subtotal: "20.00" }] });
-  const r = await registrar(numero, [{ descripcion: larga, cantidad: 1 }]);
+  const r = await registrar(numero, [{ descripcion: larga, cantidad: 1, estado_producto: "BUEN_ESTADO" }]);
   assert.equal(r.status, 500);
   const { rows } = await query(`SELECT count(*)::int n FROM devoluciones.devoluciones WHERE factura_numero = $1`, [numero]);
   assert.equal(rows[0].n, 0, "la cabecera no debio quedar guardada");
 
   // y el siguiente codigo sigue sin huecos
-  const ok1 = await registrar(entorno.agregarFactura(12), [{ descripcion: "Producto A", cantidad: 1 }]);
-  const ok2 = await registrar(entorno.agregarFactura(13), [{ descripcion: "Producto A", cantidad: 1 }]);
+  const ok1 = await registrar(entorno.agregarFactura(12), [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }]);
+  const ok2 = await registrar(entorno.agregarFactura(13), [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }]);
   assert.equal(numeroDe(ok2.cuerpo.data.codigo), numeroDe(ok1.cuerpo.data.codigo) + 1);
 });
 
 test("el cajero es obligatorio", async () => {
   const numero = entorno.agregarFactura(14);
   for (const cajero of [undefined, "", "   ", 123, "x".repeat(61)]) {
-    const r = await registrar(numero, [{ descripcion: "Producto A", cantidad: 1 }], { cajero });
+    const r = await registrar(numero, [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], { cajero });
     assert.equal(r.status, 400, `deberia rechazar cajero ${JSON.stringify(cajero)}`);
   }
   const { rows } = await query(`SELECT count(*)::int n FROM devoluciones.devoluciones WHERE factura_numero = $1`, [numero]);
@@ -113,7 +113,7 @@ test("el cajero es obligatorio", async () => {
 
 test("una devolucion registrada descuenta de lo disponible en la consulta de la factura", async () => {
   const numero = entorno.agregarFactura(15);
-  await registrar(numero, [{ descripcion: "Producto A", cantidad: 4 }]);
+  await registrar(numero, [{ descripcion: "Producto A", cantidad: 4, estado_producto: "BUEN_ESTADO" }]);
   const { cuerpo } = await entorno.get(`/api/devoluciones/factura/${numero}`);
   const a = cuerpo.data.items.find((i) => i.descripcion === "Producto A");
   assert.deepEqual([a.cantidad_devuelta, a.cantidad_disponible], [4, 1]);
@@ -121,8 +121,8 @@ test("una devolucion registrada descuenta de lo disponible en la consulta de la 
 
 test("una devolucion TOTAL queda registrada como TOTAL y agota la factura", async () => {
   const numero = entorno.agregarFactura(16);
-  const r = await registrar(numero, [{ descripcion: "Producto A", cantidad: 5 }, { descripcion: "Producto B", cantidad: 2 }]);
+  const r = await registrar(numero, [{ descripcion: "Producto A", cantidad: 5, estado_producto: "BUEN_ESTADO" }, { descripcion: "Producto B", cantidad: 2, estado_producto: "BUEN_ESTADO" }]);
   assert.equal(r.cuerpo.data.tipo, "TOTAL");
-  const otra = await registrar(numero, [{ descripcion: "Producto A", cantidad: 1 }]);
+  const otra = await registrar(numero, [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }]);
   assert.equal(otra.status, 422); // ya no queda nada
 });

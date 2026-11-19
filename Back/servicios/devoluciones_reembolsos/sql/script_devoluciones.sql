@@ -192,3 +192,33 @@ CREATE TABLE IF NOT EXISTS devoluciones.envios_contabilidad_nc (
 );
 CREATE INDEX IF NOT EXISTS ix_envios_contabilidad_nc_pendientes ON devoluciones.envios_contabilidad_nc (proximo_intento_en) WHERE estado = 'Pendiente';
 ALTER TABLE devoluciones.envios_contabilidad_nc ENABLE ROW LEVEL SECURITY;
+
+-- TDSI-102: estado de cada producto devuelto (para avisar a Compras si vuelve a la venta o si hay que reclamar al proveedor).
+-- Las devoluciones anteriores quedan BUEN_ESTADO; desde ahora la API lo exige en cada producto.
+ALTER TABLE devoluciones.devolucion_items ADD COLUMN IF NOT EXISTS estado_producto VARCHAR(15) NOT NULL DEFAULT 'BUEN_ESTADO';
+ALTER TABLE devoluciones.devolucion_items DROP CONSTRAINT IF EXISTS devolucion_items_estado_producto_check;
+ALTER TABLE devoluciones.devolucion_items ADD CONSTRAINT devolucion_items_estado_producto_check CHECK (estado_producto IN ('BUEN_ESTADO','DEFECTUOSO'));
+
+-- TDSI-104: aviso de cada devolucion procesada a Compras (Grupo C) por Pub/Sub. Una devolucion tiene un solo envio
+-- (idempotency_key = su codigo DEV-XXXX); guarda el messageId, los reintentos y, despues, el acuse de Compras (TDSI-105):
+-- RECIBIDO o RECLAMO_REGISTRADO con su N° de reclamo.
+CREATE TABLE IF NOT EXISTS devoluciones.envios_compras_dev (
+    id                    BIGSERIAL PRIMARY KEY,
+    devolucion_id         BIGINT       NOT NULL UNIQUE REFERENCES devoluciones.devoluciones(id) ON DELETE CASCADE,
+    idempotency_key       VARCHAR(60)  NOT NULL UNIQUE,
+    estado                VARCHAR(20)  NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente','Enviado','Recibido','Error')),
+    intentos              INT          NOT NULL DEFAULT 0,
+    ultimo_intento_en     TIMESTAMPTZ,
+    ultimo_error          VARCHAR(400),
+    pubsub_message_id     VARCHAR(100),
+    proximo_intento_en    TIMESTAMPTZ,
+    enviado_en            TIMESTAMPTZ,
+    payload               JSONB        NOT NULL,
+    creado_en             TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    acuse                 VARCHAR(30),
+    numero_reclamo        VARCHAR(40),
+    acuse_en              TIMESTAMPTZ,
+    acuse_message_id      VARCHAR(100)
+);
+CREATE INDEX IF NOT EXISTS ix_envios_compras_dev_pendientes ON devoluciones.envios_compras_dev (proximo_intento_en) WHERE estado = 'Pendiente';
+ALTER TABLE devoluciones.envios_compras_dev ENABLE ROW LEVEL SECURITY;

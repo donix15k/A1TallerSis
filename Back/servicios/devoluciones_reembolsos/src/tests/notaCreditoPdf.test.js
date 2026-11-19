@@ -18,7 +18,7 @@ test.after(() => entorno.cerrar());
 
 async function devolucion({ cantidad = 4, procesar = true, aprobar = true } = {}) {
   const numero = entorno.agregarFactura(950 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   const codigo = cuerpo.data.codigo;
   if (aprobar) await entorno.post(`/api/devoluciones/${codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   if (procesar) await entorno.post(`/api/devoluciones/${codigo}/reembolsar`, { cajero: CAJERO });
@@ -60,7 +60,7 @@ test("el PDF crece sin romperse con muchos productos devueltos (pagina nueva)", 
   const numero = entorno.agregarFactura(990 + ++contador, { metodosPago: [{ metodo: "QR", monto: 40 }], items });
   entorno.facturas.get(numero).total = "40.00";
   const { cuerpo } = await entorno.post("/api/devoluciones", {
-    factura_numero: numero, items: items.map((i) => ({ descripcion: i.descripcion, cantidad: 1 })), motivo_id: motivoId, cajero: CAJERO,
+    factura_numero: numero, items: items.map((i) => ({ descripcion: i.descripcion, cantidad: 1, estado_producto: "BUEN_ESTADO" })), motivo_id: motivoId, cajero: CAJERO,
   });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   assert.equal((await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/reembolsar`, { cajero: CAJERO })).status, 201);

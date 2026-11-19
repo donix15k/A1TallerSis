@@ -49,7 +49,7 @@ test.after(async () => {
 async function conReembolsos(plan) {
   const numero = entorno.agregarFactura(700 + ++contador, {});
   const { cuerpo } = await entorno.post("/api/devoluciones", {
-    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: "cajero.pasarela@tallersis.test",
+    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: "cajero.pasarela@tallersis.test",
   });
   const codigo = cuerpo.data.codigo;
   const { rows } = await query(`SELECT id FROM devoluciones.devoluciones WHERE codigo = $1`, [codigo]);

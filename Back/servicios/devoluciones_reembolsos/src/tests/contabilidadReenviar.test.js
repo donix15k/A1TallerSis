@@ -22,7 +22,7 @@ test.after(() => entorno.cerrar());
 
 async function procesada({ fallaPubsub = null } = {}) {
   const numero = entorno.agregarFactura(40 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   entorno.pubsub.falla = fallaPubsub;
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/reembolsar`, { cajero: CAJERO });
@@ -75,7 +75,7 @@ test("solo se reenvian los envios en Error: uno Enviado o Pendiente da 409 y no 
 
 test("devolucion sin envio (no procesada) o inexistente: 404", async () => {
   const numero = entorno.agregarFactura(40 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   const r = await reenviar(cuerpo.data.codigo);
   assert.equal(r.status, 404);
   assert.match((await r.json()).mensaje, /no tiene un envío a Contabilidad/);

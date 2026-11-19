@@ -21,7 +21,7 @@ test.after(() => entorno.cerrar());
 async function pendiente() {
   const numero = entorno.agregarFactura(200 + ++contador);
   const { cuerpo } = await entorno.post("/api/devoluciones", {
-    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO,
+    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO,
   });
   return cuerpo.data.codigo;
 }
@@ -141,7 +141,7 @@ test("una rechazada sale de la bandeja de pendientes y aparece como RECHAZADA co
 
 test("una devolucion rechazada libera las unidades: se pueden volver a devolver", async () => {
   const numero = entorno.agregarFactura(300);
-  const registrar = (cantidad) => entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad }], motivo_id: motivoId, cajero: CAJERO });
+  const registrar = (cantidad) => entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   const primera = await registrar(5); // todo el Producto A
   assert.equal((await registrar(1)).status, 422); // no queda nada mientras la primera siga pendiente
   await rechazar(primera.cuerpo.data.codigo);

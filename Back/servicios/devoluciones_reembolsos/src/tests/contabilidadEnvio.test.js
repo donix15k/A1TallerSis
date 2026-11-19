@@ -26,7 +26,7 @@ test.after(() => entorno.cerrar());
 
 async function aprobada() {
   const numero = entorno.agregarFactura(100 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 2 }], motivo_id: motivoId, cajero: CAJERO, observaciones: "caja rota" });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 2, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO, observaciones: "caja rota" });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   return cuerpo.data.codigo;
 }

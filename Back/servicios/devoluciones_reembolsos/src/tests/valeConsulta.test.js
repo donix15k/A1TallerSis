@@ -18,7 +18,7 @@ test.after(() => entorno.cerrar());
 
 async function vale(cantidad = 8) {
   const numero = entorno.agregarFactura(500 + ++contador, { items: [{ descripcion: "Producto A", cantidad: "20.00", precio_unitario: "10.00", subtotal: "200.00" }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   return (await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/reembolsar`, { cajero: CAJERO, forma: "VALE" })).cuerpo.data.vale;
 }

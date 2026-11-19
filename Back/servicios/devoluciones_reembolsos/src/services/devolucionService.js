@@ -162,6 +162,23 @@ async function validarMotivo(motivoId) {
  * El monto se calcula con los precios de la FACTURA (no con lo que mande el cliente). El tipo es TOTAL si se
  * devuelve todo lo comprado de cada producto, y PARCIAL en cualquier otro caso.
  */
+const ESTADOS_PRODUCTO = ["BUEN_ESTADO", "DEFECTUOSO"];
+
+/**
+ * TDSI-102: estado del producto devuelto, obligatorio en cada producto: BUEN_ESTADO (vuelve al inventario) o DEFECTUOSO
+ * (Compras reclama al proveedor). Acepta minusculas y espacios ("buen estado").
+ */
+function validarEstadoProducto(valor, descripcion) {
+  const texto = String(valor ?? "").trim().toUpperCase().replace(/[ \t]+/g, "_");
+  if (!texto) {
+    throw new AppError(`Indique el estado de "${descripcion}": ${ESTADOS_PRODUCTO.join(" o ")}.`, 400, { descripcion, estados: ESTADOS_PRODUCTO });
+  }
+  if (!ESTADOS_PRODUCTO.includes(texto)) {
+    throw new AppError(`El estado de "${descripcion}" debe ser ${ESTADOS_PRODUCTO.join(" o ")}.`, 400, { descripcion, estado_producto: valor, estados: ESTADOS_PRODUCTO });
+  }
+  return texto;
+}
+
 async function prepararDevolucion(cuerpo = {}, { ahora = new Date() } = {}) {
   const pedidos = cuerpo.items;
   if (!Array.isArray(pedidos) || pedidos.length === 0) {
@@ -191,14 +208,16 @@ async function prepararDevolucion(cuerpo = {}, { ahora = new Date() } = {}) {
         { descripcion: producto.descripcion, disponible: producto.disponible }
       );
     }
-    elegidos.set(k, { producto, cantidad });
+    const estado_producto = validarEstadoProducto(pedido?.estado_producto, producto.descripcion);
+    elegidos.set(k, { producto, cantidad, estado_producto });
   }
 
   const motivo = await validarMotivo(cuerpo.motivo_id);
 
-  const items = [...elegidos.values()].map(({ producto, cantidad }) => ({
+  const items = [...elegidos.values()].map(({ producto, cantidad, estado_producto }) => ({
     descripcion: producto.descripcion,
     cantidad,
+    estado_producto,
     precio_unitario: producto.precio_unitario,
     subtotal: redondear(cantidad * producto.precio_unitario),
   }));

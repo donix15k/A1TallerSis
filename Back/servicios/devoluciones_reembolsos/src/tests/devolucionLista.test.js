@@ -12,7 +12,7 @@ const CAJERO = "cajero.lista@tallersis.test";
 async function registrar(n, { cantidad = 1, descripcion = "Producto A", cajero = CAJERO, motivoIndice = 0 } = {}) {
   const numero = entorno.agregarFactura(n);
   const { cuerpo } = await entorno.post("/api/devoluciones", {
-    factura_numero: numero, items: [{ descripcion, cantidad }], motivo_id: motivos[motivoIndice].id, cajero,
+    factura_numero: numero, items: [{ descripcion, cantidad, estado_producto: "BUEN_ESTADO" }], motivo_id: motivos[motivoIndice].id, cajero,
   });
   return { numero, codigo: cuerpo.data.codigo };
 }
@@ -81,7 +81,7 @@ test("sin estado trae todas (las mas recientes primero)", async () => {
 test("marca cuales requieren la autorizacion del supervisor", async () => {
   // una pendiente de mas de 500 Bs
   const numero = entorno.agregarFactura(6, { items: [{ descripcion: "Caro", cantidad: "1.00", precio_unitario: "900.00", subtotal: "900.00" }] });
-  const r = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Caro", cantidad: 1 }], motivo_id: motivos[0].id, cajero: CAJERO });
+  const r = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Caro", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivos[0].id, cajero: CAJERO });
   const { cuerpo } = await entorno.get("/api/devoluciones?estado=PENDIENTE");
   const fila = cuerpo.data.find((f) => f.codigo === r.cuerpo.data.codigo);
   assert.equal(fila.requiere_autorizacion, true);

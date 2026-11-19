@@ -34,7 +34,7 @@ test.after(async () => {
 
 async function procesada() {
   const numero = entorno.agregarFactura(700 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 2 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 2, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   const r = await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/reembolsar`, { cajero: CAJERO });
   return { codigo: cuerpo.data.codigo, nota: r.cuerpo.data.nota_credito };
@@ -94,7 +94,7 @@ test("falta el correo: 400 y no se envia ni se registra nada", async () => {
 
 test("una devolucion sin nota (no procesada) da 409 y un codigo inexistente 404", async () => {
   const numero = entorno.agregarFactura(790 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   assert.equal((await envio(cuerpo.data.codigo)).status, 409);
   assert.equal((await envio("DEV-999999")).status, 404);
   assert.equal(enviados.length, 0);
@@ -149,7 +149,7 @@ test("TDSI-60: si el envio falla o es simulado, la nota NO queda marcada como en
 
 test("TDSI-60: GET de la nota de una devolucion sin nota: 409; inexistente: 404", async () => {
   const numero = entorno.agregarFactura(770 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   assert.equal((await entorno.get(`/api/devoluciones/${cuerpo.data.codigo}/nota-credito`)).status, 409);
   assert.equal((await entorno.get("/api/devoluciones/DEV-999999/nota-credito")).status, 404);
 });

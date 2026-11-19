@@ -18,7 +18,7 @@ async function registrarEjemplo(n) {
   const numero = entorno.agregarFactura(n);
   const { cuerpo } = await entorno.post("/api/devoluciones", {
     factura_numero: numero,
-    items: [{ descripcion: "Producto A", cantidad: 2 }, { descripcion: "Producto B", cantidad: 1 }],
+    items: [{ descripcion: "Producto A", cantidad: 2, estado_producto: "BUEN_ESTADO" }, { descripcion: "Producto B", cantidad: 1, estado_producto: "BUEN_ESTADO" }],
     motivo_id: motivoId.id,
     observaciones: "Me dieron otro color",
     cajero: CAJERO,
@@ -44,8 +44,8 @@ test("devuelve estado, items, motivo y monto de la devolucion", async () => {
   assert.equal(d.motivo_rechazo, null);
   assert.equal(d.autorizado_por, null);
   assert.deepEqual(d.items, [
-    { descripcion: "Producto A", cantidad: 2, precio_unitario: 10, subtotal: 20 },
-    { descripcion: "Producto B", cantidad: 1, precio_unitario: 25, subtotal: 25 },
+    { descripcion: "Producto A", cantidad: 2, precio_unitario: 10, subtotal: 20, estado_producto: "BUEN_ESTADO" },
+    { descripcion: "Producto B", cantidad: 1, precio_unitario: 25, subtotal: 25, estado_producto: "BUEN_ESTADO" },
   ]);
 });
 

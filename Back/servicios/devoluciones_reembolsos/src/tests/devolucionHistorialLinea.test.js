@@ -17,7 +17,7 @@ test.after(() => entorno.cerrar());
 
 async function registrar() {
   const numero = entorno.agregarFactura(300 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 2 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 2, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   return cuerpo.data.codigo;
 }
 const historial = (codigo) => entorno.get(`/api/devoluciones/${codigo}/historial`);

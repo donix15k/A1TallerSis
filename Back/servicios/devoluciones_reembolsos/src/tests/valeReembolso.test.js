@@ -19,7 +19,7 @@ test.after(() => entorno.cerrar());
 
 async function aprobada({ cantidad = 8, metodosPago = [{ metodo: "Efectivo", monto: 100 }], canal } = {}) {
   const numero = entorno.agregarFactura(600 + ++contador, { metodosPago, canal, items: [{ descripcion: "Producto A", cantidad: "20.00", precio_unitario: "10.00", subtotal: "200.00" }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   return cuerpo.data.codigo;
 }

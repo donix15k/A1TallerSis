@@ -12,7 +12,7 @@ test.before(async () => {
   entorno = await iniciarEntorno();
   const motivo = (await entorno.get("/api/devoluciones/motivos")).cuerpo.data[0].id;
   const numero = entorno.agregarFactura(200);
-  codigo = (await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivo, cajero: "cajero.admin@tallersis.test" })).cuerpo.data.codigo;
+  codigo = (await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivo, cajero: "cajero.admin@tallersis.test" })).cuerpo.data.codigo;
 });
 test.after(() => entorno.cerrar());
 

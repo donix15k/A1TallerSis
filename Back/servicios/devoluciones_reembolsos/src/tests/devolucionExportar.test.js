@@ -13,7 +13,7 @@ const codigos = {};
 
 async function registrar(n, cantidad = 1) {
   const numero = entorno.agregarFactura(n);
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   return cuerpo.data.codigo;
 }
 const fijar = (codigo, ts, estado) => query(`UPDATE devoluciones.devoluciones SET fecha_solicitud = $2::timestamptz, estado = $3 WHERE codigo = $1`, [codigo, ts, estado]);

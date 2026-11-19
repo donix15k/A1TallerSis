@@ -21,7 +21,7 @@ test.after(() => entorno.cerrar());
 async function pendiente() {
   const numero = entorno.agregarFactura(100 + ++contador);
   const { cuerpo } = await entorno.post("/api/devoluciones", {
-    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO,
+    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO,
   });
   return cuerpo.data.codigo;
 }

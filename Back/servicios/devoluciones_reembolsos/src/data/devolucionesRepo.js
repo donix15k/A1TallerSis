@@ -54,7 +54,7 @@ async function obtenerPorCodigo(codigo) {
   if (!d) return null;
 
   const { rows: items } = await query(
-    `SELECT descripcion, cantidad, precio_unitario, subtotal FROM devoluciones.devolucion_items WHERE devolucion_id = $1 ORDER BY id`,
+    `SELECT descripcion, cantidad, precio_unitario, subtotal, estado_producto FROM devoluciones.devolucion_items WHERE devolucion_id = $1 ORDER BY id`,
     [d.id]
   );
   const { rows: historial } = await query(
@@ -84,6 +84,7 @@ async function obtenerPorCodigo(codigo) {
       cantidad: Number(i.cantidad),
       precio_unitario: Number(i.precio_unitario),
       subtotal: Number(i.subtotal),
+      estado_producto: i.estado_producto,
     })),
     historial,
   };
@@ -255,9 +256,9 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
     );
     for (const it of items) {
       await client.query(
-        `INSERT INTO devoluciones.devolucion_items (devolucion_id, descripcion, cantidad, precio_unitario, subtotal)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [rows[0].id, it.descripcion, it.cantidad, it.precio_unitario, it.subtotal]
+        `INSERT INTO devoluciones.devolucion_items (devolucion_id, descripcion, cantidad, precio_unitario, subtotal, estado_producto)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [rows[0].id, it.descripcion, it.cantidad, it.precio_unitario, it.subtotal, it.estado_producto]
       );
     }
 

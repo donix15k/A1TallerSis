@@ -15,7 +15,7 @@ const codigos = {};
 
 async function registrar(n, { cajero = CAJERO } = {}) {
   const numero = entorno.agregarFactura(n);
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero });
   return cuerpo.data.codigo;
 }
 const fijar = (codigo, ts, estado) => query(`UPDATE devoluciones.devoluciones SET fecha_solicitud = $2::timestamptz, estado = COALESCE($3, estado) WHERE codigo = $1`, [codigo, ts, estado ?? null]);

@@ -48,7 +48,7 @@ test.after(async () => {
 
 async function notaEnviada() {
   const numero = entorno.agregarFactura(60 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   const r = await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/reembolsar`, { cajero: CAJERO });
   return { codigo: cuerpo.data.codigo, nota: r.cuerpo.data.nota_credito.numero };
@@ -125,6 +125,6 @@ test("si no se puede leer la suscripcion, el proceso no se cae y lo intenta en l
 
 test("una devolucion sin envio a Contabilidad (aun no procesada) muestra contabilidad = null en la tabla", async () => {
   const numero = entorno.agregarFactura(60 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   assert.equal(await columna(cuerpo.data.codigo), null);
 });

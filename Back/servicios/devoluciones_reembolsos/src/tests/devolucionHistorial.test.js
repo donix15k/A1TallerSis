@@ -24,12 +24,12 @@ function facturaConPrecio(n, precio) {
 }
 
 const registrar = (numero) =>
-  entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto caro", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto caro", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
 
 test("al registrar, el historial guarda el primer movimiento: sin estado -> PENDIENTE, hecho por el cajero", async () => {
   const numero = entorno.agregarFactura(1);
   const { cuerpo } = await entorno.post("/api/devoluciones", {
-    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO,
+    factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO,
   });
   const { rows } = await query(
     `SELECT h.estado_anterior, h.estado_nuevo, h.cambiado_por, h.cambiado_en
@@ -80,7 +80,7 @@ test("si el guardado falla, tampoco queda historial huerfano", async () => {
   const larga = "X".repeat(250);
   const numero = entorno.agregarFactura(7, { items: [{ descripcion: larga, cantidad: "1.00", precio_unitario: "10.00", subtotal: "10.00" }] });
   const antes = (await query(`SELECT count(*)::int n FROM devoluciones.historial_estados`)).rows[0].n;
-  const r = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: larga, cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const r = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: larga, cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   assert.equal(r.status, 500);
   const despues = (await query(`SELECT count(*)::int n FROM devoluciones.historial_estados`)).rows[0].n;
   assert.equal(despues, antes);

@@ -19,7 +19,7 @@ test.after(() => entorno.cerrar());
 /** Devolucion APROBADA pagada por QR (no toca la caja) de `cantidad` x 10 Bs. */
 async function aprobada(cantidad = 3) {
   const numero = entorno.agregarFactura(900 + ++contador, { metodosPago: [{ metodo: "QR", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   return cuerpo.data.codigo;
 }
@@ -65,7 +65,7 @@ test("la numeracion es correlativa y no se repite aunque se reembolse a la vez",
 test("si el reembolso falla (turno de otro cajero), NO se gasta ningun numero de nota ni queda nota", async () => {
   // efectivo sin Caja disponible: Caja caida -> 503 y nada se guarda
   const numero = entorno.agregarFactura(990, { metodosPago: [{ metodo: "Efectivo", monto: 100 }] });
-  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1 }], motivo_id: motivoId, cajero: CAJERO });
+  const { cuerpo } = await entorno.post("/api/devoluciones", { factura_numero: numero, items: [{ descripcion: "Producto A", cantidad: 1, estado_producto: "BUEN_ESTADO" }], motivo_id: motivoId, cajero: CAJERO });
   await entorno.post(`/api/devoluciones/${cuerpo.data.codigo}/aprobar`, { supervisor_id: "SUP-OK", pin: "1234" });
   const url = process.env.GESTION_CAJA_URL;
   process.env.GESTION_CAJA_URL = "http://localhost:1";
