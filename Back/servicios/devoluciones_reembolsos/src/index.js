@@ -3,6 +3,7 @@ const reversiones = require("./jobs/reversionesPasarela");
 const valesExpirados = require("./jobs/valesExpirados");
 const reintentoContabilidad = require("./jobs/reintentoEnviosContabilidad");
 const respuestasContabilidad = require("./jobs/respuestasContabilidad");
+const solicitudesMarketplace = require("./jobs/solicitudesMarketplace");
 
 const port = process.env.PORT || 4007;
 
@@ -18,4 +19,6 @@ app.listen(port, () => {
   reintentoContabilidad.iniciar();
   // ...y lee las respuestas de Contabilidad (N° de asiento o rechazo) en nuestra suscripcion.
   respuestasContabilidad.iniciar();
+  // Solicitudes de devolucion del Marketplace (SOLICITUD_DEVOLUCION): cada 30 s se registran como devoluciones PENDIENTES.
+  solicitudesMarketplace.iniciar();
 });
