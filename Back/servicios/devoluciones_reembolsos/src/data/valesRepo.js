@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { query } = require("../config/db");
 
 // Sin 0/O ni 1/I/L para que el codigo se lea y se escriba sin confundirse (VAL-4F8K2A).
 const ALFABETO = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -53,4 +54,13 @@ async function emitirVale(client, devolucionId, monto) {
   throw new Error("No se pudo generar un código de vale único");
 }
 
-module.exports = { emitirVale, formatear, codigoAleatorio, DIAS_VIGENCIA };
+/** El vale por su codigo, o null si no existe. */
+async function obtenerPorCodigo(codigo) {
+  const { rows } = await query(
+    `SELECT id, codigo, monto, saldo_disponible, estado, emitido_en, expira_en FROM devoluciones.vales_compra WHERE codigo = $1`,
+    [codigo]
+  );
+  return rows[0] ? formatear(rows[0]) : null;
+}
+
+module.exports = { emitirVale, obtenerPorCodigo, formatear, codigoAleatorio, DIAS_VIGENCIA };

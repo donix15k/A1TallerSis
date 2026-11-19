@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const devolucionesRoutes = require("./routes/devolucionesRoutes");
+const valesRoutes = require("./routes/valesRoutes");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { verificarEsquema } = require("./config/db");
 
@@ -21,6 +22,7 @@ app.get("/health", async (req, res) => {
 });
 
 app.use("/api/devoluciones", devolucionesRoutes); // TDSI-12
+app.use("/api/vales", valesRoutes); // TDSI-69
 
 app.use(errorHandler);
 
