@@ -7,6 +7,11 @@ const contabilidadService = require("../services/contabilidadService");
 const { estadoVisible } = require("../data/enviosContabilidadRepo");
 const { requireAdministrador, requireAdministradorSalvoBandeja } = require("../middlewares/requireAdministrador");
 
+const marketplaceService = require("../services/marketplaceService");
+
+/** Lo que se muestra del aviso al Marketplace: su estado (Pendiente, Enviado, Error) o null si no aplica (devolucion de la tienda). */
+const resumenAviso = (a) => (a.estado ? { estado: a.estado, intentos: a.intentos, pubsub_message_id: a.pubsub_message_id } : null);
+
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 
@@ -54,7 +59,9 @@ router.post("/:codigo/aprobar", wrap(async (req, res) => {
 // TDSI-36: el supervisor rechaza una devolucion pendiente ({ supervisor_id, pin, motivo_rechazo >= 10 caracteres }).
 router.post("/:codigo/rechazar", wrap(async (req, res) => {
   const data = await devolucionService.rechazarDevolucion(req.params.codigo, req.body);
-  res.json({ ok: true, mensaje: "Devolución rechazada", data });
+  // TDSI-117: si es de un pedido del Marketplace, se le avisa el rechazo con su motivo (asincrono; nunca hace fallar el rechazo).
+  const marketplace = await marketplaceService.avisarResultadoSeguro(data.codigo);
+  res.json({ ok: true, mensaje: "Devolución rechazada", data: { ...data, marketplace: resumenAviso(marketplace) } });
 }));
 
 // TDSI-49: reembolsa una devolucion APROBADA (efectivo de caja y/o reversion de tarjeta/QR) y la deja PROCESADA.

@@ -1,5 +1,5 @@
-// TDSI-93/106: cada 60 s reintenta los envios que no llegaron a publicarse: las notas de credito para Contabilidad (TDSI-93)
-// y los avisos de productos devueltos para Compras (TDSI-106).
+// TDSI-93/106/117: cada 60 s reintenta los envios que no llegaron a publicarse: las notas de credito para Contabilidad (TDSI-93),
+// los avisos de productos devueltos para Compras (TDSI-106) y el resultado de las devoluciones para el Marketplace (TDSI-117).
 // Los envios que fallan por un problema pasajero (red, Pub/Sub caido) quedan "Pendiente" con la hora de su proximo intento;
 // este proceso toma los que ya les toca y los vuelve a publicar con espera creciente (30 s, 60 s, 120 s, ...). Tras
 // CONTABILIDAD_MAX_INTENTOS (5) intentos quedan en "Error" y el administrador los reenvia a mano (TDSI-95).
@@ -7,6 +7,9 @@ const contabilidadRepo = require("../data/enviosContabilidadRepo");
 const comprasRepo = require("../data/enviosComprasRepo");
 const contabilidad = require("../services/contabilidadService");
 const compras = require("../services/comprasService");
+const marketplaceRepo = require("../data/enviosMarketplaceRepo");
+const marketplace = require("../services/marketplaceService");
+const cfgMarketplace = require("../config/marketplace");
 const cfg = require("../config/contabilidad");
 const cfgCompras = require("../config/compras");
 
@@ -15,6 +18,7 @@ let enCurso = false;
 // Cada destino con su configuracion, su repositorio y su forma de publicar.
 const destinos = () => [
   { nombre: "contabilidad", activo: Boolean(cfg.PUBSUB_TOPIC), repo: contabilidadRepo, intentar: contabilidad.intentarEnvio, etiqueta: (r) => `la nota ${r.nota_numero}` },
+  { nombre: "marketplace", activo: Boolean(cfgMarketplace.PUBSUB_TOPIC), repo: marketplaceRepo, intentar: marketplace.intentarEnvio, etiqueta: (r) => `el resultado de la devolucion ${r.devolucion_codigo}` },
   { nombre: "compras", activo: Boolean(cfgCompras.PUBSUB_TOPIC), repo: comprasRepo, intentar: compras.intentarEnvio, etiqueta: (r) => `la devolucion ${r.devolucion_codigo}` },
 ];
 

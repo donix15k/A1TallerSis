@@ -6,7 +6,7 @@ const { query, pool, verificarEsquema } = require("../config/db");
 // Las tablas que el servicio necesita (se pueden agregar mas en tareas nuevas: vales_usos, envios_contabilidad_nc...).
 const TABLAS = [
   "devolucion_items", "devoluciones", "envios_comprobante", "envios_pasarela", "historial_estados",
-  "motivos", "notas_credito", "notificaciones_inventario", "reembolsos", "vales_compra", "vales_usos", "envios_contabilidad_nc",
+  "motivos", "notas_credito", "notificaciones_inventario", "reembolsos", "vales_compra", "vales_usos", "envios_contabilidad_nc", "envios_compras_dev", "envios_marketplace_dev", "marketplace_solicitudes_error",
 ];
 
 test.after(() => pool.end());

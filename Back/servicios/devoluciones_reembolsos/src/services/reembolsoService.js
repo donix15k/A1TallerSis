@@ -8,6 +8,7 @@ const notasCreditoRepo = require("../data/notasCreditoRepo");
 const valesRepo = require("../data/valesRepo");
 const contabilidadService = require("./contabilidadService");
 const comprasService = require("./comprasService");
+const marketplaceService = require("./marketplaceService");
 const { withTransaction, query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { tipoDeReembolso, repartirMonto, redondear } = require("../utils/reembolso");
@@ -203,6 +204,8 @@ async function reembolsar(codigo, cuerpo = {}) {
   const contabilidad = await contabilidadService.enviarNotaSegura(codigo);
   // TDSI-104: y a Compras se le avisa de los productos devueltos (en buen estado o defectuosos), igual de asincrono.
   const compras = await comprasService.enviarDevolucionSegura(codigo);
+  // TDSI-117: y si la devolucion es de un pedido del Marketplace, se le avisa que fue aprobada (con su nota de credito).
+  const marketplace = await marketplaceService.avisarResultadoSeguro(codigo);
 
   const reembolsos = await reembolsosRepo.listarPorDevolucion(guardado.id);
   const devolucion = await devolucionService.obtenerDevolucion(codigo);
@@ -218,6 +221,7 @@ async function reembolsar(codigo, cuerpo = {}) {
     compras: compras.estado
       ? { estado: compras.estado, intentos: compras.intentos, pubsub_message_id: compras.pubsub_message_id }
       : { estado: null, publicado: false, motivo: compras.motivo || compras.error || null },
+    marketplace: marketplace.estado ? { estado: marketplace.estado, intentos: marketplace.intentos, pubsub_message_id: marketplace.pubsub_message_id } : null,
     vale: guardado.vale,
     mensajes: reembolsos.map((r) => mensajeDe(r, guardado.vale)),
     historial: devolucion.historial,

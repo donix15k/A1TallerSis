@@ -244,3 +244,24 @@ CREATE TABLE IF NOT EXISTS devoluciones.marketplace_solicitudes_error (
     recibido_en  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE devoluciones.marketplace_solicitudes_error ENABLE ROW LEVEL SECURITY;
+
+-- TDSI-117: aviso al Marketplace (Grupo E) del resultado de una devolucion de un pedido online: aprobada (con su nota de
+-- credito) o rechazada (con el motivo). Un resultado por devolucion; guarda el messageId, los reintentos y el estado.
+CREATE TABLE IF NOT EXISTS devoluciones.envios_marketplace_dev (
+    id                    BIGSERIAL PRIMARY KEY,
+    devolucion_id         BIGINT       NOT NULL REFERENCES devoluciones.devoluciones(id) ON DELETE CASCADE,
+    resultado             VARCHAR(10)  NOT NULL CHECK (resultado IN ('APROBADA','RECHAZADA')),
+    idempotency_key       VARCHAR(80)  NOT NULL UNIQUE,
+    estado                VARCHAR(20)  NOT NULL DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente','Enviado','Error')),
+    intentos              INT          NOT NULL DEFAULT 0,
+    ultimo_intento_en     TIMESTAMPTZ,
+    ultimo_error          VARCHAR(400),
+    pubsub_message_id     VARCHAR(100),
+    proximo_intento_en    TIMESTAMPTZ,
+    enviado_en            TIMESTAMPTZ,
+    payload               JSONB        NOT NULL,
+    creado_en             TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    UNIQUE (devolucion_id, resultado)
+);
+CREATE INDEX IF NOT EXISTS ix_envios_marketplace_dev_pendientes ON devoluciones.envios_marketplace_dev (proximo_intento_en) WHERE estado = 'Pendiente';
+ALTER TABLE devoluciones.envios_marketplace_dev ENABLE ROW LEVEL SECURITY;
