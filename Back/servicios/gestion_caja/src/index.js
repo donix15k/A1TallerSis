@@ -15,6 +15,7 @@ const eventosAutorizacionRoutes = require("./routes/eventosAutorizacionRoutes");
 const metasVentaRoutes = require("./routes/metasVentaRoutes");
 const diferenciasRoutes = require("./routes/diferenciasRoutes");
 const usuariosRoutes = require("./routes/usuariosRoutes");
+const administradoresRoutes = require("./routes/administradoresRoutes"); // TDSI-82
 const { requireAdministrador } = require("./middlewares/requireAdministrador");
 
 const app = express();
@@ -52,6 +53,7 @@ app.use("/api/caja/eventos-autorizacion", eventosAutorizacionRoutes); // TDSI-62
 app.use("/api/metas", metasVentaRoutes); // TDSI-58/773
 app.use("/api/caja", diferenciasRoutes); // TDSI-52/698
 app.use("/api/usuarios", requireAdministrador, usuariosRoutes); // TDSI-47/171/919
+app.use("/api/administradores", requireAdministrador, administradoresRoutes); // TDSI-82: verificar un token de administrador
 app.use(errorHandler);
 
 // TDSI-268: cada minuto revisa y cierra las sesiones inactivas

@@ -19,7 +19,7 @@ async function registrar(n, cantidad = 1) {
 const fijar = (codigo, ts, estado) => query(`UPDATE devoluciones.devoluciones SET fecha_solicitud = $2::timestamptz, estado = $3 WHERE codigo = $1`, [codigo, ts, estado]);
 
 async function exportar(qs) {
-  const r = await fetch(`${entorno.base}/api/devoluciones/exportar?${qs}`);
+  const r = await fetch(`${entorno.base}/api/devoluciones/exportar?${qs}`, { headers: entorno.cabeceraAdmin });
   const buf = Buffer.from(await r.arrayBuffer());
   return { r, buf };
 }

@@ -3,6 +3,9 @@ const devolucionService = require("../services/devolucionService");
 const reembolsoService = require("../services/reembolsoService");
 const notaCreditoService = require("../services/notaCreditoService");
 const exportacionService = require("../services/exportacionService");
+const contabilidadService = require("../services/contabilidadService");
+const { estadoVisible } = require("../data/enviosContabilidadRepo");
+const { requireAdministrador, requireAdministradorSalvoBandeja } = require("../middlewares/requireAdministrador");
 
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
@@ -26,7 +29,7 @@ router.post("/", wrap(async (req, res) => {
 }));
 
 // TDSI-81: exporta a Excel el listado con los mismos filtros (desde, hasta, estado, cajero), sin paginar.
-router.get("/exportar", wrap(async (req, res) => {
+router.get("/exportar", requireAdministrador, wrap(async (req, res) => {
   const { buffer, filas, truncado } = await exportacionService.exportarDevoluciones(req.query);
   const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -37,7 +40,7 @@ router.get("/exportar", wrap(async (req, res) => {
 }));
 
 // TDSI-33: bandeja de devoluciones (?estado=PENDIENTE para la bandeja del supervisor) con su contador.
-router.get("/", wrap(async (req, res) => {
+router.get("/", requireAdministradorSalvoBandeja, wrap(async (req, res) => {
   const { total, filas, pagina, por_pagina, total_paginas } = await devolucionService.listarDevoluciones(req.query);
   res.json({ ok: true, total, ...(pagina ? { pagina, por_pagina, total_paginas } : {}), data: filas });
 }));
@@ -74,8 +77,15 @@ router.get("/:codigo/nota-credito.pdf", wrap(async (req, res) => {
 }));
 
 // TDSI-80: historial de estados (linea de tiempo): quien registro, quien aprobo o rechazo y cuando se reembolso.
-router.get("/:codigo/historial", wrap(async (req, res) => {
+router.get("/:codigo/historial", requireAdministrador, wrap(async (req, res) => {
   res.json({ ok: true, data: await devolucionService.obtenerHistorial(req.params.codigo) });
+}));
+
+// TDSI-95: reenvia a Contabilidad la nota de credito cuyo envio quedo en Error (solo el administrador).
+router.post("/:codigo/contabilidad/reenviar", requireAdministrador, wrap(async (req, res) => {
+  const envio = await contabilidadService.reenviarNota(req.params.codigo);
+  const { estado, numero_asiento, motivo } = estadoVisible(envio);
+  res.json({ ok: true, mensaje: envio.estado === "Enviado" ? "Nota de crédito reenviada a Contabilidad" : `El reenvío quedó ${estado}`, data: { ...envio, contabilidad: { estado, numero_asiento, motivo } } });
 }));
 
 // TDSI-60: la nota de credito con su estado de envio (enviada_por_correo, enviada_en, a que correo).
