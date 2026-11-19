@@ -85,3 +85,38 @@ test("respuesta inesperada de Caja (por ejemplo 500): 502", async () => {
   respuesta = { status: 500, cuerpo: { ok: false, mensaje: "Error interno del servidor" } };
   await assert.rejects(registrarSalidaEfectivo({ turnoId: 12, monto: 40, codigo: "DEV-0001" }), (e) => e.status === 502);
 });
+
+// ---------- TDSI-47: validarEfectivoDisponible ----------
+const { validarEfectivoDisponible } = require("../services/cajaProxy");
+
+test("TDSI-47: turno abierto del cajero con efectivo suficiente -> devuelve el turno y el esperado", async () => {
+  const servidor2 = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    if (req.url.startsWith("/api/caja/turnos/actual")) return res.end(JSON.stringify({ ok: true, data: { id: 9, cajero_id: "Cajero@x.test" } }));
+    res.end(JSON.stringify({ ok: true, data: { efectivoEsperado: 120.5 } }));
+  });
+  await new Promise((r) => servidor2.listen(0, r));
+  const anterior = process.env.GESTION_CAJA_URL;
+  process.env.GESTION_CAJA_URL = `http://localhost:${servidor2.address().port}`;
+  try {
+    assert.deepEqual(await validarEfectivoDisponible({ cajaId: "CAJA-01", cajero: "cajero@x.test", monto: 120.5 }), { turnoId: 9, efectivoEsperado: 120.5 });
+    await assert.rejects(validarEfectivoDisponible({ cajaId: "CAJA-01", cajero: "cajero@x.test", monto: 120.51 }), (e) => e.status === 422 && /Efectivo insuficiente en caja: hay Bs 120\.50 y el reembolso es de Bs 120\.51/.test(e.message));
+    await assert.rejects(validarEfectivoDisponible({ cajaId: "CAJA-01", cajero: "otro@x.test", monto: 10 }), (e) => e.status === 403 && /otro cajero/.test(e.message));
+  } finally {
+    process.env.GESTION_CAJA_URL = anterior;
+    servidor2.closeAllConnections();
+    await new Promise((r) => servidor2.close(r));
+  }
+});
+
+test("TDSI-47: caja sin turno abierto -> 422; Caja caida -> 503", async () => {
+  respuesta = { status: 404, cuerpo: { ok: false, mensaje: "No hay un turno abierto para la caja" } };
+  await assert.rejects(validarEfectivoDisponible({ cajaId: "CAJA-01", cajero: "c@x.test", monto: 10 }), (e) => e.status === 422 && /no tiene un turno abierto/.test(e.message));
+  const anterior = process.env.GESTION_CAJA_URL;
+  process.env.GESTION_CAJA_URL = "http://localhost:1";
+  try {
+    await assert.rejects(validarEfectivoDisponible({ cajaId: "CAJA-01", cajero: "c@x.test", monto: 10 }), (e) => e.status === 503);
+  } finally {
+    process.env.GESTION_CAJA_URL = anterior;
+  }
+});

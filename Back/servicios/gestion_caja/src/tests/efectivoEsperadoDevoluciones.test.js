@@ -89,3 +89,14 @@ test("las salidas de OTRO turno no se descuentan", async () => {
   const r = await calcularTotalRecaudado(turnoSinDevId);
   assert.equal(r.totalEgresos, 0);
 });
+
+test("calcularEfectivoEsperado (TDSI-47): da el esperado del turno y de quien es, para validar un reembolso", async () => {
+  const { calcularEfectivoEsperado } = require("../services/cierreService");
+  const e = await calcularEfectivoEsperado(turnoId);
+  assert.equal(e.turnoId, turnoId);
+  assert.equal(e.cajero_id, "cajero.t50@tallersis.test");
+  assert.equal(e.caja_id, CAJA);
+  assert.equal(e.estado, "ABIERTO");
+  assert.equal(e.efectivoEsperado, 107.5);
+  await assert.rejects(calcularEfectivoEsperado(999999999), (x) => x.status === 404);
+});

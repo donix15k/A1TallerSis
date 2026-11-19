@@ -129,6 +129,30 @@ async function listarAnuladas(turnoId) {
   return { turnoId, caja_id: turno.caja_id, cantidadAnuladas: anuladas.length, montoAnulado, anuladas };
 }
 
+/**
+ * TDSI-47: efectivo que deberia haber en la caja ahora: inicial + ventas en efectivo - salidas (devoluciones).
+ * Lo usan el cierre (compararEfectivo) y Devoluciones para saber si alcanza para entregar un reembolso.
+ */
+async function calcularEfectivoEsperado(turnoId) {
+  const turno = await turnosRepo.obtenerTurnoPorId(turnoId);
+  if (!turno) throw new AppError("Turno no encontrado", 404, { turnoId });
+
+  const recaudado = await calcularTotalRecaudado(turnoId);
+  const ef = recaudado.porMetodo.Efectivo || { ingresos: 0, egresos: 0 };
+  const esperadoC = aCentavos(turno.efectivo_inicial) + aCentavos(ef.ingresos) - aCentavos(ef.egresos);
+
+  return {
+    turnoId: Number(turno.id),
+    caja_id: turno.caja_id,
+    cajero_id: turno.cajero_id,
+    estado: turno.estado,
+    efectivoInicial: Number(turno.efectivo_inicial),
+    ventasEfectivo: ef.ingresos,
+    egresosEfectivo: ef.egresos,
+    efectivoEsperado: aMonto(esperadoC),
+  };
+}
+
 /** TDSI-320: compara efectivo inicial + ventas en efectivo - egresos en efectivo, contra lo contado. */
 async function compararEfectivo(turnoId, efectivoContado) {
   if (efectivoContado === undefined || efectivoContado === null) {
@@ -138,14 +162,8 @@ async function compararEfectivo(turnoId, efectivoContado) {
     throw new AppError("El efectivo contado debe ser un numero mayor o igual a 0", 400);
   }
 
-  const turno = await turnosRepo.obtenerTurnoPorId(turnoId);
-  if (!turno) throw new AppError("Turno no encontrado", 404, { turnoId });
-
-  const recaudado = await calcularTotalRecaudado(turnoId);
-  const ef = recaudado.porMetodo.Efectivo || { ingresos: 0, egresos: 0 };
-
-  const inicialC = aCentavos(turno.efectivo_inicial);
-  const esperadoC = inicialC + aCentavos(ef.ingresos) - aCentavos(ef.egresos);
+  const e = await calcularEfectivoEsperado(turnoId);
+  const esperadoC = aCentavos(e.efectivoEsperado);
   const contadoC = aCentavos(efectivoContado);
   const diferenciaC = contadoC - esperadoC;
 
@@ -153,10 +171,10 @@ async function compararEfectivo(turnoId, efectivoContado) {
 
   return {
     turnoId,
-    efectivoInicial: Number(turno.efectivo_inicial),
-    ventasEfectivo: ef.ingresos,
-    egresosEfectivo: ef.egresos,
-    efectivoEsperado: aMonto(esperadoC),
+    efectivoInicial: e.efectivoInicial,
+    ventasEfectivo: e.ventasEfectivo,
+    egresosEfectivo: e.egresosEfectivo,
+    efectivoEsperado: e.efectivoEsperado,
     efectivoContado: aMonto(contadoC),
     diferencia: aMonto(diferenciaC),
     tipoDiferencia,
@@ -370,4 +388,4 @@ async function cerrarTurno(turnoId, { supervisor_id, pin, efectivo_contado, arqu
   };
 }
 
-module.exports = { calcularTotalRecaudado, calcularArqueo, compararEfectivo, compararArqueo, listarAnuladas, generarReporteCierre, generarReporteTexto, cerrarTurno };
+module.exports = { calcularTotalRecaudado, calcularEfectivoEsperado, calcularArqueo, compararEfectivo, compararArqueo, listarAnuladas, generarReporteCierre, generarReporteTexto, cerrarTurno };

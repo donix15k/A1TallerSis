@@ -40,6 +40,12 @@ router.get("/turnos/:turnoId/recaudado", wrap(async (req, res) => {
   res.json({ ok: true, data });
 }));
 
+// TDSI-47: efectivo esperado ahora (inicial + ventas en efectivo - salidas por devolucion), para validar un reembolso en efectivo.
+router.get("/turnos/:turnoId/efectivo-esperado", wrap(async (req, res) => {
+  const data = await cierre.calcularEfectivoEsperado(req.params.turnoId);
+  res.json({ ok: true, data });
+}));
+
 // TDSI-49/175: facturas anuladas del turno, para el boton "Ver anuladas" del cierre de caja.
 router.get("/turnos/:turnoId/anuladas", wrap(async (req, res) => {
   const data = await cierre.listarAnuladas(req.params.turnoId);
