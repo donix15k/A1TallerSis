@@ -4,6 +4,7 @@ const cors = require("cors");
 const devolucionesRoutes = require("./routes/devolucionesRoutes");
 const valesRoutes = require("./routes/valesRoutes");
 const integracionesRoutes = require("./routes/integracionesRoutes");
+const kpiRoutes = require("./routes/kpiRoutes");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { verificarEsquema } = require("./config/db");
 
@@ -24,6 +25,7 @@ app.get("/health", async (req, res) => {
 
 app.use("/api/devoluciones", devolucionesRoutes); // TDSI-12
 app.use("/api/vales", valesRoutes); // TDSI-69
+app.use("/api/kpis", kpiRoutes); // TDSI-149: KPIs de devoluciones para el Panel de KPIs
 app.use("/api/integraciones", integracionesRoutes); // TDSI-126/129: monitor de integraciones
 
 app.use(errorHandler);
