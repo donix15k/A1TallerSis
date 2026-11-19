@@ -35,6 +35,7 @@ app.use("/api/proveedores/notificaciones", require("./routes/notificacionRoutes"
 app.use("/ordenes-pago", confirmacionesRoutes);
 app.use("/api/lotes-cierre", lotesCierreRoutes); // TDSI-21/418
 app.use("/api/envios-contabilidad", enviosContabilidadRoutes); // TDSI-22/122
+app.use("/api/kpis", require("./middlewares/requireAdministrador").requireAdministrador, require("./routes/kpiRoutes")); // TDSI-181: Panel de KPIs (solo administrador)
 
 app.use(errorHandler);
 
