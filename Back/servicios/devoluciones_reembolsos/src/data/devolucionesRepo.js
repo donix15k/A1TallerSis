@@ -6,6 +6,12 @@ async function listarMotivosActivos() {
   return rows.map((r) => ({ id: Number(r.id), nombre: r.nombre }));
 }
 
+/** TDSI-21: el motivo elegido, solo si existe y sigue activo (null si no). */
+async function obtenerMotivoActivo(id) {
+  const { rows } = await query(`SELECT id, nombre FROM devoluciones.motivos WHERE id = $1 AND activo`, [id]);
+  return rows[0] ? { id: Number(rows[0].id), nombre: rows[0].nombre } : null;
+}
+
 /**
  * TDSI-12: lo que YA se devolvio de una factura, sumado por producto (descripcion + precio unitario,
  * que es lo que identifica una linea de la factura en Facturacion). Cuentan las devoluciones que
@@ -28,4 +34,4 @@ async function cantidadesYaDevueltas(facturaNumero) {
   }));
 }
 
-module.exports = { listarMotivosActivos, cantidadesYaDevueltas };
+module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas };

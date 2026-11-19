@@ -15,4 +15,10 @@ router.get("/factura/:numero", wrap(async (req, res) => {
   res.json({ ok: true, data });
 }));
 
+// TDSI-21: valida los productos y cantidades contra la factura, calcula el monto y marca TOTAL o PARCIAL.
+router.post("/", wrap(async (req, res) => {
+  const data = await devolucionService.prepararDevolucion(req.body);
+  res.json({ ok: true, data });
+}));
+
 module.exports = router;
