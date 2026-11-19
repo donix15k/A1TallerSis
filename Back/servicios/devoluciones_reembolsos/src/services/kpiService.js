@@ -37,4 +37,35 @@ async function devolucionesDelPeriodo({ periodo, ahora } = {}) {
   };
 }
 
-module.exports = { devolucionesDelPeriodo };
+/**
+ * TDSI-180: los asientos de NOTAS DE CREDITO que se avisaron a Contabilidad en el periodo (hora de Bolivia, por la fecha de envio),
+ * para el KPI 6 · Aceptacion contable que arma Facturacion:
+ *   { periodo, desde, hasta, enviados, registrados, rechazados, sin_respuesta, rechazados_lista: [{ id, referencia, tipo, motivo, enviado_en }] }
+ * registrados = Contabilidad contesto "registrado" (o "aceptado"); rechazados = contesto "rechazado" (con su motivo); sin_respuesta =
+ * enviados que todavia no tienen respuesta (NO cuentan como rechazados).
+ */
+async function asientosContablesDelPeriodo({ periodo, ahora } = {}) {
+  const rango = rangoDelPeriodo(periodo, { ahora });
+  const { rows } = await query(
+    `SELECT e.id, n.numero, e.resultado, e.resultado_motivo, e.enviado_en
+       FROM devoluciones.envios_contabilidad_nc e
+       JOIN devoluciones.notas_credito n ON n.id = e.nota_credito_id
+      WHERE e.estado = 'Enviado' AND e.enviado_en IS NOT NULL
+        AND (e.enviado_en AT TIME ZONE 'America/La_Paz')::date BETWEEN $1::date AND $2::date
+      ORDER BY e.enviado_en DESC, e.id DESC`,
+    [rango.desde, rango.hasta]
+  );
+  const resultado = (r) => String(r.resultado ?? "").trim().toLowerCase();
+  const registrados = rows.filter((r) => ["registrado", "aceptado"].includes(resultado(r))).length;
+  const rechazadas = rows.filter((r) => resultado(r) === "rechazado");
+  return {
+    ...rango,
+    enviados: rows.length,
+    registrados,
+    rechazados: rechazadas.length,
+    sin_respuesta: rows.length - registrados - rechazadas.length,
+    rechazados_lista: rechazadas.map((r) => ({ id: String(r.id), referencia: r.numero, tipo: "NOTA_CREDITO", motivo: r.resultado_motivo || "Sin motivo informado", enviado_en: r.enviado_en })),
+  };
+}
+
+module.exports = { devolucionesDelPeriodo, asientosContablesDelPeriodo };
