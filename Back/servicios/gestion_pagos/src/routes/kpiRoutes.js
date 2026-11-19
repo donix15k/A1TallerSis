@@ -1,6 +1,7 @@
 const { Router } = require("express");
 const kpi = require("../services/kpiService");
 const objetivos = require("../services/kpiObjetivosService");
+const alertasService = require("../services/kpiAlertasService");
 const { requireAdministrador } = require("../middlewares/requireAdministrador");
 
 const router = Router();
@@ -36,6 +37,12 @@ router.get("/anulaciones/por-cajero", wrap(async (req, res) => {
 // KPIs (Caja, Facturacion, Pagos a Proveedores) los leen de aqui para pintar sus colores con los mismos rangos.
 router.get("/objetivos", wrap(async (req, res) => {
   res.json({ ok: true, data: { indicadores: await objetivos.listarObjetivos() } });
+}));
+
+// TDSI-192: "Alertas del dia" del Resumen: KPIs, cajas, ordenes vencidas y asientos rechazados fuera de lo esperado, primero las ROJAS
+// y luego las AMARILLAS (?periodo=AAAA-MM). Reenvia el token del administrador a los demas servicios de KPIs.
+router.get("/alertas", wrap(async (req, res) => {
+  res.json({ ok: true, data: await alertasService.alertas({ periodo: req.query.periodo, token: req.tokenAdministrador }) });
 }));
 
 module.exports = router;

@@ -3,22 +3,8 @@
 // token del administrador). Si un servicio no responde, su tarjeta lo dice ({ disponible: false, error }) y las demas siguen.
 const { query } = require("../../config/db");
 
-const urlFacturacion = () => process.env.FACTURACION_URL || "http://localhost:4002";
-const urlProveedores = () => process.env.PAGOS_PROVEEDORES_URL || "http://localhost:4006";
-const timeoutMs = () => Number(process.env.INTEGRACIONES_TIMEOUT_MS) || 5000;
+const { aceptacionContable, diasPagoProveedores } = require("../kpiExternos");
 const diaBolivia = (fecha) => new Date(fecha).toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
-
-async function pedirKpi(url, { token, nombre }) {
-  try {
-    const r = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(timeoutMs()) });
-    const cuerpo = await r.json().catch(() => null);
-    if (r.status !== 200 || !cuerpo?.data) return { datos: null, error: cuerpo?.mensaje || `${nombre} respondió HTTP ${r.status}` };
-    return { datos: cuerpo.data, error: null };
-  } catch (e) {
-    const lenta = e.name === "TimeoutError" || e.name === "AbortError";
-    return { datos: null, error: lenta ? `${nombre} no respondió a tiempo` : `No se pudo conectar con ${nombre}` };
-  }
-}
 
 /** Compras y Marketplace: VERDE sin errores ni reintentos, AMARILLO con mensajes en reintento (Pendiente), ROJO con mensajes en Error. */
 function colorEstado({ errores, reintentos }) {
@@ -47,14 +33,14 @@ function contarGrupo(mensajes, grupo, rango) {
 const masReciente = (a, b) => (!a ? b : !b ? a : new Date(a) >= new Date(b) ? a : b);
 
 async function tarjetaContabilidad({ periodo, token }) {
-  const { datos, error } = await pedirKpi(`${urlFacturacion()}/api/kpis/aceptacion-contable?periodo=${encodeURIComponent(periodo)}&limite=1`, { token, nombre: "Facturación" });
+  const { datos, error } = await aceptacionContable({ periodo, token, limite: 1 });
   if (!datos) return { disponible: false, error, porcentaje: null, color: null, registrados: null, enviados: null, rechazados: null };
   return { disponible: true, error: null, porcentaje: datos.porcentaje, color: datos.color, registrados: datos.registrados, enviados: datos.enviados, rechazados: datos.rechazados, sin_respuesta: datos.sin_respuesta, incompleto: datos.incompleto, sin_asientos: datos.sin_asientos };
 }
 
 async function tarjetaCompras({ periodo, token, mensajes, rango }) {
   const estado = contarGrupo(mensajes, "C", rango);
-  const { datos, error } = await pedirKpi(`${urlProveedores()}/api/kpis/dias-pago-proveedores?periodo=${encodeURIComponent(periodo)}&limite=1`, { token, nombre: "Pagos a Proveedores" });
+  const { datos, error } = await diasPagoProveedores({ periodo, token, limite: 1 });
   return {
     disponible: Boolean(datos),
     error,
