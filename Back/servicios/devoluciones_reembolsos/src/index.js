@@ -1,6 +1,8 @@
 const app = require("./app");
 const reversiones = require("./jobs/reversionesPasarela");
 const valesExpirados = require("./jobs/valesExpirados");
+const reintentoContabilidad = require("./jobs/reintentoEnviosContabilidad");
+const respuestasContabilidad = require("./jobs/respuestasContabilidad");
 
 const port = process.env.PORT || 4007;
 
@@ -12,4 +14,8 @@ app.listen(port, () => {
   // Vales vencidos: tarea diaria que los marca EXPIRADO (0 = desactivada).
   const cadaHoras = Number(process.env.VALES_JOB_INTERVALO_HORAS ?? 24);
   if (cadaHoras > 0) valesExpirados.iniciar({ intervaloMs: cadaHoras * 3600 * 1000 });
+  // Notas de credito para Contabilidad (Pub/Sub): reintenta los envios pendientes (solo si hay topico configurado).
+  reintentoContabilidad.iniciar();
+  // ...y lee las respuestas de Contabilidad (N° de asiento o rechazo) en nuestra suscripcion.
+  respuestasContabilidad.iniciar();
 });
