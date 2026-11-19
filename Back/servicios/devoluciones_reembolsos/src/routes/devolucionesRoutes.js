@@ -22,6 +22,12 @@ router.post("/", wrap(async (req, res) => {
   res.status(201).json({ ok: true, mensaje: "Devolución registrada", data });
 }));
 
+// TDSI-33: bandeja de devoluciones (?estado=PENDIENTE para la bandeja del supervisor) con su contador.
+router.get("/", wrap(async (req, res) => {
+  const { total, filas } = await devolucionService.listarDevoluciones(req.query);
+  res.json({ ok: true, total, data: filas });
+}));
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo. Va al final: "motivos" y
 // "factura/:numero" son rutas fijas y no deben confundirse con un codigo.
 router.get("/:codigo", wrap(async (req, res) => {

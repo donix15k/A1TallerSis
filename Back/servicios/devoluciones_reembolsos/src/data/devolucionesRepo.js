@@ -88,6 +88,44 @@ async function obtenerPorCodigo(codigo) {
   };
 }
 
+/**
+ * TDSI-33: lista de devoluciones para la bandeja del supervisor (codigo, factura, cajero, monto, motivo, fecha y
+ * si requiere autorizacion). Con estado filtra por ese estado; sin estado trae todas. La cola de PENDIENTES va
+ * de la mas antigua a la mas nueva (se atiende en orden de llegada); las demas, de la mas reciente a la mas antigua.
+ * Devuelve { total: cuantas hay en total con ese filtro, filas: hasta "limite" de ellas }.
+ */
+async function listarDevoluciones({ estado = null, limite = 200 } = {}) {
+  const filtro = estado ? `WHERE d.estado = $1` : "";
+  const parametros = estado ? [estado] : [];
+  const orden = estado === "PENDIENTE" ? "d.fecha_solicitud ASC, d.id ASC" : "d.fecha_solicitud DESC, d.id DESC";
+
+  const { rows: conteo } = await query(`SELECT count(*)::int AS total FROM devoluciones.devoluciones d ${filtro}`, parametros);
+  const { rows } = await query(
+    `SELECT d.codigo, d.estado, d.tipo, d.factura_numero, d.creado_por, d.monto_total, d.fecha_solicitud,
+            d.requiere_autorizacion, m.id AS motivo_id, m.nombre AS motivo
+       FROM devoluciones.devoluciones d
+       LEFT JOIN devoluciones.motivos m ON m.id = d.motivo_id
+       ${filtro}
+      ORDER BY ${orden}
+      LIMIT ${Number(limite)}`,
+    parametros
+  );
+  return {
+    total: conteo[0].total,
+    filas: rows.map((d) => ({
+      codigo: d.codigo,
+      estado: d.estado,
+      tipo: d.tipo,
+      factura_numero: d.factura_numero,
+      cajero: d.creado_por,
+      monto_total: Number(d.monto_total),
+      motivo: d.motivo_id ? { id: Number(d.motivo_id), nombre: d.motivo } : null,
+      fecha_solicitud: d.fecha_solicitud,
+      requiere_autorizacion: d.requiere_autorizacion,
+    })),
+  };
+}
+
 const claveProducto = (descripcion, precio) => `${String(descripcion).trim().toLowerCase()}|${Number(precio).toFixed(2)}`;
 
 /**
@@ -166,4 +204,4 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
   });
 }
 
-module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, crearDevolucion };
+module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, crearDevolucion };

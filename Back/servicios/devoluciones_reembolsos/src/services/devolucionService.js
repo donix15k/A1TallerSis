@@ -279,6 +279,32 @@ async function obtenerDevolucion(codigo) {
   return devolucion;
 }
 
+const ESTADOS = ["PENDIENTE", "APROBADA", "RECHAZADA", "PROCESADA"];
+const LIMITE_LISTA_MAX = 1000;
+
+/**
+ * TDSI-33: devoluciones para la bandeja del supervisor. ?estado=PENDIENTE (no distingue mayusculas) filtra por
+ * estado; sin estado trae todas. ?limite=N acota cuantas filas vienen (por defecto 200, maximo 1000);
+ * "total" siempre es el conteo completo (el contador de la bandeja).
+ */
+async function listarDevoluciones({ estado, limite } = {}) {
+  let estadoNormalizado = null;
+  if (estado !== undefined && estado !== null && String(estado).trim() !== "") {
+    estadoNormalizado = String(estado).trim().toUpperCase();
+    if (!ESTADOS.includes(estadoNormalizado)) {
+      throw new AppError(`El estado debe ser uno de: ${ESTADOS.join(", ")}.`, 400, { estado });
+    }
+  }
+  let limiteNormalizado = 200;
+  if (limite !== undefined && limite !== null && String(limite).trim() !== "") {
+    limiteNormalizado = Number(limite);
+    if (!Number.isInteger(limiteNormalizado) || limiteNormalizado < 1 || limiteNormalizado > LIMITE_LISTA_MAX) {
+      throw new AppError(`El límite debe ser un número entero entre 1 y ${LIMITE_LISTA_MAX}.`, 400, { limite });
+    }
+  }
+  return devolucionesRepo.listarDevoluciones({ estado: estadoNormalizado, limite: limiteNormalizado });
+}
+
 module.exports = {
   consultarFacturaParaDevolucion,
   repartirYaDevuelto,
@@ -287,4 +313,5 @@ module.exports = {
   prepararDevolucion,
   registrarDevolucion,
   obtenerDevolucion,
+  listarDevoluciones,
 };
