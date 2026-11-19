@@ -11,6 +11,9 @@ const ZONA = "America/La_Paz";
 // KPI 1 · Ticket promedio: VERDE >= Bs 45, AMARILLO Bs 35 - 44,99, ROJO < Bs 35.
 const UMBRALES_TICKET = { verde: 45, amarillo: 35 };
 
+// KPI 2 · Tasa de anulacion: VERDE <= 2 %, AMARILLO 2 - 5 %, ROJO > 5 %.
+const UMBRALES_ANULACION = { verde: 2, amarillo: 5 };
+
 const hoyBolivia = (ahora = new Date()) => ahora.toLocaleDateString("en-CA", { timeZone: ZONA });
 
 /**
@@ -42,6 +45,21 @@ function colorTicketPromedio(valor) {
   const v = aCentavos(valor);
   if (v >= aCentavos(UMBRALES_TICKET.verde)) return "VERDE";
   if (v >= aCentavos(UMBRALES_TICKET.amarillo)) return "AMARILLO";
+  return "ROJO";
+}
+
+/** Un porcentaje a 2 decimales: parte / total x 100. Sin total es 0 % (nunca NaN ni division por cero). */
+function calcularPorcentaje(parte, total) {
+  const t = Number(total);
+  if (!Number.isFinite(t) || t <= 0) return 0;
+  return Math.round((Number(parte) / t) * 10000) / 100;
+}
+
+/** Semaforo de la tasa de anulacion: VERDE hasta 2 %, AMARILLO por encima de 2 % y hasta 5 %, ROJO por encima de 5 %. */
+function colorTasaAnulacion(tasa) {
+  const t = aCentavos(tasa);
+  if (t <= aCentavos(UMBRALES_ANULACION.verde)) return "VERDE";
+  if (t <= aCentavos(UMBRALES_ANULACION.amarillo)) return "AMARILLO";
   return "ROJO";
 }
 
@@ -94,6 +112,18 @@ async function resumen({ periodo, ahora } = {}) {
       },
     ],
   };
+}
+
+/**
+ * TDSI-148: KPI 2 · Tasa de anulacion del mes = facturas anuladas / facturas emitidas x 100 (una venta de mostrador es una factura;
+ * "emitidas" son las validas MAS las anuladas). Ejemplo: 31 de 1.073 facturas = 2,89 % (AMARILLO). Sin facturas: 0 %.
+ */
+async function tasaAnulacion({ periodo, ahora } = {}) {
+  const rango = rangoDelPeriodo(periodo, { ahora });
+  const v = await ventasEntre(rango.desde, rango.hasta);
+  const emitidas = v.ventas_validas + v.ventas_anuladas;
+  const valor = calcularPorcentaje(v.ventas_anuladas, emitidas);
+  return { ...rango, anuladas: v.ventas_anuladas, emitidas, valor, color: colorTasaAnulacion(valor), sin_facturas: emitidas === 0, umbrales: UMBRALES_ANULACION };
 }
 
 const DIAS_GRAFICO = 30;
@@ -152,4 +182,4 @@ async function ventasVsMeta({ periodo, ahora } = {}) {
   };
 }
 
-module.exports = { ventasVsMeta, ventanaDelGrafico, sumarDias, resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };
+module.exports = { tasaAnulacion, calcularPorcentaje, colorTasaAnulacion, UMBRALES_ANULACION, ventasVsMeta, ventanaDelGrafico, sumarDias, resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };
