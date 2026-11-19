@@ -253,11 +253,12 @@ function validarCajero(valor) {
  *   cuerpo: lo de prepararDevolucion + { cajero } (quien la registra; en el Front es el correo de la sesion).
  * Devuelve el codigo que se le entrega al cliente para consultar el avance.
  */
-async function registrarDevolucion(cuerpo = {}, opciones = {}) {
+async function registrarDevolucion(cuerpo = {}, opciones = {}, origenExtra = {}) {
   const cajero = validarCajero(cuerpo.cajero);
   const { comprados, ...preparada } = await prepararDevolucion(cuerpo, opciones);
 
   const guardada = await devolucionesRepo.crearDevolucion({
+    ...origenExtra, // TDSI-114: origen MARKETPLACE, orden_id y solicitud_externa (solo las solicitudes del Marketplace)
     factura: preparada.factura,
     comprados,
     tipo: preparada.tipo,

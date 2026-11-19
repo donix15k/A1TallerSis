@@ -44,7 +44,7 @@ async function obtenerPorCodigo(codigo) {
   const { rows } = await query(
     `SELECT d.id, d.codigo, d.estado, d.tipo, d.factura_numero, d.cliente_nit, d.fecha_venta, d.fecha_solicitud,
             d.monto_total, d.requiere_autorizacion, d.observaciones, d.motivo_rechazo, d.autorizado_por,
-            d.autorizado_en, d.creado_por, d.metodo_pago_original, m.id AS motivo_id, m.nombre AS motivo
+            d.autorizado_en, d.creado_por, d.metodo_pago_original, d.origen, d.orden_id, m.id AS motivo_id, m.nombre AS motivo
        FROM devoluciones.devoluciones d
        LEFT JOIN devoluciones.motivos m ON m.id = d.motivo_id
       WHERE d.codigo = $1`,
@@ -79,6 +79,8 @@ async function obtenerPorCodigo(codigo) {
     autorizado_en: d.autorizado_en,
     cajero: d.creado_por,
     metodo_pago_original: d.metodo_pago_original,
+    origen: d.origen,
+    orden_id: d.orden_id,
     items: items.map((i) => ({
       descripcion: i.descripcion,
       cantidad: Number(i.cantidad),
@@ -210,7 +212,7 @@ const claveProducto = (descripcion, precio) => `${String(descripcion).trim().toL
  *  - Antes de guardar se vuelve a comprobar la cantidad disponible DENTRO de la transaccion y con un candado
  *    por factura: si dos cajeros devuelven lo mismo a la vez, el segundo recibe 409 en vez de devolver de mas.
  */
-async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_id, observaciones, items, cajero, requiere_autorizacion = false }) {
+async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_id, observaciones, items, cajero, requiere_autorizacion = false, origen = "TIENDA", orden_id = null, solicitud_externa = null }) {
   return withTransaction(async (client) => {
     await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`devoluciones.factura.${factura.numero}`]);
 
@@ -248,11 +250,11 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
     const { rows } = await client.query(
       `INSERT INTO devoluciones.devoluciones
          (codigo, factura_numero, cliente_nit, fecha_venta, dentro_de_plazo, tipo, motivo_id, observaciones,
-          metodo_pago_original, monto_total, estado, creado_por, requiere_autorizacion)
-       VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8, $9, 'PENDIENTE', $10, $11)
+          metodo_pago_original, monto_total, estado, creado_por, requiere_autorizacion, origen, orden_id, solicitud_externa)
+       VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8, $9, 'PENDIENTE', $10, $11, $12, $13, $14)
        RETURNING id, codigo, estado, fecha_solicitud, requiere_autorizacion`,
       [codigo, factura.numero, factura.cliente_nit, factura.fecha, tipo, motivo_id, observaciones,
-        factura.metodo_pago ?? "No registrado", monto_total, cajero, requiere_autorizacion]
+        factura.metodo_pago ?? "No registrado", monto_total, cajero, requiere_autorizacion, origen, orden_id, solicitud_externa]
     );
     for (const it of items) {
       await client.query(

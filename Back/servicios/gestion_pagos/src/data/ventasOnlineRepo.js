@@ -163,7 +163,20 @@ async function listarVentas({ desde, hasta, estado } = {}) {
   }));
 }
 
+/** TDSI-114: una orden online por su numero de orden (con sus items), o null si no existe. */
+async function obtenerVentaPorOrden(ordenId) {
+  const { rows } = await query(
+    `SELECT id, orden_id, estado, total, metodo_pago, numero_factura, nit, razon_social, email, recibida_en
+       FROM pagos.ventas_online WHERE orden_id = $1`,
+    [ordenId]
+  );
+  if (!rows[0]) return null;
+  const items = await obtenerItemsVenta(rows[0].id);
+  return { ...rows[0], total: num(rows[0].total), items };
+}
+
 module.exports = {
+  obtenerVentaPorOrden,
   existeOrden,
   guardarVenta,
   registrarMensajeInvalido,

@@ -222,3 +222,25 @@ CREATE TABLE IF NOT EXISTS devoluciones.envios_compras_dev (
 );
 CREATE INDEX IF NOT EXISTS ix_envios_compras_dev_pendientes ON devoluciones.envios_compras_dev (proximo_intento_en) WHERE estado = 'Pendiente';
 ALTER TABLE devoluciones.envios_compras_dev ENABLE ROW LEVEL SECURITY;
+
+-- TDSI-114: de donde viene la devolucion: la TIENDA (cajero en caja) o el MARKETPLACE (solicitud de un pedido online por
+-- Pub/Sub). Las del Marketplace guardan su orden y el identificador de la solicitud, que es unico: la misma solicitud
+-- no se registra dos veces aunque el mensaje llegue repetido.
+ALTER TABLE devoluciones.devoluciones ADD COLUMN IF NOT EXISTS origen VARCHAR(12) NOT NULL DEFAULT 'TIENDA';
+ALTER TABLE devoluciones.devoluciones DROP CONSTRAINT IF EXISTS devoluciones_origen_check;
+ALTER TABLE devoluciones.devoluciones ADD CONSTRAINT devoluciones_origen_check CHECK (origen IN ('TIENDA','MARKETPLACE'));
+ALTER TABLE devoluciones.devoluciones ADD COLUMN IF NOT EXISTS orden_id VARCHAR(60);
+ALTER TABLE devoluciones.devoluciones ADD COLUMN IF NOT EXISTS solicitud_externa VARCHAR(100);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_devoluciones_solicitud_externa ON devoluciones.devoluciones (solicitud_externa) WHERE solicitud_externa IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_devoluciones_origen ON devoluciones.devoluciones (origen);
+
+-- TDSI-115: solicitudes del Marketplace que no se pudieron registrar (mensaje mal formado, orden inexistente, ...), con su
+-- error, para revisarlas. Nunca se reintentan: no se van a arreglar solas.
+CREATE TABLE IF NOT EXISTS devoluciones.marketplace_solicitudes_error (
+    id           BIGSERIAL PRIMARY KEY,
+    message_id   VARCHAR(100),
+    error        VARCHAR(500) NOT NULL,
+    payload      TEXT,
+    recibido_en  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE devoluciones.marketplace_solicitudes_error ENABLE ROW LEVEL SECURITY;

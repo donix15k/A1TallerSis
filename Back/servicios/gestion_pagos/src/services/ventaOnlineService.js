@@ -138,4 +138,24 @@ async function listarVentas({ desde, hasta, estado } = {}) {
   return repo.listarVentas({ desde: desdeFecha, hasta: hastaFecha, estado: estado || null });
 }
 
-module.exports = { recibirVenta, listarVentas };
+/**
+ * TDSI-114: consulta de UNA orden online por su numero (la usa Devoluciones para validar una solicitud de devolucion
+ * del Marketplace): su estado, total, metodo de pago, N° de factura emitida (null si aun no tiene) y sus items.
+ */
+async function obtenerOrden(ordenId) {
+  const orden = String(ordenId ?? "").trim();
+  if (!orden || orden.length > 60) throw new AppError("El número de orden no es válido.", 400, { orden_id: ordenId });
+  const venta = await repo.obtenerVentaPorOrden(orden);
+  if (!venta) throw new AppError(`No existe la orden ${orden} en las ventas online.`, 404, { orden_id: orden });
+  return {
+    orden_id: venta.orden_id,
+    estado: venta.estado,
+    total: venta.total,
+    metodo_pago: venta.metodo_pago,
+    numero_factura: venta.numero_factura || null,
+    factura_emitida: Boolean(venta.numero_factura),
+    items: venta.items,
+  };
+}
+
+module.exports = { recibirVenta, listarVentas, obtenerOrden };

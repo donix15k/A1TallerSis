@@ -1,6 +1,6 @@
 const { Router } = require("express");
 const { verificarToken } = require("../middlewares/verificarToken");
-const { recibirVenta, listarVentas } = require("../services/ventaOnlineService");
+const { recibirVenta, listarVentas, obtenerOrden } = require("../services/ventaOnlineService");
 const { reenviarAvisoMarketplace } = require("../services/avisoMarketplaceService");
 
 const router = Router();
@@ -29,6 +29,11 @@ router.post("/online", verificarToken, wrap(async (req, res) => {
 router.get("/online/ventas", wrap(async (req, res) => {
   const data = await listarVentas({ desde: req.query.desde, hasta: req.query.hasta, estado: req.query.estado });
   res.json({ ok: true, data });
+}));
+
+// TDSI-114: una orden online por su numero (la consulta Devoluciones para validar solicitudes del Marketplace).
+router.get("/online/orden/:ordenId", wrap(async (req, res) => {
+  res.json({ ok: true, data: await obtenerOrden(req.params.ordenId) });
 }));
 
 // TDSI-51/957: boton "Aprobar y enviar a Marketplace" del modal "Ver factura" --
