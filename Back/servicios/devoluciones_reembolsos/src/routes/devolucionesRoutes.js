@@ -15,10 +15,11 @@ router.get("/factura/:numero", wrap(async (req, res) => {
   res.json({ ok: true, data });
 }));
 
-// TDSI-21: valida los productos y cantidades contra la factura, calcula el monto y marca TOTAL o PARCIAL.
+// TDSI-21/22: valida los productos y cantidades contra la factura, calcula el monto (TOTAL o PARCIAL),
+// genera el codigo DEV-0001 y guarda la devolucion en estado PENDIENTE.
 router.post("/", wrap(async (req, res) => {
-  const data = await devolucionService.prepararDevolucion(req.body);
-  res.json({ ok: true, data });
+  const data = await devolucionService.registrarDevolucion(req.body);
+  res.status(201).json({ ok: true, mensaje: "Devolución registrada", data });
 }));
 
 module.exports = router;

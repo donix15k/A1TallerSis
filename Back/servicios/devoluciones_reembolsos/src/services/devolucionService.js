@@ -211,6 +211,51 @@ async function prepararDevolucion(cuerpo = {}, { ahora = new Date() } = {}) {
     monto_total: calcularMonto(items),
     motivo,
     observaciones,
+    // Uso interno (no se devuelve por la API): lo comprado de cada producto, para re-comprobar al guardar.
+    comprados: [...productos.values()].map((p) => ({ descripcion: p.descripcion, precio_unitario: p.precio_unitario, comprada: p.comprada })),
+  };
+}
+
+const CAJERO_MAX = 60; // largo de devoluciones.devoluciones.creado_por
+
+function validarCajero(valor) {
+  const cajero = typeof valor === "string" ? valor.trim() : "";
+  if (!cajero) throw new AppError("Falta el cajero que registra la devolución.", 400);
+  if (cajero.length > CAJERO_MAX) throw new AppError(`El cajero no puede tener más de ${CAJERO_MAX} caracteres.`, 400);
+  return cajero;
+}
+
+/**
+ * TDSI-22: registra la solicitud de devolucion (estado PENDIENTE) con su codigo correlativo DEV-0001...
+ *   cuerpo: lo de prepararDevolucion + { cajero } (quien la registra; en el Front es el correo de la sesion).
+ * Devuelve el codigo que se le entrega al cliente para consultar el avance.
+ */
+async function registrarDevolucion(cuerpo = {}, opciones = {}) {
+  const cajero = validarCajero(cuerpo.cajero);
+  const { comprados, ...preparada } = await prepararDevolucion(cuerpo, opciones);
+
+  const guardada = await devolucionesRepo.crearDevolucion({
+    factura: preparada.factura,
+    comprados,
+    tipo: preparada.tipo,
+    monto_total: preparada.monto_total,
+    motivo_id: preparada.motivo.id,
+    observaciones: preparada.observaciones,
+    items: preparada.items,
+    cajero,
+  });
+
+  return {
+    codigo: guardada.codigo,
+    estado: guardada.estado,
+    tipo: preparada.tipo,
+    monto_total: preparada.monto_total,
+    factura_numero: preparada.factura.numero,
+    motivo: preparada.motivo,
+    observaciones: preparada.observaciones,
+    cajero,
+    items: preparada.items,
+    fecha_solicitud: guardada.fecha_solicitud,
   };
 }
 
@@ -220,4 +265,5 @@ module.exports = {
   listarMotivos,
   calcularMonto,
   prepararDevolucion,
+  registrarDevolucion,
 };

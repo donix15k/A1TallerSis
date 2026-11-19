@@ -1,5 +1,5 @@
 // TDSI-21: POST /api/devoluciones valida productos y cantidades contra la factura, calcula el monto y marca
-// TOTAL o PARCIAL. (Todavia no guarda nada: eso es TDSI-22.)
+// TOTAL o PARCIAL. (Desde TDSI-22 la solicitud valida tambien se guarda; aqui se revisa la validacion y el calculo.)
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { query } = require("../config/db");
@@ -22,7 +22,7 @@ test.after(async () => {
   await entorno.cerrar();
 });
 
-const solicitud = (numero, items, extra = {}) => ({ factura_numero: numero, items, motivo_id: motivoId, ...extra });
+const solicitud = (numero, items, extra = {}) => ({ factura_numero: numero, items, motivo_id: motivoId, cajero: "cajero.prueba@tallersis.test", ...extra });
 
 test("calcularMonto suma cantidad x precio con 2 decimales", () => {
   assert.equal(calcularMonto([{ cantidad: 2, precio_unitario: 10 }, { cantidad: 1.5, precio_unitario: 3.3 }]), 24.95);
@@ -39,7 +39,7 @@ test("devolucion parcial: monto con los precios de la factura y tipo PARCIAL", a
     { descripcion: "Producto A", cantidad: 2 },
     { descripcion: "Producto B", cantidad: 1 },
   ], { observaciones: "  Llego roto  " }));
-  assert.equal(status, 200);
+  assert.equal(status, 201);
   const d = cuerpo.data;
   assert.equal(d.tipo, "PARCIAL");
   assert.equal(d.monto_total, 45); // 2 x 10 + 1 x 25
@@ -49,7 +49,7 @@ test("devolucion parcial: monto con los precios de la factura y tipo PARCIAL", a
   ]);
   assert.equal(d.motivo.id, motivoId);
   assert.equal(d.observaciones, "Llego roto");
-  assert.equal(d.factura.numero, numero);
+  assert.equal(d.factura_numero, numero);
 });
 
 test("devolver todo lo comprado de cada producto: tipo TOTAL", async () => {
@@ -85,7 +85,7 @@ test("no se puede devolver mas de lo disponible (descontando devoluciones anteri
   assert.equal(demasiado.cuerpo.detalle.disponible, 2);
 
   const justo = await entorno.post("/api/devoluciones", solicitud(numero, [{ descripcion: "Producto A", cantidad: 2 }]));
-  assert.equal(justo.status, 200);
+  assert.equal(justo.status, 201);
   assert.equal(justo.cuerpo.data.tipo, "PARCIAL"); // ya hay devoluciones previas: esta sola no devuelve "todo lo comprado"
 });
 
@@ -113,24 +113,25 @@ test("mismo producto con dos precios en la factura: hay que indicar el precio", 
   const ambiguo = await entorno.post("/api/devoluciones", solicitud(numero, [{ descripcion: "Producto A", cantidad: 1 }]));
   assert.equal(ambiguo.status, 400);
   const claro = await entorno.post("/api/devoluciones", solicitud(numero, [{ descripcion: "Producto A", cantidad: 1, precio_unitario: 12 }]));
-  assert.equal(claro.status, 200);
+  assert.equal(claro.status, 201);
   assert.equal(claro.cuerpo.data.monto_total, 12);
 });
 
 test("motivo: obligatorio, existente y activo", async () => {
   const numero = entorno.agregarFactura(8);
   const items = [{ descripcion: "Producto A", cantidad: 1 }];
-  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items })).status, 400);
-  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items, motivo_id: 999999 })).status, 422);
-  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items, motivo_id: motivoInactivoId })).status, 422);
-  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items, motivo_id: "abc" })).status, 422);
+  const cajero = "cajero.prueba@tallersis.test";
+  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items, cajero })).status, 400);
+  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items, cajero, motivo_id: 999999 })).status, 422);
+  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items, cajero, motivo_id: motivoInactivoId })).status, 422);
+  assert.equal((await entorno.post("/api/devoluciones", { factura_numero: numero, items, cajero, motivo_id: "abc" })).status, 422);
 });
 
 test("observaciones: maximo 300 caracteres", async () => {
   const numero = entorno.agregarFactura(9);
   const items = [{ descripcion: "Producto A", cantidad: 1 }];
   const justo = await entorno.post("/api/devoluciones", solicitud(numero, items, { observaciones: "x".repeat(300) }));
-  assert.equal(justo.status, 200);
+  assert.equal(justo.status, 201);
   const largo = await entorno.post("/api/devoluciones", solicitud(numero, items, { observaciones: "x".repeat(301) }));
   assert.equal(largo.status, 400);
   assert.match(largo.cuerpo.mensaje, /300 caracteres/);
@@ -152,12 +153,4 @@ test("factura fuera de plazo, anulada o inexistente: no se puede registrar", asy
 
   const noExiste = await entorno.post("/api/devoluciones", solicitud(entorno.numero(99), [{ descripcion: "Producto A", cantidad: 1 }]));
   assert.equal(noExiste.status, 404);
-});
-
-test("por ahora solo valida y calcula: no guarda nada en la base", async () => {
-  const antes = (await query(`SELECT count(*)::int n FROM devoluciones.devoluciones`)).rows[0].n;
-  const numero = entorno.agregarFactura(12);
-  await entorno.post("/api/devoluciones", solicitud(numero, [{ descripcion: "Producto A", cantidad: 1 }]));
-  const despues = (await query(`SELECT count(*)::int n FROM devoluciones.devoluciones`)).rows[0].n;
-  assert.equal(despues, antes);
 });
