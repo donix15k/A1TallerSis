@@ -1,5 +1,6 @@
 const subscriber = require("../clients/pubsubSubscriber");
 const { procesarMensaje } = require("../services/respuestasContabilidadService");
+const { procesarMensaje: procesarAcuse } = require("../services/acusesComprasService");
 const cfg = require("../config/contabilidad");
 
 let enCurso = false;
@@ -20,11 +21,15 @@ async function procesarRespuestas() {
     const liberar = [];
     for (const m of mensajes) {
       try {
-        const r = await procesarMensaje(m);
+        // La suscripcion es compartida: primero se prueba como respuesta de Contabilidad a una nota (NC-) y, si no es,
+        // como acuse de Compras a un aviso de devolucion (DEV-, TDSI-105).
+        let r = await procesarMensaje(m);
+        const esAcuse = !r.propio && (r = await procesarAcuse(m)).propio;
         (r.propio ? confirmar : liberar).push(m.ackId);
         if (r.propio) {
           resultados.push(r);
-          console.log(`[contabilidad] ${r.referencia} -> ${r.resultado}${r.envio.numero_asiento ? ` (asiento ${r.envio.numero_asiento})` : ""}`);
+          if (esAcuse) console.log(`[compras] ${r.referencia} -> ${r.resultado}${r.envio.numero_reclamo ? ` (reclamo ${r.envio.numero_reclamo})` : ""}`);
+          else console.log(`[contabilidad] ${r.referencia} -> ${r.resultado}${r.envio.numero_asiento ? ` (asiento ${r.envio.numero_asiento})` : ""}`);
         }
       } catch (e) {
         liberar.push(m.ackId); // se vuelve a intentar en la siguiente lectura
