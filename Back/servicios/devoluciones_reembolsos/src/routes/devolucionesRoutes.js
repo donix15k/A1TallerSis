@@ -2,6 +2,7 @@ const { Router } = require("express");
 const devolucionService = require("../services/devolucionService");
 const reembolsoService = require("../services/reembolsoService");
 const notaCreditoService = require("../services/notaCreditoService");
+const exportacionService = require("../services/exportacionService");
 
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
@@ -22,6 +23,17 @@ router.get("/factura/:numero", wrap(async (req, res) => {
 router.post("/", wrap(async (req, res) => {
   const data = await devolucionService.registrarDevolucion(req.body);
   res.status(201).json({ ok: true, mensaje: "Devolución registrada", data });
+}));
+
+// TDSI-81: exporta a Excel el listado con los mismos filtros (desde, hasta, estado, cajero), sin paginar.
+router.get("/exportar", wrap(async (req, res) => {
+  const { buffer, filas, truncado } = await exportacionService.exportarDevoluciones(req.query);
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="devoluciones-${hoy}.xlsx"`);
+  res.setHeader("X-Total-Filas", String(filas));
+  if (truncado) res.setHeader("X-Exportacion-Truncada", "true");
+  res.send(buffer);
 }));
 
 // TDSI-33: bandeja de devoluciones (?estado=PENDIENTE para la bandeja del supervisor) con su contador.

@@ -463,7 +463,18 @@ async function rechazarDevolucion(codigo, cuerpo = {}) {
   return obtenerDevolucion(actual.codigo);
 }
 
+/** TDSI-81: las filas de un listado con los mismos filtros pero SIN paginar (hasta `maximo`), para exportarlas. */
+async function listarParaExportar({ estado, desde, hasta, cajero } = {}, maximo = 10000) {
+  return devolucionesRepo.listarDevoluciones({
+    estado: validarEstadoFiltro(estado),
+    ...validarRangoFechas(desde, hasta),
+    cajero: validarCajeroFiltro(cajero),
+    limite: maximo,
+  });
+}
+
 module.exports = {
+  listarParaExportar,
   obtenerHistorial,
   validarCajero,
   consultarFacturaParaDevolucion,
