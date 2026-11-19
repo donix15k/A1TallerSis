@@ -262,7 +262,7 @@ test("TDSI-964: el aviso al Marketplace va en el mismo sobre que Contabilidad/Ve
   assert.equal(ultimo.json.datos.orden_id, orden);
   assert.equal(ultimo.json.datos.numero_factura, resultados[0].numeroFactura);
   assert.ok(ultimo.json.datos.enlace_verificacion);
-  assert.equal(ultimo.attributes.grupo, "A");
+  assert.equal(ultimo.attributes.grupo, "A1");
 
   // TDSI-964: se puede simular otro grupo origen (solo pruebas) -- el destino sigue siendo Marketplace.
   const orden2 = `${PREFIJO}-964b`;

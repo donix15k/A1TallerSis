@@ -80,7 +80,7 @@ async function intentarEnvio(envio) {
     referencia_externa: payload.referencia_externa,
     idempotency_key: `factura-${envio.factura_id}-${envio.tipo}`,
     origen: "facturacion",
-    grupo: "A",
+    grupo: cfg.GRUPO_ORIGEN,
   });
   if (r.ok) return repo.marcarEnviado(envio.id, r.messageId);
   return repo.registrarFallo(envio.id, r, cfg.MAX_INTENTOS, cfg.BACKOFF_BASE_SEG);

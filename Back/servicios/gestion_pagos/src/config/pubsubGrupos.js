@@ -6,8 +6,9 @@ const PROYECTO = "project-a96e5fe1-5ba6-4698-a85";
 
 const GRUPOS = [
   { grupo: "A", nombre: "Gestión de Pagos y Facturación", sufijo: "sub-a" },
-  // Topicos adicionales de nuestro equipo (A1 y A2), junto al topico principal del grupo A.
-  { grupo: "A1", nombre: "Grupo A1", sufijo: "sub-a1" },
+  // El grupo A se dividio en dos: NOSOTROS somos A1 (Pagos y Facturacion, mismo nombre funcional para que el
+  // sistema_origen de los mensajes siga siendo GESTION_DE_PAGOS_Y_FACTURACION) y A2 es la otra mitad.
+  { grupo: "A1", nombre: "Gestión de Pagos y Facturación", sufijo: "sub-a1" },
   { grupo: "A2", nombre: "Grupo A2", sufijo: "sub-a2" },
   { grupo: "B", nombre: "CRM", sufijo: "sub-b" },
   { grupo: "C", nombre: "Gestión de Compras y Proveedores", sufijo: "sub-c" },
@@ -18,6 +19,10 @@ const GRUPOS = [
   { grupo: "H", nombre: "Gestión de Entregas/Despachos", sufijo: "sub-h" },
   { grupo: "I", nombre: "Gestión de Inventarios y Almacén", sufijo: "sub-i" },
 ].map((g) => ({ ...g, topico: `projects/${PROYECTO}/topics/ucb-sis323-${g.sufijo}` }));
+
+// Desde que grupo se manda todo mensaje por defecto: el nuestro (A1). Cada pantalla de integracion deja
+// elegir otro grupo de origen; esto es solo el valor inicial. Se puede cambiar con PUBSUB_GRUPO_ORIGEN.
+const GRUPO_ORIGEN_DEFECTO = (process.env.PUBSUB_GRUPO_ORIGEN || "A1").trim().toUpperCase();
 
 function buscarPorGrupo(grupo) {
   return GRUPOS.find((g) => g.grupo === String(grupo || "").toUpperCase().trim());
@@ -38,4 +43,4 @@ function slugificarOrigen(nombre) {
 // facturacion y gestion_caja al mandarle documentos a Contabilidad.
 const fechaDocumentoHoy = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
 
-module.exports = { GRUPOS, buscarPorGrupo, slugificarOrigen, fechaDocumentoHoy };
+module.exports = { GRUPOS, GRUPO_ORIGEN_DEFECTO, buscarPorGrupo, slugificarOrigen, fechaDocumentoHoy };

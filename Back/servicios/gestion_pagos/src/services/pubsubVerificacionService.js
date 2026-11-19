@@ -1,6 +1,6 @@
 const { publicar } = require("../clients/pubsubPublisher");
 const repo = require("../data/pubsubVerificacionesRepo");
-const { GRUPOS, buscarPorGrupo, slugificarOrigen, fechaDocumentoHoy } = require("../config/pubsubGrupos");
+const { GRUPOS, GRUPO_ORIGEN_DEFECTO, buscarPorGrupo, slugificarOrigen, fechaDocumentoHoy } = require("../config/pubsubGrupos");
 const { AppError } = require("../utils/AppError");
 
 const LARGO_MAXIMO_MENSAJE = 2000;
@@ -31,7 +31,7 @@ function validarTopicoPersonalizado(valor) {
  * tambien que el mensaje venga de cualquiera de los otros grupos si hace falta.
  */
 async function enviarVerificacion({ grupo_origen, grupo, topico_personalizado, mensaje, enviado_por }) {
-  const origen = buscarPorGrupo(grupo_origen || "A");
+  const origen = buscarPorGrupo(grupo_origen || GRUPO_ORIGEN_DEFECTO);
   if (!origen) {
     throw new AppError(`El grupo origen debe ser uno de: ${GRUPOS.map((g) => g.grupo).join(", ")}.`, 400, { grupo_origen });
   }

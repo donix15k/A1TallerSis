@@ -3,7 +3,7 @@ const { aCentavos, aMonto } = require("../utils/money");
 const { ZONA } = require("../utils/fechas");
 const { publicar } = require("../clients/pubsubPublisher");
 const cfg = require("../config/contabilidad");
-const { GRUPOS, buscarPorGrupo, slugificarOrigen } = require("../config/pubsubGrupos");
+const { GRUPOS, GRUPO_ORIGEN_DEFECTO, buscarPorGrupo, slugificarOrigen } = require("../config/pubsubGrupos");
 const pubsubVerificacionesRepo = require("../data/pubsubVerificacionesRepo");
 
 // Fecha del turno en hora de Bolivia (YYYY-MM-DD) -- un cierre de las 22:00 es de ese
@@ -56,16 +56,16 @@ function armarMensajeDiferencia({ diferencia, turno }) {
  * No lanza si Pub/Sub falla -- devuelve { ok:false, ... } para que el llamador decida
  * (la diferencia ya quedo resuelta en nuestro sistema de todos modos, ver diferenciasService.js).
  *
- * TDSI-964: `grupoOrigen` (A-I) es, igual que en "Verificación de Pub/Sub", desde que
- * grupo se simula que viene el aviso -- en la vida real siempre somos el Grupo A, esto
- * es solo para pruebas. Si se indica, se manda una copia del mensaje con su
+ * TDSI-964: `grupoOrigen` (A a I, A1 y A2) es, igual que en "Verificación de Pub/Sub",
+ * desde que grupo viene el aviso. Por defecto somos el Grupo A1 (el atributo grupo del mensaje es A1);
+ * se puede elegir otro grupo de origen. Si se indica, se manda una copia del mensaje con su
  * sistema_origen recalculado (sin tocar el payload ya guardado en
  * caja.diferencias_envios_contabilidad). Todo envio, con o sin origen simulado, queda
  * ademas en el log compartido de "Verificación de Pub/Sub" (pagos.pubsub_verificaciones).
  */
 async function publicarDiferencia(mensaje, { grupoOrigen, enviadoPor } = {}) {
   let mensajeAEnviar = mensaje;
-  let grupo = "A";
+  let grupo = GRUPO_ORIGEN_DEFECTO;
   if (grupoOrigen) {
     const origen = buscarPorGrupo(grupoOrigen);
     if (!origen) {

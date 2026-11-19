@@ -187,3 +187,30 @@ test("TDSI-701: GET /api/caja/diferencias y POST reenviar-contabilidad", async (
   assert.equal(cuerpo.data.publicado, true);
   assert.equal(cuerpo.data.contabilidad.estado, "Enviado");
 });
+
+test("el aviso a Contabilidad sale por defecto desde el grupo A1 (somos el grupo A1) y se puede elegir otro origen", async () => {
+  const turno = await turnoCerrado();
+  const id = await diferenciaPendiente(turno, { tipo: "SOBRANTE", monto: 15 });
+
+  publisher.usarClienteDePrueba(topicoQueFalla("sin conexion"));
+  await resolverDiferencia(id, { justificacion: "Se revisó con el cajero" });
+
+  publisher.usarClienteDePrueba(topicoQueCaptura());
+  const sinOrigen = await reenviarContabilidad(id, { enviadoPor: "admin-test@correo.test" });
+  assert.equal(sinOrigen.publicado, true);
+  assert.equal(publicados.at(-1).attributes.grupo, "A1");
+
+  const { rows: log } = await query(
+    `SELECT grupo, grupo_origen FROM pagos.pubsub_verificaciones WHERE payload_enviado->'datos'->>'caja' = $1 ORDER BY creado_en DESC LIMIT 1`,
+    [CAJA]
+  );
+  assert.deepEqual(log[0], { grupo: "D", grupo_origen: "A1" });
+
+  // un origen que no existe se rechaza (con otra diferencia que siga pendiente de envio)
+  const turno2 = await turnoCerrado();
+  const id2 = await diferenciaPendiente(turno2, { tipo: "FALTANTE", monto: 5 });
+  publisher.usarClienteDePrueba(topicoQueFalla("sin conexion"));
+  await resolverDiferencia(id2, { justificacion: "Se revisó con el cajero" });
+  await assert.rejects(() => reenviarContabilidad(id2, { grupoOrigen: "Z" }), /uno de: A, A1, A2, B/);
+});
+

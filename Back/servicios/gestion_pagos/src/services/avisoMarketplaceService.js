@@ -4,7 +4,7 @@ const repo = require("../data/ventasOnlineRepo");
 const { obtenerOCrearTokenVentaOnline, urlVerificacion } = require("./verificacionFacturaService");
 const { enviarFacturaDeVentaOnline } = require("./facturaDigitalService");
 const { AppError } = require("../utils/AppError");
-const { GRUPOS, buscarPorGrupo, slugificarOrigen, fechaDocumentoHoy } = require("../config/pubsubGrupos");
+const { GRUPOS, GRUPO_ORIGEN_DEFECTO, buscarPorGrupo, slugificarOrigen, fechaDocumentoHoy } = require("../config/pubsubGrupos");
 const pubsubVerificacionesRepo = require("../data/pubsubVerificacionesRepo");
 
 /**
@@ -17,14 +17,14 @@ const pubsubVerificacionesRepo = require("../data/pubsubVerificacionesRepo");
  * TDSI-964: el mensaje va siempre envuelto en el mismo sobre que ya usan Contabilidad y
  * "Verificación de Pub/Sub" (sistema_origen/referencia_externa/tipo_operacion/
  * fecha_documento/datos). El destino SIEMPRE es Marketplace (no es seleccionable); solo
- * `grupoOrigen` (A por defecto, el real) simula desde que grupo se manda, igual que en
+ * `grupoOrigen` (A1 por defecto: somos el grupo A1) simula desde que grupo se manda, igual que en
  * "Verificación de Pub/Sub". Todo intento (con o sin origen simulado) queda tambien en
  * el log compartido pagos.pubsub_verificaciones.
  */
 async function avisarFacturaEmitida({ id, orden_id, numero_factura, grupoOrigen, enviadoPor }) {
   if (!cfg.FACTURAS_TOPIC) return { publicado: false, motivo: "MARKETPLACE_FACTURAS_TOPIC no esta configurado" };
 
-  const origen = buscarPorGrupo(grupoOrigen || "A");
+  const origen = buscarPorGrupo(grupoOrigen || GRUPO_ORIGEN_DEFECTO);
   if (!origen) {
     throw new AppError(`El tópico origen debe ser uno de: ${GRUPOS.map((g) => g.grupo).join(", ")}.`, 400, { grupo_origen: grupoOrigen });
   }

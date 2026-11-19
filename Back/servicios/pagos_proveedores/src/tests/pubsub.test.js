@@ -77,7 +77,7 @@ test("TDSI-656: publica el reporte en el topico y el envio queda ENVIADO con el 
     envio_id: String(envio.id),
     idempotency_key: `envio-${envio.id}`,
     origen: "pagos_proveedores",
-    grupo: "A",
+    grupo: "A1",
   });
   const lote = await pool.query("SELECT estado FROM proveedores.lotes_cierre_diario WHERE fecha = $1", [FECHA]);
   assert.equal(lote.rows[0].estado, "ENVIADO");

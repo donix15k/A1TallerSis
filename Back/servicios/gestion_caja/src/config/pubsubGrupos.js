@@ -4,6 +4,9 @@
 // origen distinto al nuestro real, GESTION_CAJA, al reenviar un aviso a Contabilidad).
 const GRUPOS = [
   { grupo: "A", nombre: "Gestión de Pagos y Facturación" },
+  // El grupo A se dividio: nosotros somos A1 (mismo nombre funcional) y A2 es la otra mitad.
+  { grupo: "A1", nombre: "Gestión de Pagos y Facturación" },
+  { grupo: "A2", nombre: "Grupo A2" },
   { grupo: "B", nombre: "CRM" },
   { grupo: "C", nombre: "Gestión de Compras y Proveedores" },
   { grupo: "D", nombre: "Contabilidad" },
@@ -27,4 +30,8 @@ function slugificarOrigen(nombre) {
     .replace(/^_+|_+$/g, "");
 }
 
-module.exports = { GRUPOS, buscarPorGrupo, slugificarOrigen };
+// Desde que grupo se manda todo aviso por defecto: el nuestro (A1). Se puede elegir otro al reenviar;
+// cambia el valor inicial con PUBSUB_GRUPO_ORIGEN.
+const GRUPO_ORIGEN_DEFECTO = (process.env.PUBSUB_GRUPO_ORIGEN || "A1").trim().toUpperCase();
+
+module.exports = { GRUPOS, GRUPO_ORIGEN_DEFECTO, buscarPorGrupo, slugificarOrigen };

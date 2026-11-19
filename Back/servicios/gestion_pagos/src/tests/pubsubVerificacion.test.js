@@ -57,10 +57,10 @@ test("TDSI-958: rechaza un grupo invalido, un mensaje vacio y uno demasiado larg
   await assert.rejects(() => enviarVerificacion({ grupo: "A", mensaje: "x".repeat(2001) }), /2000/);
 });
 
-test("TDSI-958/960: una verificacion exitosa (origen A por defecto) queda registrada con su message_id, el payload enviado y aparece en el log", async () => {
+test("TDSI-958/960: una verificacion exitosa (origen A1 por defecto) queda registrada con su message_id, el payload enviado y aparece en el log", async () => {
   const registro = await enviarVerificacion({ grupo: "a", mensaje: "TEST-TDSI-958 hola", enviado_por: "admin-test@correo.test" });
   assert.equal(registro.grupo, "A");
-  assert.equal(registro.grupo_origen, "A");
+  assert.equal(registro.grupo_origen, "A1");
   assert.equal(registro.ok, true);
   assert.ok(registro.message_id);
   assert.equal(registro.error, null);
@@ -76,9 +76,9 @@ test("TDSI-958/960: una verificacion exitosa (origen A por defecto) queda regist
   assert.equal(registro.payload_enviado.datos.mensaje, "TEST-TDSI-958 hola");
   assert.equal(registro.payload_enviado.datos.enviado_por_email, "admin-test@correo.test");
 
-  // TDSI-963: el atributo grupo sigue el origen elegido (A por defecto).
+  // TDSI-963: el atributo grupo sigue el origen elegido (A1 por defecto: somos el grupo A1).
   const ultimo = publicados.at(-1);
-  assert.equal(ultimo.attributes.grupo, "A");
+  assert.equal(ultimo.attributes.grupo, "A1");
   assert.equal(ultimo.attributes.origen, "gestion_pagos");
   assert.equal(ultimo.attributes.referencia_externa, registro.payload_enviado.referencia_externa);
   assert.deepEqual(ultimo.json, registro.payload_enviado);

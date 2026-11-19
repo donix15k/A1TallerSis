@@ -3,7 +3,7 @@ const repo = require("../data/productosVendidosRepo");
 const enviosRepo = require("../data/enviosComprasRepo");
 const { publicar } = require("../clients/pubsubPublisher");
 const cfg = require("../config/compras");
-const { GRUPOS, buscarPorGrupo, slugificarOrigen } = require("../config/pubsubGrupos");
+const { GRUPOS, GRUPO_ORIGEN_DEFECTO, buscarPorGrupo, slugificarOrigen } = require("../config/pubsubGrupos");
 const pubsubVerificacionesRepo = require("../data/pubsubVerificacionesRepo");
 
 /**
@@ -35,7 +35,7 @@ async function obtenerProductosVendidos(fecha) {
  *
  * TDSI-964: el mensaje va en el mismo sobre que Contabilidad/Marketplace/"Verificación de
  * Pub/Sub" (sistema_origen/referencia_externa/tipo_operacion/fecha_documento/datos). El
- * destino SIEMPRE es Compras (no es seleccionable); `grupoOrigen` (A por defecto, el
+ * destino SIEMPRE es Compras (no es seleccionable); `grupoOrigen` (A1 por defecto, el
  * real) solo simula, para pruebas, desde que grupo se manda. Todo intento queda ademas en
  * el log compartido pagos.pubsub_verificaciones.
  */
@@ -45,7 +45,7 @@ async function publicarProductosVendidos(fecha, { grupoOrigen, enviadoPor } = {}
     throw new AppError("No hubo ventas ese día; no se puede enviar a Compras.", 409, { fecha });
   }
 
-  const origen = buscarPorGrupo(grupoOrigen || "A");
+  const origen = buscarPorGrupo(grupoOrigen || GRUPO_ORIGEN_DEFECTO);
   if (!origen) {
     throw new AppError(`El tópico origen debe ser uno de: ${GRUPOS.map((g) => g.grupo).join(", ")}.`, 400, { grupo_origen: grupoOrigen });
   }

@@ -43,7 +43,11 @@ module.exports = {
   BACKOFF_BASE_SEG: entero("CONTABILIDAD_BACKOFF_BASE_SEG", 30, 1, 3600),
   INTERVALO_WORKER_SEG: entero("CONTABILIDAD_INTERVALO_WORKER_SEG", 15, 5, 3600),
 
-  // Respuestas de Contabilidad (resultado_documento): suscripcion Pull del topico del Grupo A.
+  // Desde que grupo se manda todo a Contabilidad: el nuestro. El grupo A se dividio y somos el A1; Contabilidad
+  // usa este atributo (grupo) para saber a que topico responder. Cambia con PUBSUB_GRUPO_ORIGEN.
+  GRUPO_ORIGEN: String(process.env.PUBSUB_GRUPO_ORIGEN || "A1").trim().toUpperCase(),
+
+  // Respuestas de Contabilidad (resultado_documento): suscripcion Pull del topico del Grupo A1.
   // Vacio = no se leen.
   RESPUESTAS_SUBSCRIPTION: String(process.env.CONTABILIDAD_RESPUESTAS_SUBSCRIPTION || "").trim() || null,
   RESPUESTAS_INTERVALO_SEG: entero("CONTABILIDAD_RESPUESTAS_INTERVALO_SEG", 30, 10, 3600),

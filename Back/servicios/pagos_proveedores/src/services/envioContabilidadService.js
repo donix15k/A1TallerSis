@@ -42,7 +42,7 @@ async function intentarEnvio(envio) {
         envio_id: envio.id,
         idempotency_key: clave,
         origen: "pagos_proveedores",
-        grupo: "A",
+        grupo: cfg.GRUPO_ORIGEN,
       })
     : await enviarReporte(payload, clave);
   if (r.ok) return enviosRepo.marcarEnviado(envio, { ...r, canal });

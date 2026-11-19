@@ -71,6 +71,8 @@ module.exports = {
   // Credenciales: GOOGLE_CREDENTIALS_JSON (llave en el .env) o, si no esta,
   // GOOGLE_APPLICATION_CREDENTIALS (ruta a la llave, la lee la libreria de Google).
   PUBSUB_TOPIC: topico("PUBSUB_TOPIC"),
+  // Desde que grupo se manda el reporte: el nuestro. El grupo A se dividio y somos el A1 (cambia con PUBSUB_GRUPO_ORIGEN).
+  GRUPO_ORIGEN: String(process.env.PUBSUB_GRUPO_ORIGEN || "A1").trim().toUpperCase(),
   GOOGLE_CREDENTIALS: credencialesGoogle("GOOGLE_CREDENTIALS_JSON"),
   PUBSUB_TIMEOUT_MS: entero("PUBSUB_TIMEOUT_MS", 10000, 1000, 60000),
 

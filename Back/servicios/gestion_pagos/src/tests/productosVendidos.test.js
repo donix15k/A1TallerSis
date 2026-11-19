@@ -114,7 +114,7 @@ test("TDSI-682/964: publica el reporte en el sobre estandar, con un identificado
   assert.equal(resultado.messageId, "pub-1");
 
   const ultimo = publicados.at(-1);
-  assert.equal(ultimo.attributes.grupo, "A");
+  assert.equal(ultimo.attributes.grupo, "A1");
   assert.deepEqual(ultimo.json, mensaje);
 
   // TDSI-697: el intento quedo registrado en pagos.envios_compras.
@@ -127,7 +127,7 @@ test("TDSI-682/964: publica el reporte en el sobre estandar, con un identificado
     `SELECT grupo, grupo_origen, ok FROM pagos.pubsub_verificaciones WHERE payload_enviado->>'referencia_externa' = $1 ORDER BY creado_en DESC LIMIT 1`,
     [`PV-${DIA_PUBLICAR}`]
   );
-  assert.deepEqual(log[0], { grupo: "C", grupo_origen: "A", ok: true });
+  assert.deepEqual(log[0], { grupo: "C", grupo_origen: "A1", ok: true });
 });
 
 test("TDSI-964: se puede simular que el reporte viene de otro grupo (grupoOrigen), sin cambiar el destino (Compras)", async () => {

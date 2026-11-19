@@ -98,7 +98,7 @@ test("TDSI-22: al emitir se publica el mensaje 'venta' completo y el envio queda
   });
   assert.deepEqual(attributes, {
     tipo: "FACTURA_VENTA", tipo_operacion: "venta", factura_id: String(f.id), referencia_externa: f.numero,
-    idempotency_key: `factura-${f.id}-venta`, origen: "facturacion", grupo: "A",
+    idempotency_key: `factura-${f.id}-venta`, origen: "facturacion", grupo: "A1",
   });
 });
 
