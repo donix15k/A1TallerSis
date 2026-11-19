@@ -57,6 +57,7 @@ app.use("/api", productosVendidosRoutes); // TDSI-54/702
 app.use("/api/pagos", ventaOnlineRoutes); // TDSI-51/685
 app.use("/api/libro-ventas", libroVentasRoutes); // TDSI-50/748/749
 app.use("/api/pagos", pubsubVerificacionRoutes); // TDSI-958
+app.use("/api/kpis", require("./routes/kpiRoutes")); // TDSI-136/138: Panel de KPIs (solo administrador)
 app.use("/api/integraciones", require("./routes/integracionesRoutes")); // TDSI-125/126: monitor de integraciones (solo administrador)
 
 app.use(errorHandler);

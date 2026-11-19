@@ -72,4 +72,27 @@ async function ticketPromedio({ periodo, ahora } = {}) {
   return { ...rango, ...v, total_vendido: aMonto(aCentavos(v.total_vendido)), valor, color: colorTicketPromedio(valor), sin_ventas: v.ventas_validas === 0, umbrales: UMBRALES_TICKET };
 }
 
-module.exports = { rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };
+/**
+ * TDSI-138: el resumen del Panel de KPIs de un mes. "tarjetas" es la fila de tarjetas de la pestaña Resumen, en su orden; cada
+ * KPI nuevo (anulacion, devoluciones, metas, cuadre...) agrega la suya. Hoy: Ticket promedio (valor, color del semaforo y detalle).
+ */
+async function resumen({ periodo, ahora } = {}) {
+  const ticket = await ticketPromedio({ periodo, ahora });
+  return {
+    periodo: ticket.periodo,
+    desde: ticket.desde,
+    hasta: ticket.hasta,
+    tarjetas: [
+      {
+        id: "ticket_promedio",
+        nombre: "Ticket promedio",
+        valor: ticket.valor,
+        unidad: "Bs",
+        color: ticket.color,
+        detalle: { total_vendido: ticket.total_vendido, ventas_validas: ticket.ventas_validas, ventas_anuladas: ticket.ventas_anuladas, sin_ventas: ticket.sin_ventas, umbrales: ticket.umbrales },
+      },
+    ],
+  };
+}
+
+module.exports = { resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };
