@@ -17,7 +17,7 @@ router.get("/mensajes", wrap(async (req, res) => {
 
 // TDSI-128: totales por grupo (Compras, Marketplace, Contabilidad) y por estado (Enviado, Respondido, Pendiente, Error).
 router.get("/resumen", wrap(async (req, res) => {
-  res.json({ ok: true, data: await integraciones.resumen({ token: req.tokenAdministrador }) });
+  res.json({ ok: true, data: await integraciones.resumen({ token: req.tokenAdministrador, periodo: req.query.periodo }) });
 }));
 
 // TDSI-129: boton "Reenviar" de los mensajes con Error: llama al reenvio del microservicio dueno del mensaje

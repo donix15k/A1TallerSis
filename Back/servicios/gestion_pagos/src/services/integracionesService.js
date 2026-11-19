@@ -2,6 +2,8 @@
 // (Contabilidad D, Compras C, Marketplace E) para que el administrador vea si todo llego.
 const { fuentes, ESTADOS } = require("./integraciones/fuentes");
 const { AppError } = require("../utils/AppError");
+const { rangoDelPeriodo } = require("./kpiService");
+const { construirTarjetas } = require("./integraciones/tarjetas");
 
 const GRUPOS = ["C", "D", "E"];
 const POR_PAGINA_DEFECTO = 20;
@@ -103,8 +105,10 @@ const NOMBRES = { C: "Compras", D: "Contabilidad", E: "Marketplace" };
  * Respondido (el otro grupo ya contesto), Pendiente (se esta reintentando) y Error. Siempre trae los tres grupos, aunque
  * esten en 0, y "total" general. Alimenta las tarjetas del Monitor y las del Panel de KPIs (Integraciones y proveedores).
  */
-async function resumen({ token = null } = {}) {
+async function resumen({ token = null, periodo } = {}) {
+  const rango = rangoDelPeriodo(periodo); // 400 si el periodo no es AAAA-MM; sin periodo, el mes actual
   const { mensajes, fuentes: estadoFuentes } = await reunirMensajes({ token });
+  const tarjetas = await construirTarjetas({ rango, mensajes, token });
   const grupos = GRUPOS.map((g) => ({ grupo: g, nombre: NOMBRES[g], total: 0, enviados: 0, respondidos: 0, pendientes: 0, errores: 0 }));
   const clave = { Enviado: "enviados", Respondido: "respondidos", Pendiente: "pendientes", Error: "errores" };
   for (const m of mensajes) {
@@ -117,7 +121,8 @@ async function resumen({ token = null } = {}) {
     (a, g) => ({ total: a.total + g.total, enviados: a.enviados + g.enviados, respondidos: a.respondidos + g.respondidos, pendientes: a.pendientes + g.pendientes, errores: a.errores + g.errores }),
     { total: 0, enviados: 0, respondidos: 0, pendientes: 0, errores: 0 }
   );
-  return { grupos, total, fuentes: estadoFuentes, actualizado_en: new Date().toISOString() };
+  // TDSI-182: ademas de los totales, las 3 tarjetas de estado del Panel de KPIs (Contabilidad, Compras / Proveedores y Marketplace)
+  return { periodo: rango.periodo, desde: rango.desde, hasta: rango.hasta, grupos, total, tarjetas, fuentes: estadoFuentes, actualizado_en: new Date().toISOString() };
 }
 
 /**

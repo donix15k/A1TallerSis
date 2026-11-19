@@ -121,6 +121,15 @@ test("el limite de las vencidas: 15 dias justos no vencen; mas de 15 si", async 
   assert.ok(pasados.ordenes_vencidas.some((o) => o.monto === 3450));
 });
 
+test("las ordenes RECIBIDAS de Compras en el mes y cuando llego la ultima (para la tarjeta Compras del Monitor)", async () => {
+  // llegadas en abril de 2000: las del 01/04, 02/04, 05/04, 10/04 y 28/04 (las del 25/03, 01/03 y 10/05 no)
+  const d = (await pedir()).cuerpo.data;
+  assert.equal(d.ordenes_recibidas, 5);
+  assert.equal(new Date(d.ultima_orden_recibida_en).toISOString(), "2000-04-28T14:00:00.000Z"); // 28/04 10:00 Bolivia
+  const sin = (await pedir("?periodo=2000-09")).cuerpo.data;
+  assert.deepEqual([sin.ordenes_recibidas, sin.ultima_orden_recibida_en], [0, null]);
+});
+
 test("un mes sin ordenes pagadas: promedio y color null (sin_ordenes_pagadas), listas vacias", async () => {
   const d = (await pedir("?periodo=2000-09")).cuerpo.data;
   assert.deepEqual([d.valor, d.color, d.sin_ordenes_pagadas, d.ordenes_pagadas, d.ordenes_pagadas_total], [null, null, true, [], 0]);

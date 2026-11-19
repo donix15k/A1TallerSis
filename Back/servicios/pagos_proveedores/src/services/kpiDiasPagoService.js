@@ -71,6 +71,14 @@ async function diasPagoProveedores({ periodo, limite, hoy, ahora = new Date() } 
     [DIAS_PARA_VENCER, rango.hasta, ahora]
   );
 
+  // TDSI-182: tarjeta "Compras / Proveedores" del Monitor: ordenes de pago que llegaron de Compras en el periodo y cuando llego la ultima
+  const recibidas = await query(
+    `SELECT COUNT(*)::int AS total, MAX(creado_en) AS ultima
+       FROM proveedores.ordenes_pago
+      WHERE (creado_en AT TIME ZONE '${ZONA_HORARIA}')::date BETWEEN $1::date AND $2::date`,
+    [rango.desde, rango.hasta]
+  );
+
   const n = pagadas.rows.length;
   const suma = pagadas.rows.reduce((a, r) => a + Number(r.dias), 0);
   const valor = n ? redondear1(suma / n) : null;
@@ -79,6 +87,8 @@ async function diasPagoProveedores({ periodo, limite, hoy, ahora = new Date() } 
     ...rango,
     valor,
     color: valor === null ? null : colorDiasPago(valor),
+    ordenes_recibidas: recibidas.rows[0].total,
+    ultima_orden_recibida_en: recibidas.rows[0].ultima,
     ordenes_pagadas_total: n,
     sin_ordenes_pagadas: n === 0,
     ordenes_vencidas_total: vencidas.rows.length,
