@@ -295,6 +295,20 @@ CREATE TABLE IF NOT EXISTS caja.metas_venta (
 ALTER TABLE caja.metas_venta ENABLE ROW LEVEL SECURITY;
 
 -- ==========================================================================
+-- TDSI-161/199: meta MENSUAL de ventas por caja (filas "Meta Caja N" de "Configurar objetivos" del Panel de KPIs). Una por caja.
+-- Si una caja no la tiene, el cumplimiento de metas usa su meta diaria (caja.metas_venta) por los dias del mes.
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS caja.metas_mensuales (
+    id              BIGSERIAL PRIMARY KEY,
+    caja_id         VARCHAR(20)   NOT NULL UNIQUE,
+    monto_mensual   NUMERIC(14,2) NOT NULL CHECK (monto_mensual > 0),
+    actualizado_por VARCHAR(60),
+    actualizado_en  TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+ALTER TABLE caja.metas_mensuales ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================================================
 -- TDSI-53/852: registrar hora de bloqueo/desbloqueo e intentos fallidos.
 -- ==========================================================================
 ALTER TABLE caja.sesiones_cajero
