@@ -265,6 +265,20 @@ async function registrarDevolucion(cuerpo = {}, opciones = {}) {
   };
 }
 
+/**
+ * TDSI-24: estado, items, motivo y monto de una devolucion, a partir del codigo que recibio el cliente
+ * (acepta minusculas y espacios: " dev-0001 " -> DEV-0001). 400 si el codigo no tiene forma de codigo, 404 si no existe.
+ */
+async function obtenerDevolucion(codigo) {
+  const normalizado = String(codigo ?? "").trim().toUpperCase();
+  if (!/^DEV-\d{1,10}$/.test(normalizado)) {
+    throw new AppError("El código de la devolución no es válido. Ejemplo: DEV-0001.", 400, { codigo });
+  }
+  const devolucion = await devolucionesRepo.obtenerPorCodigo(normalizado);
+  if (!devolucion) throw new AppError(`No se encontró la devolución ${normalizado}.`, 404, { codigo: normalizado });
+  return devolucion;
+}
+
 module.exports = {
   consultarFacturaParaDevolucion,
   repartirYaDevuelto,
@@ -272,4 +286,5 @@ module.exports = {
   calcularMonto,
   prepararDevolucion,
   registrarDevolucion,
+  obtenerDevolucion,
 };

@@ -35,6 +35,59 @@ async function cantidadesYaDevueltas(facturaNumero) {
   }));
 }
 
+/**
+ * TDSI-24: una devolucion completa por su codigo (DEV-0001): cabecera, motivo, items e historial de estados.
+ * null si no existe.
+ */
+async function obtenerPorCodigo(codigo) {
+  const { rows } = await query(
+    `SELECT d.id, d.codigo, d.estado, d.tipo, d.factura_numero, d.cliente_nit, d.fecha_venta, d.fecha_solicitud,
+            d.monto_total, d.requiere_autorizacion, d.observaciones, d.motivo_rechazo, d.autorizado_por,
+            d.autorizado_en, d.creado_por, d.metodo_pago_original, m.id AS motivo_id, m.nombre AS motivo
+       FROM devoluciones.devoluciones d
+       LEFT JOIN devoluciones.motivos m ON m.id = d.motivo_id
+      WHERE d.codigo = $1`,
+    [codigo]
+  );
+  const d = rows[0];
+  if (!d) return null;
+
+  const { rows: items } = await query(
+    `SELECT descripcion, cantidad, precio_unitario, subtotal FROM devoluciones.devolucion_items WHERE devolucion_id = $1 ORDER BY id`,
+    [d.id]
+  );
+  const { rows: historial } = await query(
+    `SELECT estado_anterior, estado_nuevo, cambiado_por, cambiado_en FROM devoluciones.historial_estados WHERE devolucion_id = $1 ORDER BY id`,
+    [d.id]
+  );
+
+  return {
+    codigo: d.codigo,
+    estado: d.estado,
+    tipo: d.tipo,
+    factura_numero: d.factura_numero,
+    cliente_nit: d.cliente_nit,
+    fecha_venta: d.fecha_venta,
+    fecha_solicitud: d.fecha_solicitud,
+    monto_total: Number(d.monto_total),
+    requiere_autorizacion: d.requiere_autorizacion,
+    motivo: d.motivo_id ? { id: Number(d.motivo_id), nombre: d.motivo } : null,
+    observaciones: d.observaciones,
+    motivo_rechazo: d.motivo_rechazo,
+    autorizado_por: d.autorizado_por,
+    autorizado_en: d.autorizado_en,
+    cajero: d.creado_por,
+    metodo_pago_original: d.metodo_pago_original,
+    items: items.map((i) => ({
+      descripcion: i.descripcion,
+      cantidad: Number(i.cantidad),
+      precio_unitario: Number(i.precio_unitario),
+      subtotal: Number(i.subtotal),
+    })),
+    historial,
+  };
+}
+
 const claveProducto = (descripcion, precio) => `${String(descripcion).trim().toLowerCase()}|${Number(precio).toFixed(2)}`;
 
 /**
@@ -113,4 +166,4 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
   });
 }
 
-module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, crearDevolucion };
+module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, crearDevolucion };

@@ -22,4 +22,10 @@ router.post("/", wrap(async (req, res) => {
   res.status(201).json({ ok: true, mensaje: "Devolución registrada", data });
 }));
 
+// TDSI-24: estado, items, motivo y monto de una devolucion por su codigo. Va al final: "motivos" y
+// "factura/:numero" son rutas fijas y no deben confundirse con un codigo.
+router.get("/:codigo", wrap(async (req, res) => {
+  res.json({ ok: true, data: await devolucionService.obtenerDevolucion(req.params.codigo) });
+}));
+
 module.exports = router;
