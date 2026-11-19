@@ -45,7 +45,7 @@ const claveProducto = (descripcion, precio) => `${String(descripcion).trim().toL
  *  - Antes de guardar se vuelve a comprobar la cantidad disponible DENTRO de la transaccion y con un candado
  *    por factura: si dos cajeros devuelven lo mismo a la vez, el segundo recibe 409 en vez de devolver de mas.
  */
-async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_id, observaciones, items, cajero }) {
+async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_id, observaciones, items, cajero, requiere_autorizacion = false }) {
   return withTransaction(async (client) => {
     await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`devoluciones.factura.${factura.numero}`]);
 
@@ -83,11 +83,11 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
     const { rows } = await client.query(
       `INSERT INTO devoluciones.devoluciones
          (codigo, factura_numero, cliente_nit, fecha_venta, dentro_de_plazo, tipo, motivo_id, observaciones,
-          metodo_pago_original, monto_total, estado, creado_por)
-       VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8, $9, 'PENDIENTE', $10)
-       RETURNING id, codigo, estado, fecha_solicitud`,
+          metodo_pago_original, monto_total, estado, creado_por, requiere_autorizacion)
+       VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8, $9, 'PENDIENTE', $10, $11)
+       RETURNING id, codigo, estado, fecha_solicitud, requiere_autorizacion`,
       [codigo, factura.numero, factura.cliente_nit, factura.fecha, tipo, motivo_id, observaciones,
-        factura.metodo_pago ?? "No registrado", monto_total, cajero]
+        factura.metodo_pago ?? "No registrado", monto_total, cajero, requiere_autorizacion]
     );
     for (const it of items) {
       await client.query(
@@ -96,7 +96,20 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
         [rows[0].id, it.descripcion, it.cantidad, it.precio_unitario, it.subtotal]
       );
     }
-    return { id: Number(rows[0].id), codigo: rows[0].codigo, estado: rows[0].estado, fecha_solicitud: rows[0].fecha_solicitud };
+
+    // 4) TDSI-23: primer movimiento del historial (sin estado anterior -> PENDIENTE), en la misma transaccion.
+    await client.query(
+      `INSERT INTO devoluciones.historial_estados (devolucion_id, estado_anterior, estado_nuevo, cambiado_por)
+       VALUES ($1, NULL, 'PENDIENTE', $2)`,
+      [rows[0].id, cajero]
+    );
+    return {
+      id: Number(rows[0].id),
+      codigo: rows[0].codigo,
+      estado: rows[0].estado,
+      fecha_solicitud: rows[0].fecha_solicitud,
+      requiere_autorizacion: rows[0].requiere_autorizacion,
+    };
   });
 }
 

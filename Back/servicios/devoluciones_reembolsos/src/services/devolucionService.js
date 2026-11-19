@@ -218,6 +218,10 @@ async function prepararDevolucion(cuerpo = {}, { ahora = new Date() } = {}) {
 
 const CAJERO_MAX = 60; // largo de devoluciones.devoluciones.creado_por
 
+// TDSI-23: una devolucion de mas de 500 Bs queda marcada como "Requiere autorizacion del supervisor".
+const limiteAutorizacionBs = () => Number(process.env.LIMITE_AUTORIZACION_BS) || 500;
+const requiereAutorizacion = (monto) => monto > limiteAutorizacionBs();
+
 function validarCajero(valor) {
   const cajero = typeof valor === "string" ? valor.trim() : "";
   if (!cajero) throw new AppError("Falta el cajero que registra la devolución.", 400);
@@ -243,6 +247,7 @@ async function registrarDevolucion(cuerpo = {}, opciones = {}) {
     observaciones: preparada.observaciones,
     items: preparada.items,
     cajero,
+    requiere_autorizacion: requiereAutorizacion(preparada.monto_total),
   });
 
   return {
@@ -250,6 +255,7 @@ async function registrarDevolucion(cuerpo = {}, opciones = {}) {
     estado: guardada.estado,
     tipo: preparada.tipo,
     monto_total: preparada.monto_total,
+    requiere_autorizacion: guardada.requiere_autorizacion,
     factura_numero: preparada.factura.numero,
     motivo: preparada.motivo,
     observaciones: preparada.observaciones,
