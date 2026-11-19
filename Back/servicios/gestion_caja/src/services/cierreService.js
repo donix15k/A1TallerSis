@@ -1,6 +1,7 @@
 const { AppError } = require("../utils/AppError");
 const { aCentavos, aMonto } = require("../utils/money");
 const turnosRepo = require("../data/turnosRepo");
+const movimientosRepo = require("../data/movimientosRepo");
 const diferenciasRepo = require("../data/diferenciasRepo");
 const arqueoRepo = require("../data/arqueoRepo");
 const { tipoDe } = require("../utils/denominaciones");
@@ -21,18 +22,27 @@ async function calcularTotalRecaudado(turnoId) {
   const hasta = turno.cerrado_en || new Date();
   const reporteVentas = await obtenerReporteVentas({ caja_id: turno.caja_id, desde: turno.abierto_en, hasta });
 
+  // TDSI-50: las salidas registradas en el turno (efectivo entregado por devoluciones) son egresos y se descuentan.
+  const egresos = await movimientosRepo.sumarEgresosPorMetodo(turnoId);
+  const metodo = (ingresos, nombre) => ({
+    ingresos,
+    egresos: egresos[nombre],
+    neto: aMonto(aCentavos(ingresos) - aCentavos(egresos[nombre])),
+    operaciones: reporteVentas.operacionesPorMetodo[nombre],
+  });
   const porMetodo = {
-    Efectivo: { ingresos: reporteVentas.totalEfectivo, egresos: 0, neto: reporteVentas.totalEfectivo, operaciones: reporteVentas.operacionesPorMetodo.Efectivo },
-    Tarjeta: { ingresos: reporteVentas.totalTarjeta, egresos: 0, neto: reporteVentas.totalTarjeta, operaciones: reporteVentas.operacionesPorMetodo.Tarjeta },
-    QR: { ingresos: reporteVentas.totalQR, egresos: 0, neto: reporteVentas.totalQR, operaciones: reporteVentas.operacionesPorMetodo.QR },
+    Efectivo: metodo(reporteVentas.totalEfectivo, "Efectivo"),
+    Tarjeta: metodo(reporteVentas.totalTarjeta, "Tarjeta"),
+    QR: metodo(reporteVentas.totalQR, "QR"),
   };
+  const totalEgresos = aMonto(aCentavos(egresos.Efectivo) + aCentavos(egresos.Tarjeta) + aCentavos(egresos.QR));
 
   return {
     turnoId,
     caja_id: turno.caja_id,
     totalIngresos: reporteVentas.totalGeneral,
-    totalEgresos: 0,
-    totalRecaudado: reporteVentas.totalGeneral,
+    totalEgresos,
+    totalRecaudado: aMonto(aCentavos(reporteVentas.totalGeneral) - aCentavos(totalEgresos)),
     operaciones: reporteVentas.cantidadVentas,
     porMetodo,
     resumenVentas: {

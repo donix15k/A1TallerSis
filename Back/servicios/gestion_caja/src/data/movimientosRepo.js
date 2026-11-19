@@ -9,6 +9,21 @@ async function listarPorTurno(turnoId) {
 }
 
 /**
+ * TDSI-50: suma de los EGRESOS del turno por metodo (hoy: las salidas de efectivo por devoluciones).
+ * Devuelve { Efectivo, Tarjeta, QR } en Bs (0 si no hay).
+ */
+async function sumarEgresosPorMetodo(turnoId) {
+  const { rows } = await query(
+    `SELECT metodo, COALESCE(SUM(monto), 0)::float AS total
+       FROM caja.movimientos WHERE turno_id = $1 AND tipo = 'EGRESO' GROUP BY metodo`,
+    [turnoId]
+  );
+  const salida = { Efectivo: 0, Tarjeta: 0, QR: 0 };
+  for (const r of rows) if (r.metodo in salida) salida[r.metodo] = r.total;
+  return salida;
+}
+
+/**
  * Inserta el movimiento. Los de origen DEVOLUCIONES son unicos por referencia (el codigo DEV-NNNN): si ya existe uno,
  * no inserta y devuelve { duplicado: true, movimiento: el que ya estaba } -- asi repetir la misma devolucion nunca
  * saca el efectivo dos veces (el indice uq_movimientos_devolucion lo garantiza incluso con pedidos simultaneos).
@@ -45,4 +60,4 @@ async function insertar({ caja_id, turno_id, tipo, metodo, monto, origen_microse
   return rows[0];
 }
 
-module.exports = { listarPorTurno, insertar };
+module.exports = { listarPorTurno, sumarEgresosPorMetodo, insertar };
