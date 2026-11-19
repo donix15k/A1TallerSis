@@ -5,6 +5,7 @@ const { query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { aCentavos, aMonto } = require("../utils/money");
 const { obtenerMetaDiaria } = require("./metasProxy");
+const { obtenerDevolucionesDelPeriodo } = require("./devolucionesProxy");
 
 const ZONA = "America/La_Paz";
 
@@ -13,6 +14,9 @@ const UMBRALES_TICKET = { verde: 45, amarillo: 35 };
 
 // KPI 2 · Tasa de anulacion: VERDE <= 2 %, AMARILLO 2 - 5 %, ROJO > 5 %.
 const UMBRALES_ANULACION = { verde: 2, amarillo: 5 };
+
+// KPI 3 · Tasa de devoluciones (monto devuelto / monto vendido): VERDE <= 1,5 %, AMARILLO 1,5 - 3 %, ROJO > 3 %.
+const UMBRALES_DEVOLUCIONES = { verde: 1.5, amarillo: 3 };
 
 const hoyBolivia = (ahora = new Date()) => ahora.toLocaleDateString("en-CA", { timeZone: ZONA });
 
@@ -63,6 +67,14 @@ function colorTasaAnulacion(tasa) {
   return "ROJO";
 }
 
+/** Semaforo de la tasa de devoluciones: VERDE hasta 1,5 %, AMARILLO por encima de 1,5 % y hasta 3 %, ROJO por encima de 3 %. */
+function colorTasaDevoluciones(tasa) {
+  const t = aCentavos(tasa);
+  if (t <= aCentavos(UMBRALES_DEVOLUCIONES.verde)) return "VERDE";
+  if (t <= aCentavos(UMBRALES_DEVOLUCIONES.amarillo)) return "AMARILLO";
+  return "ROJO";
+}
+
 /**
  * Lo vendido entre dos dias (AAAA-MM-DD, inclusivos, hora de Bolivia): { total_vendido, ventas_validas, ventas_anuladas }.
  * Solo cuentan las ventas validas; las anuladas se informan aparte para quien las quiera mostrar.
@@ -95,8 +107,9 @@ async function ticketPromedio({ periodo, ahora } = {}) {
  * TDSI-138: el resumen del Panel de KPIs de un mes. "tarjetas" es la fila de tarjetas de la pestaña Resumen, en su orden; cada
  * KPI nuevo (anulacion, devoluciones, metas, cuadre...) agrega la suya. Hoy: Ticket promedio (valor, color del semaforo y detalle).
  */
-async function resumen({ periodo, ahora } = {}) {
+async function resumen({ periodo, token, ahora } = {}) {
   const ticket = await ticketPromedio({ periodo, ahora });
+  const [anulacion, devoluciones] = await Promise.all([tasaAnulacion({ periodo: ticket.periodo, ahora }), tasaDevoluciones({ periodo: ticket.periodo, token, ahora })]);
   return {
     periodo: ticket.periodo,
     desde: ticket.desde,
@@ -109,6 +122,22 @@ async function resumen({ periodo, ahora } = {}) {
         unidad: "Bs",
         color: ticket.color,
         detalle: { total_vendido: ticket.total_vendido, ventas_validas: ticket.ventas_validas, ventas_anuladas: ticket.ventas_anuladas, sin_ventas: ticket.sin_ventas, umbrales: ticket.umbrales },
+      },
+      {
+        id: "anulacion",
+        nombre: "Anulación",
+        valor: anulacion.valor,
+        unidad: "%",
+        color: anulacion.color,
+        detalle: { anuladas: anulacion.anuladas, emitidas: anulacion.emitidas, sin_facturas: anulacion.sin_facturas, umbrales: anulacion.umbrales },
+      },
+      {
+        id: "devoluciones",
+        nombre: "Devoluciones",
+        valor: devoluciones.valor,
+        unidad: "%",
+        color: devoluciones.color,
+        detalle: { monto_devuelto: devoluciones.monto_devuelto, monto_vendido: devoluciones.monto_vendido, disponible: devoluciones.disponible, error: devoluciones.error, umbrales: devoluciones.umbrales },
       },
     ],
   };
@@ -124,6 +153,36 @@ async function tasaAnulacion({ periodo, ahora } = {}) {
   const emitidas = v.ventas_validas + v.ventas_anuladas;
   const valor = calcularPorcentaje(v.ventas_anuladas, emitidas);
   return { ...rango, anuladas: v.ventas_anuladas, emitidas, valor, color: colorTasaAnulacion(valor), sin_facturas: emitidas === 0, umbrales: UMBRALES_ANULACION };
+}
+
+/**
+ * TDSI-150: KPI 3 · Tasa de devoluciones del mes = monto devuelto (solo devoluciones PROCESADAS, lo calcula Devoluciones) / monto
+ * vendido x 100. Ejemplo: Bs 1.208,20 devueltos = 2,50 % (AMARILLO). Sin ventas: 0 %. Si Devoluciones no responde, el valor y el color
+ * son null y se informa el error (el resto del Panel sigue funcionando).
+ */
+async function tasaDevoluciones({ periodo, token, ahora } = {}) {
+  const rango = rangoDelPeriodo(periodo, { ahora });
+  const [v, dev] = await Promise.all([ventasEntre(rango.desde, rango.hasta), obtenerDevolucionesDelPeriodo({ periodo: rango.periodo, token })]);
+  if (!dev.datos) {
+    return { ...rango, disponible: false, error: dev.error, valor: null, color: null, monto_devuelto: null, monto_vendido: aMonto(aCentavos(v.total_vendido)), cantidad: null, motivos: [], umbrales: UMBRALES_DEVOLUCIONES };
+  }
+  const montoVendido = aMonto(aCentavos(v.total_vendido));
+  const valor = calcularPorcentaje(dev.datos.monto_devuelto, montoVendido);
+  return {
+    ...rango, disponible: true, error: null, valor, color: colorTasaDevoluciones(valor), monto_devuelto: dev.datos.monto_devuelto, monto_vendido: montoVendido,
+    cantidad: dev.datos.cantidad, motivos: dev.datos.motivos, sin_ventas: v.ventas_validas === 0, umbrales: UMBRALES_DEVOLUCIONES,
+  };
+}
+
+/**
+ * TDSI-150: la pestaña Riesgo: la tasa de anulacion y la tasa de devoluciones con su color, el desglose de motivos de devolucion
+ * (de mayor a menor) y los limites de cada semaforo para dibujar la barra. Anulacion = "31 de 1.073 facturas"; devoluciones =
+ * "Bs 1.208,20 devueltos".
+ */
+async function riesgo({ periodo, token, ahora } = {}) {
+  const rango = rangoDelPeriodo(periodo, { ahora });
+  const [anulacion, devoluciones] = await Promise.all([tasaAnulacion({ periodo: rango.periodo, ahora }), tasaDevoluciones({ periodo: rango.periodo, token, ahora })]);
+  return { ...rango, anulacion, devoluciones };
 }
 
 const DIAS_GRAFICO = 30;
@@ -182,4 +241,4 @@ async function ventasVsMeta({ periodo, ahora } = {}) {
   };
 }
 
-module.exports = { tasaAnulacion, calcularPorcentaje, colorTasaAnulacion, UMBRALES_ANULACION, ventasVsMeta, ventanaDelGrafico, sumarDias, resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };
+module.exports = { riesgo, tasaDevoluciones, colorTasaDevoluciones, UMBRALES_DEVOLUCIONES, tasaAnulacion, calcularPorcentaje, colorTasaAnulacion, UMBRALES_ANULACION, ventasVsMeta, ventanaDelGrafico, sumarDias, resumen, rangoDelPeriodo, calcularTicketPromedio, colorTicketPromedio, ventasEntre, ticketPromedio, hoyBolivia, UMBRALES_TICKET, ZONA };

@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { query, pool } = require("../config/db");
 const { ticketPromedio, resumen, ventasEntre } = require("../services/kpiService");
+process.env.DEVOLUCIONES_URL = "http://localhost:1"; // Devoluciones caido: el resumen sigue funcionando
 
 const venta = (id, metodo, monto, fecha, estado = "Registrado", tipo = "Simple") =>
   query(`INSERT INTO pagos.transacciones (id_transaccion, metodo, monto, tipo_pago, estado, fecha) VALUES ($1, $2, $3, $4, $5, $6::timestamptz)`, [id, metodo, monto, tipo, estado, fecha]);

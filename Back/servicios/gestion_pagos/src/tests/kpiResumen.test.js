@@ -9,7 +9,7 @@ const { errorHandler } = require("../middlewares/errorHandler");
 const rutas = require("../routes/kpiRoutes");
 
 const PERIODO = "2003-04";
-let caja, servidor, base;
+let caja, devs, servidor, base;
 
 // Horas de Bolivia (UTC-4): "2003-04-01 00:30 -04" etc.
 const venta = (id, metodo, monto, fecha, estado = "Registrado", tipo = "Simple") =>
@@ -25,6 +25,12 @@ test.before(async () => {
   });
   await new Promise((r) => caja.listen(0, r));
   process.env.ADMIN_VERIFICAR_URL = `http://localhost:${caja.address().port}`;
+  devs = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ ok: true, data: { monto_devuelto: 0, cantidad: 0, motivos: [] } }));
+  });
+  await new Promise((r) => devs.listen(0, r));
+  process.env.DEVOLUCIONES_URL = `http://localhost:${devs.address().port}`;
 
   // 3 ventas validas: 40,00 + 50,00 (mixto 20 + 30) + 49,14 = 139,14 -> ticket promedio 46,38 (VERDE)
   await venta("KPI138-S1", "Efectivo", 40, "2003-04-01 00:30:00-04"); // primer dia del mes (00:30 Bolivia)
@@ -47,6 +53,8 @@ test.after(async () => {
   delete process.env.ADMIN_VERIFICAR_URL;
   servidor.close();
   caja.close();
+  devs.close();
+  delete process.env.DEVOLUCIONES_URL;
   await pool.end();
 });
 
@@ -57,7 +65,7 @@ test("el resumen del mes trae la tarjeta Ticket promedio con su valor, su color 
   assert.equal(status, 200);
   const d = cuerpo.data;
   assert.deepEqual([d.periodo, d.desde, d.hasta], [PERIODO, "2003-04-01", "2003-04-30"]);
-  assert.equal(d.tarjetas.length, 1);
+  assert.deepEqual(d.tarjetas.map((x) => x.id), ["ticket_promedio", "anulacion", "devoluciones"]);
   const [t] = d.tarjetas;
   assert.deepEqual([t.id, t.nombre, t.valor, t.unidad, t.color], ["ticket_promedio", "Ticket promedio", 46.38, "Bs", "VERDE"]);
   assert.deepEqual([t.detalle.total_vendido, t.detalle.ventas_validas, t.detalle.ventas_anuladas, t.detalle.sin_ventas], [139.14, 3, 1, false]);
