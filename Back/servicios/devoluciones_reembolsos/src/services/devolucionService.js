@@ -385,6 +385,7 @@ async function rechazarDevolucion(codigo, cuerpo = {}) {
 }
 
 module.exports = {
+  validarCajero,
   consultarFacturaParaDevolucion,
   repartirYaDevuelto,
   listarMotivos,

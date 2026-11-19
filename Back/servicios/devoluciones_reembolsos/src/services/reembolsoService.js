@@ -1,5 +1,10 @@
 const facturacionProxy = require("./facturacionProxy");
 const devolucionService = require("./devolucionService");
+const cajaProxy = require("./cajaProxy");
+const reversionService = require("./reversionService");
+const devolucionesRepo = require("../data/devolucionesRepo");
+const reembolsosRepo = require("../data/reembolsosRepo");
+const { withTransaction, query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { tipoDeReembolso, repartirMonto, redondear } = require("../utils/reembolso");
 
@@ -57,6 +62,18 @@ function planificarReembolso({ monto, factura }) {
  */
 async function consultarReembolso(codigo) {
   const devolucion = await devolucionService.obtenerDevolucion(codigo);
+  if (devolucion.estado === "PROCESADA") {
+    // Ya reembolsada: se muestra lo que se hizo (reembolsos guardados y estado de cada reversion).
+    const { rows } = await query(`SELECT id FROM devoluciones.devoluciones WHERE codigo = $1`, [devolucion.codigo]);
+    return {
+      codigo: devolucion.codigo,
+      estado: devolucion.estado,
+      monto_total: devolucion.monto_total,
+      factura_numero: devolucion.factura_numero,
+      ya_reembolsada: true,
+      reembolsos: await reembolsosRepo.listarPorDevolucion(Number(rows[0].id)),
+    };
+  }
   if (devolucion.estado !== "APROBADA") {
     throw new AppError(
       `La devolución ${devolucion.codigo} está ${devolucion.estado}: solo se reembolsan las APROBADAS.`,
@@ -78,4 +95,76 @@ async function consultarReembolso(codigo) {
   };
 }
 
-module.exports = { planificarReembolso, consultarReembolso };
+/** Mensaje para el cajero de cada reembolso: lo que debe hacer o lo que ya paso. */
+function mensajeDe(r) {
+  if (r.tipo === "EFECTIVO") return `Entregue ${bs(r.monto)} al cliente`;
+  const medio = r.tipo === "REVERSION_QR" ? "QR" : "tarjeta";
+  return r.envio?.estado === "ENVIADO"
+    ? `Reversión enviada: ${bs(r.monto)} del cobro con ${medio}`
+    : `Reversión registrada: ${bs(r.monto)} del cobro con ${medio} se enviará a la pasarela en breve`;
+}
+
+/**
+ * TDSI-49: reembolsa una devolucion APROBADA y la deja PROCESADA.
+ *   cuerpo: { cajero, caja_id }  (caja_id solo hace falta si parte del reembolso sale en efectivo)
+ *
+ * Todo ocurre en UNA transaccion que bloquea la devolucion:
+ *   1. sigue APROBADA (si ya esta PROCESADA -> 409: un reembolso solo se hace una vez; otra -> 409)
+ *   2. si hay efectivo: el cajero tiene el turno abierto de esa caja con efectivo suficiente (TDSI-47) y se registra
+ *      la salida en Gestion de Caja (TDSI-46, idempotente por codigo)
+ *   3. se guardan los reembolsos y los envios a la pasarela (TDSI-48)
+ *   4. APROBADA -> PROCESADA con su fila en el historial (quien reembolso)
+ * Si algo falla antes del final no queda nada guardado. Una vez guardado se intenta enviar de inmediato las reversiones
+ * de tarjeta/QR; si la pasarela falla, quedan pendientes y se reintentan solas.
+ * Si fallara la base DESPUES de registrar la salida en Caja, reintentar no saca el efectivo dos veces (idempotente).
+ */
+async function reembolsar(codigo, cuerpo = {}) {
+  const cajero = devolucionService.validarCajero(cuerpo.cajero);
+  const cajaId = typeof cuerpo.caja_id === "string" ? cuerpo.caja_id.trim() : "";
+
+  const consulta = await consultarReembolso(codigo); // 404 / 409 (no aprobada) / 422 (plan imposible)
+  if (consulta.ya_reembolsada) {
+    throw new AppError(`La devolución ${consulta.codigo} ya fue reembolsada: un reembolso solo se hace una vez.`, 409, { codigo: consulta.codigo, estado: consulta.estado });
+  }
+  const { plan } = consulta;
+  const efectivo = plan.find((p) => p.tipo === "EFECTIVO");
+  if (efectivo && !cajaId) throw new AppError("Falta la caja (caja_id) de la que sale el efectivo del reembolso.", 400);
+
+  const guardado = await withTransaction(async (client) => {
+    const actual = await devolucionesRepo.bloquearParaReembolso(client, codigo);
+    if (!actual) throw new AppError("Devolución no encontrada", 404, { codigo });
+    if (actual.estado !== "APROBADA") {
+      throw new AppError(
+        actual.estado === "PROCESADA"
+          ? `La devolución ${actual.codigo} ya fue reembolsada: un reembolso solo se hace una vez.`
+          : `La devolución ${actual.codigo} está ${actual.estado}: solo se reembolsan las APROBADAS.`,
+        409,
+        { codigo: actual.codigo, estado: actual.estado }
+      );
+    }
+    if (efectivo) {
+      const { turnoId } = await cajaProxy.validarEfectivoDisponible({ cajaId, cajero, monto: efectivo.monto });
+      await cajaProxy.registrarSalidaEfectivo({ turnoId, monto: efectivo.monto, codigo: actual.codigo });
+    }
+    const reembolsos = await reembolsosRepo.guardarReembolsos(client, actual.id, plan);
+    await devolucionesRepo.marcarProcesada(client, actual.id, cajero);
+    return { id: actual.id, reembolsos };
+  });
+
+  // Reversiones de tarjeta/QR: primer intento ya (si falla, el proceso periodico las reintenta).
+  const pendientes = guardado.reembolsos.filter((r) => r.envio_id).map((r) => r.id);
+  if (pendientes.length) await reversionService.procesarPendientes({ reembolsoIds: pendientes }).catch(() => {});
+
+  const reembolsos = await reembolsosRepo.listarPorDevolucion(guardado.id);
+  const devolucion = await devolucionService.obtenerDevolucion(codigo);
+  return {
+    codigo: devolucion.codigo,
+    estado: devolucion.estado,
+    monto_total: devolucion.monto_total,
+    reembolsos,
+    mensajes: reembolsos.map(mensajeDe),
+    historial: devolucion.historial,
+  };
+}
+
+module.exports = { planificarReembolso, consultarReembolso, reembolsar };

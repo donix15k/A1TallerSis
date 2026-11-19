@@ -258,4 +258,30 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
   });
 }
 
-module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, aprobarPendiente, rechazarPendiente, crearDevolucion };
+/**
+ * TDSI-49: bloquea la fila de la devolucion (FOR UPDATE) dentro de la transaccion `client` y devuelve su estado ACTUAL.
+ * Si dos cajeros reembolsan a la vez, el segundo espera aqui y, cuando el primero termina, la ve ya PROCESADA.
+ * null si no existe.
+ */
+async function bloquearParaReembolso(client, codigo) {
+  const { rows } = await client.query(
+    `SELECT id, codigo, estado, monto_total FROM devoluciones.devoluciones WHERE codigo = $1 FOR UPDATE`,
+    [codigo]
+  );
+  return rows[0] ? { id: Number(rows[0].id), codigo: rows[0].codigo, estado: rows[0].estado, monto_total: Number(rows[0].monto_total) } : null;
+}
+
+/** TDSI-49: APROBADA -> PROCESADA, con su fila en historial_estados (quien reembolso), en la transaccion `client`. */
+async function marcarProcesada(client, devolucionId, cajero) {
+  const { rowCount } = await client.query(
+    `UPDATE devoluciones.devoluciones SET estado = 'PROCESADA' WHERE id = $1 AND estado = 'APROBADA'`,
+    [devolucionId]
+  );
+  if (rowCount !== 1) throw new AppError("La devolución ya no está APROBADA.", 409);
+  await client.query(
+    `INSERT INTO devoluciones.historial_estados (devolucion_id, estado_anterior, estado_nuevo, cambiado_por) VALUES ($1, 'APROBADA', 'PROCESADA', $2)`,
+    [devolucionId, cajero]
+  );
+}
+
+module.exports = { bloquearParaReembolso, marcarProcesada, listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, aprobarPendiente, rechazarPendiente, crearDevolucion };
