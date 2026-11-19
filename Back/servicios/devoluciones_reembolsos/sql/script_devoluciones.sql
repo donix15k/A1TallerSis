@@ -77,6 +77,14 @@ CREATE TABLE IF NOT EXISTS devoluciones.envios_pasarela (
     enviado_en      TIMESTAMPTZ
 );
 
+-- TDSI-48: una devolucion tiene como maximo un reembolso por tipo (EFECTIVO / REVERSION_TARJETA / REVERSION_QR) y cada
+-- reembolso de tarjeta/QR tiene un solo envio a la pasarela, con su ultimo error y la hora del proximo reintento.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reembolsos_devolucion_tipo ON devoluciones.reembolsos (devolucion_id, tipo);
+ALTER TABLE devoluciones.envios_pasarela ADD COLUMN IF NOT EXISTS ultimo_error       VARCHAR(400);
+ALTER TABLE devoluciones.envios_pasarela ADD COLUMN IF NOT EXISTS proximo_intento_en TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_envios_pasarela_reembolso ON devoluciones.envios_pasarela (reembolso_id);
+CREATE INDEX IF NOT EXISTS ix_envios_pasarela_pendientes ON devoluciones.envios_pasarela (proximo_intento_en) WHERE estado = 'PENDIENTE';
+
 -- TDSI-73/79: notas de credito electronicas
 CREATE TABLE IF NOT EXISTS devoluciones.notas_credito (
     id              BIGSERIAL PRIMARY KEY,
