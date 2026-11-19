@@ -100,6 +100,7 @@ async function recibirVenta(json) {
       razon_social: venta.razon_social || venta.cliente_id,
       items: itemsProcesados.map((it) => ({ descripcion: it.descripcion, cantidad: it.cantidad, precio_unitario: it.precioUnitario })),
       metodo_pago: venta.metodo_pago, // la factura lleva el metodo con que se pago la orden
+      canal: "Online", // vendida por el Marketplace
     });
     numeroFactura = factura.numero;
     await repo.guardarNumeroFactura(venta.id, numeroFactura);

@@ -121,3 +121,22 @@ test("si algo falla al guardar la factura no queda nada a medias (ni factura ni 
     await query(`DELETE FROM facturacion.clientes_frecuentes WHERE nit = $1`, [NIT_FALLA]);
   }
 });
+
+const canalEnBase = async (id) => (await query(`SELECT canal FROM facturacion.facturas WHERE id = $1`, [id])).rows[0].canal;
+
+test("el canal es Presencial por defecto y se puede indicar Online (ventas del Marketplace), sin importar mayusculas", async () => {
+  assert.equal(await canalEnBase((await emitir({ metodo_pago: "QR" })).id), "Presencial");
+  assert.equal(await canalEnBase((await emitir({ metodo_pago: "QR", canal: "Online" })).id), "Online");
+  assert.equal(await canalEnBase((await emitir({ metodo_pago: "QR", canal: " online " })).id), "Online");
+  const f = await emitir({ metodo_pago: "QR", canal: "Online" });
+  assert.equal((await obtenerFactura(f.numero)).canal, "Online"); // GET /api/facturas/:numero lo devuelve
+});
+
+test("un canal desconocido es un 400 y no guarda nada", async () => {
+  const NIT_CANAL = `5${String(Date.now()).slice(-8)}`;
+  await assert.rejects(
+    crearFactura({ nit: NIT_CANAL, razon_social: "No debe guardarse", items: ITEMS, metodo_pago: "QR", canal: "Telefono" }),
+    (e) => e.status === 400 && /Presencial, Online/.test(e.message)
+  );
+  assert.equal((await query(`SELECT count(*)::int n FROM facturacion.clientes_frecuentes WHERE nit = $1`, [NIT_CANAL])).rows[0].n, 0);
+});

@@ -8,7 +8,7 @@ const { query, withTransaction } = require("../config/db");
  * (leer el ultimo numero + insertar) entre transacciones concurrentes, sin bloquear
  * el resto de la tabla.
  */
-async function crearFactura({ cliente_nit, cliente_nombre, items, metodosPago = [], subtotal, descuento, impuesto, total }) {
+async function crearFactura({ cliente_nit, cliente_nombre, canal = "Presencial", items, metodosPago = [], subtotal, descuento, impuesto, total }) {
   return withTransaction(async (client) => {
     await client.query(`SELECT pg_advisory_xact_lock(hashtext('facturacion.facturas.numero'))`);
 
@@ -21,10 +21,10 @@ async function crearFactura({ cliente_nit, cliente_nombre, items, metodosPago = 
 
     const { rows } = await client.query(
       `INSERT INTO facturacion.facturas
-         (numero, cliente_nit, cliente_nombre, subtotal, descuento, impuesto, total)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+         (numero, cliente_nit, cliente_nombre, canal, subtotal, descuento, impuesto, total)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING *`,
-      [numero, cliente_nit, cliente_nombre, subtotal, descuento, impuesto, total]
+      [numero, cliente_nit, cliente_nombre, canal, subtotal, descuento, impuesto, total]
     );
     const factura = rows[0];
 

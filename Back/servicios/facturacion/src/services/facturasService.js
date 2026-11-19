@@ -64,9 +64,21 @@ function armarMetodosPago({ metodo_pago, metodos_pago }, total) {
   return [{ metodo: normalizarMetodoPago(metodo_pago), monto: total }];
 }
 
+// Canal por donde se vendio: en mostrador ("Presencial", el valor por defecto) o por el Marketplace ("Online").
+// Devoluciones lo usa: lo vendido por el Marketplace nunca se reembolsa con efectivo de caja.
+const CANALES = ["Presencial", "Online"];
+
+function normalizarCanal(valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === "") return "Presencial";
+  const canal = CANALES.find((c) => c.toLowerCase() === String(valor).trim().toLowerCase());
+  if (!canal) throw err(`El canal debe ser uno de: ${CANALES.join(", ")}.`, 400, { canal: valor });
+  return canal;
+}
+
 /** TDSI-89/279/280/281/282: ingresa el NIT y Razon Social del cliente al emitir la factura */
-async function crearFactura({ nit, razon_social, items, metodo_pago, metodos_pago } = {}) {
+async function crearFactura({ nit, razon_social, items, metodo_pago, metodos_pago, canal } = {}) {
   validarItems(items);
+  const canalNormalizado = normalizarCanal(canal);
 
   const itemsConSubtotal = items.map((i) => ({ ...i, subtotal: i.cantidad * i.precio_unitario }));
   const subtotal = itemsConSubtotal.reduce((acc, i) => acc + i.subtotal, 0);
@@ -80,6 +92,7 @@ async function crearFactura({ nit, razon_social, items, metodo_pago, metodos_pag
   const factura = await facturasRepo.crearFactura({
     cliente_nit: cliente.nit,
     cliente_nombre: cliente.razon_social,
+    canal: canalNormalizado,
     items: itemsConSubtotal,
     metodosPago,
     subtotal,
