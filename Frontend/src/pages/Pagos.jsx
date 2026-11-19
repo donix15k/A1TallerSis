@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { registrarPago, registrarPagoMixto, calcularPagoMixto, registrarVentaCancelada, contarVentasCanceladas, consultarPosibleDuplicado, obtenerTipoCambio, listarMisFacturas, enviarFacturaPorCorreo, urlFacturaPdf, buscarClientePorDocumento } from '../api/pagos.js'
+import { registrarPago, registrarPagoMixto, calcularPagoMixto, registrarVentaCancelada, contarVentasCanceladas, consultarPosibleDuplicado, obtenerTipoCambio, listarMisFacturas, enviarFacturaPorCorreo, buscarClientePorDocumento } from '../api/pagos.js'
 import { calcularVuelto, calcularCobroUsd, crearCobroQr, consultarEstadoCobroQr, confirmarCobroQr, urlQrCuenta } from '../api/cobros.js'
 import PagoMixtoForm from '../components/PagoMixtoForm.jsx'
 import CancelarVentaModal from '../components/CancelarVentaModal.jsx'
@@ -7,6 +7,7 @@ import MisRespuestasRapidas from '../components/MisRespuestasRapidas.jsx'
 import AvisoCobroDuplicadoModal from '../components/AvisoCobroDuplicadoModal.jsx'
 import DesgloseVuelto from '../components/DesgloseVuelto.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import BotonVerFactura from '../components/BotonVerFactura.jsx'
 
 // TDSI-29/572: botones rápidos de billetes para armar el monto recibido en efectivo.
 const BILLETES_RAPIDOS = [10, 20, 50, 100, 200]
@@ -1132,15 +1133,9 @@ function Pagos() {
 
               <div className="pago-exito-acciones">
                 {/* TDSI-303: factura real en PDF (formato tirilla), lista para ver o imprimir */}
-                <a
-                  href={urlFacturaPdf(pagoRegistrado.id_transaccion)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-azul"
-                  style={{ display: 'inline-block', textDecoration: 'none', textAlign: 'center' }}
-                >
+                <BotonVerFactura idTransaccion={pagoRegistrado.id_transaccion}>
                   Ver / Imprimir factura
-                </a>
+                </BotonVerFactura>
 
                 <button type="button" className="btn" onClick={registrarOtro}>
                   Registrar otro pago

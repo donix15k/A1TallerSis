@@ -86,6 +86,12 @@ export function urlFacturaPdf(id_transaccion) {
   return `${GESTION_PAGOS_API_BASE_URL}/api/pagos/${encodeURIComponent(id_transaccion)}/factura.pdf`
 }
 
+// Datos del comprobante para la vista previa animada (los mismos textos que el PDF) y el QR ya
+// generado como imagen. El modelo lo arma el backend, asi PDF y pantalla nunca se desfasan.
+export function obtenerComprobante(id_transaccion) {
+  return apiFetch(`/api/pagos/${encodeURIComponent(id_transaccion)}/comprobante`, {}, GESTION_PAGOS_API_BASE_URL)
+}
+
 // TDSI-304: si ese NIT/CI ya se uso en un pago anterior, autocompleta la razon social.
 export function buscarClientePorDocumento(tipo_documento, numero) {
   const params = new URLSearchParams({ tipo_documento, numero })

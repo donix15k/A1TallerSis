@@ -8,7 +8,7 @@ const { validarEmail } = require("../utils/email");
 
 // Datos fijos del negocio para el encabezado de la factura digital.
 // NIT simulado: este proyecto es academico y no tiene integracion real con el SIN.
-const EMPRESA = { nombre: "TallerSis", direccion: "Av. Principal s/n, Bolivia", nit: "1009876015" };
+const EMPRESA = { nombre: "Vortrix", direccion: "Av. Principal s/n, Bolivia", nit: "1009876015" };
 
 /**
  * Extension de TDSI-107/108: en este proyecto todavia no hay catalogo de productos,

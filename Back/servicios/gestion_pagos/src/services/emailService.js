@@ -55,7 +55,7 @@ function renderizarHtmlFactura(factura) {
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color:#1f2933;">
-      <h2 style="color:#345c32; margin-bottom:0;">${factura.empresa.nombre}</h2>
+      <h2 style="color:#06152F; margin-bottom:0;">${factura.empresa.nombre}</h2>
       <p style="color:#616e7c; margin-top:0.25rem;">${factura.empresa.direccion}</p>
       <hr style="border:none; border-top:1px solid #e4e7eb;" />
       <p>
@@ -92,7 +92,7 @@ async function enviarFacturaPorCorreo({ email, factura, pdfBuffer }) {
 
   try {
     await transportador.sendMail({
-      from: process.env.SMTP_FROM || '"TallerSis" <no-responder@tallersis.local>',
+      from: process.env.SMTP_FROM || '"Vortrix" <no-responder@vortrix.local>',
       to: email,
       subject: `Tu factura - ${factura.comprobante.id_transaccion}`,
       html,

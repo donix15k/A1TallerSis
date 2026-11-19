@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { listarMisFacturas, anularVenta, modificarVenta, urlFacturaPdf } from '../api/pagos.js'
+import { listarMisFacturas, anularVenta, modificarVenta } from '../api/pagos.js'
 import { obtenerAnuladasTurno } from '../api/caja.js'
 import { obtenerTurnoActual } from '../api/turnos.js'
 import { validarMotivoAnulacion, LARGO_MAXIMO_ANULACION } from '../api/respuestasAnulacion.js'
@@ -24,6 +24,7 @@ const ESTADOS = {
 // chocar al unir ramas que tambien los modifican).
 import MisRespuestasAnulacion from '../components/MisRespuestasAnulacion.jsx'
 import Cargando from '../components/Cargando.jsx'
+import BotonVerFactura from '../components/BotonVerFactura.jsx'
 
 function dentroDelPlazo(fecha) {
   return Date.now() - new Date(fecha).getTime() <= PLAZO_ANULACION_MS
@@ -395,9 +396,7 @@ function Facturas() {
                     <span className={`badge-estado ${estado.clase}`}>{estado.texto}</span>
                   </td>
                   <td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <a href={urlFacturaPdf(factura.id_transaccion)} target="_blank" rel="noopener noreferrer" className="btn btn-azul">
-                      Ver
-                    </a>
+                    <BotonVerFactura idTransaccion={factura.id_transaccion}>Ver</BotonVerFactura>
                     {puedeAnular && (
                       <button type="button" className="btn btn-secundario" onClick={() => abrirVentanaCredenciales(factura)}>
                         Anular factura

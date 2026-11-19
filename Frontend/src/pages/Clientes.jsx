@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { historialCliente, urlFacturaPdf } from '../api/pagos.js'
+import { historialCliente } from '../api/pagos.js'
+import BotonVerFactura from '../components/BotonVerFactura.jsx'
 
 const TIPOS_DOCUMENTO = [
   { id: 'NIT', etiqueta: 'NIT' },
@@ -124,9 +125,7 @@ function Clientes() {
                     </span>
                   </td>
                   <td>
-                    <a href={urlFacturaPdf(f.id_transaccion)} target="_blank" rel="noopener noreferrer" className="btn btn-azul">
-                      Ver
-                    </a>
+                    <BotonVerFactura idTransaccion={f.id_transaccion}>Ver</BotonVerFactura>
                   </td>
                 </tr>
               ))}

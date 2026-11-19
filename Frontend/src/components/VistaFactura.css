@@ -1,0 +1,288 @@
+/* Vista previa de la factura: impresora + recibo que sale por la ranura. */
+.vx-imp-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding: clamp(14px, 5vh, 48px) 14px 14px;
+  background: rgba(6, 21, 47, 0.66);
+  backdrop-filter: blur(4px);
+  transition: opacity 180ms var(--ease-out);
+}
+
+@starting-style {
+  .vx-imp-fondo {
+    opacity: 0;
+  }
+}
+
+.vx-imp {
+  display: flex;
+  flex-direction: column;
+  width: min(404px, 100%);
+  max-height: calc(100dvh - clamp(14px, 5vh, 48px) - 14px);
+}
+
+/* ---------- La maquina ---------- */
+.vx-imp-maquina {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  padding: 14px 14px 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #14264a 0%, #0a1b3b 55%, #06152f 100%);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: transform 220ms var(--ease-out), opacity 220ms var(--ease-out);
+}
+
+@starting-style {
+  .vx-imp-maquina {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+}
+
+/* Vibracion leve mientras imprime (solo transform, casi imperceptible). */
+.vx-imp-maquina--trabajando {
+  animation: vx-imp-vibra 110ms steps(2, jump-none) infinite;
+}
+
+@keyframes vx-imp-vibra {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0.6px, 0);
+  }
+}
+
+.vx-imp-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.vx-imp-logo {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.vx-imp-logo .vx-isotipo {
+  --vx-iso-w: 24px;
+}
+
+.vx-imp-cerrar {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 15px 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+
+.vx-imp-cerrar:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vx-imp-cerrar:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.vx-imp-cerrar:focus-visible {
+  outline: 2px solid var(--vx-sky);
+  outline-offset: 2px;
+}
+
+.vx-imp-resumen {
+  padding: 16px 18px 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.vx-imp-resumen-fila {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vx-imp-resumen p {
+  margin: 0;
+}
+
+.vx-imp-resumen-titulo {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.vx-imp-resumen-sub {
+  margin-top: 3px !important;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.vx-imp-resumen-total {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.vx-imp-resumen-total span {
+  display: block;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.8rem;
+}
+
+.vx-imp-resumen-total strong {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.vx-imp-estado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.vx-imp-estado span {
+  flex: 1;
+  min-width: 0;
+}
+
+.vx-imp-estado-icono {
+  flex-shrink: 0;
+}
+
+.vx-imp-spinner {
+  color: rgba(255, 255, 255, 0.85);
+  animation: vx-gira 800ms linear infinite;
+}
+
+.vx-imp-estado-icono--ok {
+  color: #22a55b;
+  animation: vx-imp-pop 260ms var(--ease-out);
+}
+
+.vx-imp-estado-icono--error {
+  color: #dc2626;
+}
+
+@keyframes vx-imp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+
+.vx-imp-enlace {
+  padding: 4px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  animation: vx-imp-aparece 300ms var(--ease-out) backwards;
+  transition: background-color 160ms var(--ease-out);
+}
+
+@keyframes vx-imp-aparece {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vx-imp-enlace:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+/* Ranura de salida del papel. */
+.vx-imp-ranura {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background: #020a18;
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/* ---------- El papel ---------- */
+.vx-imp-salida {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: -7px;
+  padding: 0 7%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+  /* el recibo no se ve por encima de la ranura: el borde superior del area lo recorta */
+}
+
+.vx-imp-papel {
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.35));
+  padding-bottom: 28px;
+  will-change: transform;
+}
+
+/* Borde inferior dentado, como el corte de una impresora termica. */
+.vx-imp-hoja {
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 18px 100%;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 18px 100%;
+  padding-bottom: 9px;
+  background: #fcfcfa;
+}
+
+@media (max-width: 480px) {
+  .vx-imp-resumen-total strong {
+    font-size: 1.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-imp-maquina--trabajando {
+    animation: none;
+  }
+
+  .vx-imp-spinner {
+    animation-duration: 1.6s;
+  }
+}

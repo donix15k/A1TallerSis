@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { listarCajeros, listarMisFacturas, urlFacturaPdf } from '../api/pagos.js'
+import { listarCajeros, listarMisFacturas } from '../api/pagos.js'
 import Cargando from '../components/Cargando.jsx'
+import BotonVerFactura from '../components/BotonVerFactura.jsx'
 
 // TDSI-329: el administrador ve todos los cajeros que han trabajado (registraron
 // al menos una venta) y, al elegir uno, lo que ha facturado desde que empezó,
@@ -165,9 +166,7 @@ function Cajeros() {
                       </span>
                     </td>
                     <td>
-                      <a href={urlFacturaPdf(f.id_transaccion)} target="_blank" rel="noopener noreferrer" className="btn btn-azul">
-                        Ver
-                      </a>
+                      <BotonVerFactura idTransaccion={f.id_transaccion}>Ver</BotonVerFactura>
                     </td>
                   </tr>
                 ))}

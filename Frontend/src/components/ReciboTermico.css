@@ -1,0 +1,150 @@
+/* Recibo termico: tipografia monoespaciada y las mismas secciones que el PDF. */
+.vx-recibo {
+  padding: 22px 20px 34px;
+  background-color: #fcfcfa;
+  /* grano de papel: lineas casi invisibles, como el papel termico de verdad */
+  background-image: repeating-linear-gradient(0deg, rgba(6, 21, 47, 0.018) 0 1px, transparent 1px 3px);
+  color: var(--vx-navy);
+  font-family: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.vx-recibo p {
+  margin: 0;
+}
+
+.vx-recibo-logo {
+  display: block;
+  width: 68%;
+  height: auto;
+  margin: 0 auto;
+  user-select: none;
+}
+
+.vx-recibo-lema {
+  margin-top: 6px !important;
+  color: #616e7c;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.vx-recibo-empresa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 12px;
+  color: #616e7c;
+  font-size: 10.5px;
+}
+
+.vx-recibo-linea {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px dashed #8a929e;
+}
+
+.vx-recibo-titulo {
+  margin: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.vx-recibo-anulada {
+  width: fit-content;
+  margin: 10px auto 0;
+  padding: 3px 18px;
+  border: 1.5px solid #b91c1c;
+  border-radius: 5px;
+  color: #b91c1c;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.vx-recibo-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vx-recibo-fila span:last-child {
+  max-width: 55%;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.vx-recibo-fila--negrita {
+  font-weight: 700;
+}
+
+.vx-recibo-atendido {
+  margin-top: 2px !important;
+  color: #616e7c;
+  overflow-wrap: anywhere;
+}
+
+.vx-recibo-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  background: var(--vx-navy);
+  color: #fff;
+  font-weight: 700;
+}
+
+.vx-recibo-total strong {
+  font-size: 19px;
+}
+
+.vx-recibo-son {
+  margin-top: 8px !important;
+  color: #616e7c;
+  font-size: 10px;
+}
+
+.vx-recibo-qr {
+  display: flex;
+  justify-content: center;
+}
+
+.vx-recibo-qr img {
+  display: block;
+  width: 144px;
+  height: 144px;
+  padding: 9px;
+  border: 1px solid var(--vx-metal);
+  border-radius: 10px;
+  background: #fff;
+  image-rendering: pixelated;
+}
+
+.vx-recibo-qr-texto {
+  margin-top: 10px !important;
+  color: #616e7c;
+  font-size: 9.5px;
+  text-align: center;
+}
+
+.vx-recibo-pie {
+  margin-top: 16px;
+  color: var(--vx-gray);
+  font-size: 9px;
+  text-align: center;
+}
+
+.vx-recibo-pie strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--vx-navy);
+  font-size: 11.5px;
+}

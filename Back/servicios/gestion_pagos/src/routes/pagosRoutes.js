@@ -2,6 +2,8 @@ const { Router } = require("express");
 const { registrarPagoSimple, obtenerHistorial, buscarClientePorDocumento } = require("../services/pagoSimpleService");
 const { construirFacturaDigital, enviarFacturaDeTransaccion } = require("../services/facturaDigitalService");
 const { generarFacturaPdfBuffer } = require("../services/facturaPdfService");
+const { construirModeloComprobante } = require("../services/comprobanteModelo");
+const { generarImagenQrVerificacion } = require("../services/verificacionFacturaService");
 const {
   listarMisFacturas,
   anularVenta,
@@ -28,6 +30,15 @@ router.get("/:id_transaccion/factura.pdf", wrap(async (req, res) => {
     "Content-Disposition": `inline; filename="factura-${req.params.id_transaccion}.pdf"`,
   });
   res.send(pdfBuffer);
+}));
+
+// Vista previa animada del comprobante (Frontend): mismos datos y textos que el PDF
+// (los dos salen de construirModeloComprobante) mas el QR ya generado como imagen.
+router.get("/:id_transaccion/comprobante", wrap(async (req, res) => {
+  const factura = await construirFacturaDigital(req.params.id_transaccion);
+  const modelo = construirModeloComprobante(factura);
+  const qr = await generarImagenQrVerificacion(factura.comprobante.tokenVerificacion, { ancho: 320 });
+  res.json({ ok: true, data: { modelo, qr: `data:image/png;base64,${qr.toString("base64")}` } });
 }));
 
 // Extension de TDSI-107/108: el cajero pide enviar la factura digital al correo del
