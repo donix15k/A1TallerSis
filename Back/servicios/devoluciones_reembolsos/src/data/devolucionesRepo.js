@@ -94,9 +94,20 @@ async function obtenerPorCodigo(codigo) {
  * de la mas antigua a la mas nueva (se atiende en orden de llegada); las demas, de la mas reciente a la mas antigua.
  * Devuelve { total: cuantas hay en total con ese filtro, filas: hasta "limite" de ellas }.
  */
-async function listarDevoluciones({ estado = null, limite = 200 } = {}) {
-  const filtro = estado ? `WHERE d.estado = $1` : "";
-  const parametros = estado ? [estado] : [];
+async function listarDevoluciones({ estado = null, desde = null, hasta = null, cajero = null, limite = 200, offset = 0 } = {}) {
+  // TDSI-79: filtros opcionales. Las fechas son dias de Bolivia (America/La_Paz) INCLUSIVOS: "hasta" cuenta el dia
+  // completo. El cajero busca por coincidencia parcial sin distinguir mayusculas (los % y _ se toman literales).
+  const condiciones = [];
+  const parametros = [];
+  const agregar = (sql, valor) => {
+    parametros.push(valor);
+    condiciones.push(sql.replace("?", `$${parametros.length}`));
+  };
+  if (estado) agregar("d.estado = ?", estado);
+  if (desde) agregar("(d.fecha_solicitud AT TIME ZONE 'America/La_Paz')::date >= ?::date", desde);
+  if (hasta) agregar("(d.fecha_solicitud AT TIME ZONE 'America/La_Paz')::date <= ?::date", hasta);
+  if (cajero) agregar("d.creado_por ILIKE ? ESCAPE '\\'", `%${String(cajero).replace(/[\\%_]/g, "\\$&")}%`);
+  const filtro = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
   const orden = estado === "PENDIENTE" ? "d.fecha_solicitud ASC, d.id ASC" : "d.fecha_solicitud DESC, d.id DESC";
 
   const { rows: conteo } = await query(`SELECT count(*)::int AS total FROM devoluciones.devoluciones d ${filtro}`, parametros);
@@ -107,7 +118,7 @@ async function listarDevoluciones({ estado = null, limite = 200 } = {}) {
        LEFT JOIN devoluciones.motivos m ON m.id = d.motivo_id
        ${filtro}
       ORDER BY ${orden}
-      LIMIT ${Number(limite)}`,
+      LIMIT ${Number(limite)} OFFSET ${Number(offset)}`,
     parametros
   );
   return {

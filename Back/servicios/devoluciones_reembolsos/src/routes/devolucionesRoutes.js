@@ -26,8 +26,8 @@ router.post("/", wrap(async (req, res) => {
 
 // TDSI-33: bandeja de devoluciones (?estado=PENDIENTE para la bandeja del supervisor) con su contador.
 router.get("/", wrap(async (req, res) => {
-  const { total, filas } = await devolucionService.listarDevoluciones(req.query);
-  res.json({ ok: true, total, data: filas });
+  const { total, filas, pagina, por_pagina, total_paginas } = await devolucionService.listarDevoluciones(req.query);
+  res.json({ ok: true, total, ...(pagina ? { pagina, por_pagina, total_paginas } : {}), data: filas });
 }));
 
 // TDSI-35: el supervisor aprueba una devolucion pendiente con su usuario y PIN ({ supervisor_id, pin }).

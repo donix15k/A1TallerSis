@@ -287,22 +287,69 @@ const LIMITE_LISTA_MAX = 1000;
  * estado; sin estado trae todas. ?limite=N acota cuantas filas vienen (por defecto 200, maximo 1000);
  * "total" siempre es el conteo completo (el contador de la bandeja).
  */
-async function listarDevoluciones({ estado, limite } = {}) {
-  let estadoNormalizado = null;
-  if (estado !== undefined && estado !== null && String(estado).trim() !== "") {
-    estadoNormalizado = String(estado).trim().toUpperCase();
-    if (!ESTADOS.includes(estadoNormalizado)) {
-      throw new AppError(`El estado debe ser uno de: ${ESTADOS.join(", ")}.`, 400, { estado });
+const POR_PAGINA = 20;
+const vacio = (v) => v === undefined || v === null || String(v).trim() === "";
+
+function validarEstadoFiltro(estado) {
+  if (vacio(estado)) return null;
+  const normalizado = String(estado).trim().toUpperCase();
+  if (!ESTADOS.includes(normalizado)) throw new AppError(`El estado debe ser uno de: ${ESTADOS.join(", ")}.`, 400, { estado });
+  return normalizado;
+}
+
+/** TDSI-79: "desde"/"hasta" son dias YYYY-MM-DD reales (inclusivos, hora de Bolivia); desde no puede pasar de hasta. */
+function validarRangoFechas(desde, hasta) {
+  const dia = (valor, nombre) => {
+    if (vacio(valor)) return null;
+    const v = String(valor).trim();
+    const f = /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T00:00:00Z`) : null;
+    if (!f || Number.isNaN(f.getTime()) || f.toISOString().slice(0, 10) !== v) {
+      throw new AppError(`"${nombre}" debe ser una fecha válida con formato AAAA-MM-DD.`, 400, { [nombre]: valor });
     }
+    return v;
+  };
+  const d = dia(desde, "desde");
+  const h = dia(hasta, "hasta");
+  if (d && h && d > h) throw new AppError('"desde" no puede ser posterior a "hasta".', 400, { desde: d, hasta: h });
+  return { desde: d, hasta: h };
+}
+
+function validarCajeroFiltro(cajero) {
+  if (vacio(cajero)) return null;
+  const c = String(cajero).trim();
+  if (c.length > CAJERO_MAX) throw new AppError(`El cajero no puede tener más de ${CAJERO_MAX} caracteres.`, 400);
+  return c;
+}
+
+/**
+ * TDSI-33/79: lista de devoluciones. Filtros opcionales: ?estado= (no distingue mayusculas), ?desde= y ?hasta=
+ * (AAAA-MM-DD, dias de Bolivia inclusivos: "hasta" incluye el dia completo) y ?cajero= (coincidencia parcial).
+ *  - Con ?pagina=N (1, 2, ...) responde de 20 en 20 e incluye pagina, por_pagina y total_paginas.
+ *  - Sin ?pagina funciona como la bandeja del supervisor: ?limite=N acota las filas (por defecto 200, maximo 1000).
+ * "total" siempre es el conteo completo con esos filtros.
+ */
+async function listarDevoluciones({ estado, desde, hasta, cajero, limite, pagina } = {}) {
+  const filtros = {
+    estado: validarEstadoFiltro(estado),
+    ...validarRangoFechas(desde, hasta),
+    cajero: validarCajeroFiltro(cajero),
+  };
+
+  if (!vacio(pagina)) {
+    const n = Number(pagina);
+    if (!Number.isInteger(n) || n < 1) throw new AppError("La página debe ser un número entero mayor o igual a 1.", 400, { pagina });
+    const r = await devolucionesRepo.listarDevoluciones({ ...filtros, limite: POR_PAGINA, offset: (n - 1) * POR_PAGINA });
+    return { ...r, pagina: n, por_pagina: POR_PAGINA, total_paginas: Math.max(1, Math.ceil(r.total / POR_PAGINA)) };
   }
+
   let limiteNormalizado = 200;
-  if (limite !== undefined && limite !== null && String(limite).trim() !== "") {
+  if (!vacio(limite)) {
     limiteNormalizado = Number(limite);
     if (!Number.isInteger(limiteNormalizado) || limiteNormalizado < 1 || limiteNormalizado > LIMITE_LISTA_MAX) {
       throw new AppError(`El límite debe ser un número entero entre 1 y ${LIMITE_LISTA_MAX}.`, 400, { limite });
     }
   }
-  return devolucionesRepo.listarDevoluciones({ estado: estadoNormalizado, limite: limiteNormalizado });
+  return devolucionesRepo.listarDevoluciones({ ...filtros, limite: limiteNormalizado });
 }
 
 /**
