@@ -61,6 +61,11 @@ router.get("/:codigo/nota-credito.pdf", wrap(async (req, res) => {
   res.send(pdf);
 }));
 
+// TDSI-80: historial de estados (linea de tiempo): quien registro, quien aprobo o rechazo y cuando se reembolso.
+router.get("/:codigo/historial", wrap(async (req, res) => {
+  res.json({ ok: true, data: await devolucionService.obtenerHistorial(req.params.codigo) });
+}));
+
 // TDSI-60: la nota de credito con su estado de envio (enviada_por_correo, enviada_en, a que correo).
 router.get("/:codigo/nota-credito", wrap(async (req, res) => {
   res.json({ ok: true, data: await notaCreditoService.consultarNota(req.params.codigo) });

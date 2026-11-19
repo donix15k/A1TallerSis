@@ -287,6 +287,38 @@ const LIMITE_LISTA_MAX = 1000;
  * estado; sin estado trae todas. ?limite=N acota cuantas filas vienen (por defecto 200, maximo 1000);
  * "total" siempre es el conteo completo (el contador de la bandeja).
  */
+/**
+ * TDSI-80: la linea de tiempo de una devolucion: cada cambio de estado en orden cronologico (estado anterior, estado
+ * nuevo, quien lo hizo y fecha/hora; el primero, "null -> PENDIENTE", es el registro) y un resumen de quien la registro,
+ * quien la aprobo o rechazo y cuando se reembolso. El historial solo se agrega: nunca se modifica ni se borra.
+ */
+async function obtenerHistorial(codigo) {
+  const d = await obtenerDevolucion(codigo); // 404 si no existe
+  const eventos = d.historial.map((h) => ({
+    estado_anterior: h.estado_anterior,
+    estado_nuevo: h.estado_nuevo,
+    cambiado_por: h.cambiado_por,
+    cambiado_en: h.cambiado_en,
+  }));
+  const evento = (nuevo) => eventos.find((e) => e.estado_nuevo === nuevo) || null;
+  const resuelta = evento("APROBADA") || evento("RECHAZADA");
+  const procesada = evento("PROCESADA");
+  return {
+    codigo: d.codigo,
+    estado_actual: d.estado,
+    resumen: {
+      registrada_por: d.cajero,
+      registrada_en: d.fecha_solicitud,
+      resuelta_como: resuelta ? resuelta.estado_nuevo : null,
+      resuelta_por: resuelta ? resuelta.cambiado_por : null,
+      resuelta_en: resuelta ? resuelta.cambiado_en : null,
+      reembolsada_por: procesada ? procesada.cambiado_por : null,
+      reembolsada_en: procesada ? procesada.cambiado_en : null,
+    },
+    eventos,
+  };
+}
+
 const POR_PAGINA = 20;
 const vacio = (v) => v === undefined || v === null || String(v).trim() === "";
 
@@ -432,6 +464,7 @@ async function rechazarDevolucion(codigo, cuerpo = {}) {
 }
 
 module.exports = {
+  obtenerHistorial,
   validarCajero,
   consultarFacturaParaDevolucion,
   repartirYaDevuelto,
