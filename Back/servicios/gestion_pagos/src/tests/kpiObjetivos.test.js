@@ -113,3 +113,14 @@ test("GET /api/kpis/objetivos: solo el administrador, con los 7 indicadores", as
   assert.equal(data.indicadores.length, 7);
   assert.deepEqual(data.indicadores.find((i) => i.indicador === "efectividad_cuadre"), { indicador: "efectividad_cuadre", nombre: "Efectividad de cuadre", unidad: "%", verde: 95, amarillo: 85, rojo: 0, sentido: "MAYOR", actualizado_por: null, actualizado_en: data.indicadores.find((i) => i.indicador === "efectividad_cuadre").actualizado_en });
 });
+
+test("GET /api/kpis/semaforo (TDSI-219): los rangos se pueden LEER sin ser administrador (lo usa la pantalla del cajero), solo lo necesario", async () => {
+  const r = await fetch(base.replace("/objetivos", "/semaforo")); // sin token
+  assert.equal(r.status, 200);
+  const { data } = await r.json();
+  assert.equal(data.indicadores.length, 7);
+  assert.deepEqual(Object.keys(data.indicadores[0]).sort(), ["amarillo", "indicador", "nombre", "rojo", "sentido", "unidad", "verde"]); // sin quien los cambio
+  assert.deepEqual(data.indicadores.find((i) => i.indicador === "cumplimiento_metas"), { indicador: "cumplimiento_metas", nombre: "Cumplimiento de metas", unidad: "%", verde: 100, amarillo: 70, rojo: 0, sentido: "MAYOR" });
+  // cambiar los objetivos sigue siendo solo del administrador
+  assert.equal((await fetch(base, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ indicadores: [] }) })).status, 401);
+});

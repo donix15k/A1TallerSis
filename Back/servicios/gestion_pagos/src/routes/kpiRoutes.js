@@ -10,6 +10,13 @@ const { requireAdministrador } = require("../middlewares/requireAdministrador");
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 
+// TDSI-219: los rangos del semaforo (verde / amarillo / rojo de cada KPI) se pueden LEER sin ser administrador: no son datos sensibles y
+// la pantalla "Mi turno" del cajero pinta su meta de hoy con los mismos rangos que el panel. Cambiarlos sigue siendo solo del administrador.
+router.get("/semaforo", wrap(async (req, res) => {
+  const lista = await objetivos.listarObjetivos();
+  res.json({ ok: true, data: { indicadores: lista.map(({ indicador, nombre, unidad, verde, amarillo, rojo, sentido }) => ({ indicador, nombre, unidad, verde, amarillo, rojo, sentido })) } });
+}));
+
 // El Panel de KPIs es solo del administrador (Bearer token validado contra Gestion de Caja): 401 sin token, 403 si no es administrador.
 router.use(requireAdministrador);
 

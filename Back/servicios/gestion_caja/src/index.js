@@ -51,6 +51,8 @@ app.use("/api/caja", cajasRoutes);
 app.use("/api/caja/operaciones-especiales", operacionesEspecialesRoutes); // TDSI-62/201/955
 app.use("/api/caja/eventos-autorizacion", eventosAutorizacionRoutes); // TDSI-62/963/964
 app.use("/api/metas", metasVentaRoutes); // TDSI-58/773
+// TDSI-219: "Mi turno" del cajero (va ANTES del Panel de KPIs, que es solo del administrador): cada cajero ve solo SU turno abierto
+app.use("/api/kpis/mi-turno", require("./middlewares/requireCajero").requireCajero, require("./routes/miTurnoRoutes"));
 app.use("/api/kpis", requireAdministrador, require("./routes/kpiRoutes")); // TDSI-159: Panel de KPIs (solo administrador)
 app.use("/api/caja", diferenciasRoutes); // TDSI-52/698
 app.use("/api/usuarios", requireAdministrador, usuariosRoutes); // TDSI-47/171/919

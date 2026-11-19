@@ -70,6 +70,26 @@ async function buscarTurnoAbiertoPorCaja(caja_id) {
   );
   return rows[0] || null;
 }
+/**
+ * TDSI-219: el turno ABIERTO de un cajero (el mas reciente). cajero_id del turno es el correo con el que abrio sesion (sin distinguir
+ * mayusculas: Supabase guarda el correo en minusculas y el turno lo abrio el cajero escribiendolo); se acepta tambien el
+ * id de su cuenta. cajaId (opcional) limita a esa caja. Nunca devuelve el turno de otro cajero.
+ */
+async function buscarTurnoAbiertoDeCajero(identificadores, cajaId = null) {
+  const ids = identificadores.filter(Boolean).map((i) => String(i).trim().toLowerCase());
+  if (ids.length === 0) return null;
+  const { rows } = await query(
+    `SELECT t.*, c.nombre AS caja_nombre
+       FROM caja.turnos t
+       LEFT JOIN caja.cajas c ON c.codigo = t.caja_id
+      WHERE t.estado = 'ABIERTO' AND lower(trim(t.cajero_id)) = ANY($1::text[]) AND ($2::text IS NULL OR t.caja_id = $2)
+      ORDER BY t.abierto_en DESC, t.id DESC
+      LIMIT 1`,
+    [ids, cajaId]
+  );
+  return rows[0] || null;
+}
+
 // ==================== Cierre (TDSI-319 a 322, viene de main) ====================
 
 async function obtenerTurnoPorId(turnoId) {
@@ -143,6 +163,7 @@ module.exports = {
   buscarCajaPorCodigo,
   crearTurno,
   buscarTurnoAbiertoPorCaja,
+  buscarTurnoAbiertoDeCajero,
   obtenerTurnoPorId,
   marcarCerrado,
   listarTurnosPorFecha,

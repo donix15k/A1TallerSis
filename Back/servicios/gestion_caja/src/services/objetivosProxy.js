@@ -15,10 +15,12 @@ function reiniciarCache() {
   guardados = null;
 }
 
-async function pedirObjetivos(token) {
+async function pedirObjetivos(token, publico) {
   try {
-    const r = await fetch(`${process.env.GESTION_PAGOS_URL || "http://localhost:4005"}/api/kpis/objetivos?metas=no`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    // publico: los rangos de lectura libre (/semaforo), para quien no es administrador (la pantalla del cajero)
+    const ruta = publico ? "/api/kpis/semaforo" : "/api/kpis/objetivos?metas=no";
+    const r = await fetch(`${process.env.GESTION_PAGOS_URL || "http://localhost:4005"}${ruta}`, {
+      headers: token && !publico ? { Authorization: `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(timeoutMs()),
     });
     const cuerpo = await r.json().catch(() => null);
@@ -30,10 +32,10 @@ async function pedirObjetivos(token) {
 }
 
 /** Los limites vigentes de un indicador ({ verde, amarillo, rojo, sentido }); los iniciales si no se pueden consultar. */
-async function limitesDe(indicador, { token } = {}) {
+async function limitesDe(indicador, { token, publico = false } = {}) {
   const vigente = guardados && Date.now() - guardados.en < TTL_MS();
   if (!vigente) {
-    const indicadores = await pedirObjetivos(token);
+    const indicadores = await pedirObjetivos(token, publico);
     guardados = indicadores ? { en: Date.now(), indicadores } : null; // lo que fallo no se guarda: se reintenta en la proxima consulta
     if (indicadores) return indicadores.get(indicador) || INICIALES[indicador];
     return INICIALES[indicador];
