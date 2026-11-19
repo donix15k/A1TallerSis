@@ -47,6 +47,11 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=4002
+      # Panel de KPIs (aceptacion contable): valida al administrador en Caja, pide los asientos de notas de credito a Devoluciones y de
+      # diferencias de caja a Caja, y lee los rangos del semaforo de Gestion de Pagos
+      - GESTION_CAJA_URL=http://gestion_caja:4004
+      - DEVOLUCIONES_URL=http://devoluciones_reembolsos:4007
+      - GESTION_PAGOS_URL=http://gestion_pagos:4005
     env_file:
       - ./servicios/facturacion/.env
     networks:
@@ -60,6 +65,7 @@ services:
       - NODE_ENV=development
       - PORT=4006
       - GESTION_PAGOS_URL=http://gestion_pagos:4005
+      - GESTION_CAJA_URL=http://gestion_caja:4004 # valida al administrador del Panel de KPIs (dias de pago a proveedores)
     env_file:
       - ./servicios/pagos_proveedores/.env
     networks:
