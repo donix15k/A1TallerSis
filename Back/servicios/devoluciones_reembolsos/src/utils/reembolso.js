@@ -3,6 +3,7 @@ const TIPO_POR_METODO = {
   Efectivo: "EFECTIVO",
   Tarjeta: "REVERSION_TARJETA",
   QR: "REVERSION_QR",
+  Vale: "VALE", // una venta pagada con vale se devuelve en un vale nuevo (TDSI-70)
 };
 
 const METODO_POR_TIPO = Object.fromEntries(Object.entries(TIPO_POR_METODO).map(([metodo, tipo]) => [tipo, metodo]));

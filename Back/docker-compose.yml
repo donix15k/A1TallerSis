@@ -33,6 +33,7 @@ services:
       - PORT=4005
       - FACTURACION_URL=http://facturacion:4002
       - GESTION_CAJA_URL=http://gestion_caja:4004
+      - DEVOLUCIONES_URL=http://devoluciones_reembolsos:4007
     env_file:
       - ./servicios/gestion_pagos/.env
     networks:

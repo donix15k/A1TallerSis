@@ -35,6 +35,10 @@ async function calcularTotalRecaudado(turnoId) {
     Tarjeta: metodo(reporteVentas.totalTarjeta, "Tarjeta"),
     QR: metodo(reporteVentas.totalQR, "QR"),
   };
+  // TDSI-70: ventas cobradas con vale de compra (ni entran ni salen efectivo de la caja); solo aparece si hubo.
+  if (reporteVentas.totalVale > 0) {
+    porMetodo.Vale = { ingresos: reporteVentas.totalVale, egresos: 0, neto: reporteVentas.totalVale, operaciones: reporteVentas.operacionesPorMetodo.Vale || 0 };
+  }
   const totalEgresos = aMonto(aCentavos(egresos.Efectivo) + aCentavos(egresos.Tarjeta) + aCentavos(egresos.QR));
 
   return {

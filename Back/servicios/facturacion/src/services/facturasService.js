@@ -24,7 +24,7 @@ function validarItems(items) {
 }
 
 // Metodos de pago que acepta el sistema (los mismos del CHECK de facturacion.factura_metodos_pago).
-const METODOS_PAGO = ["Efectivo", "Tarjeta", "QR"];
+const METODOS_PAGO = ["Efectivo", "Tarjeta", "QR", "Vale"]; // TDSI-70: "Vale" = vale de compra de una devolucion
 
 const redondear = (n) => Math.round(Number((n * 100).toPrecision(12))) / 100;
 

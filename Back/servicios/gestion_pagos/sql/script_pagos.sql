@@ -658,3 +658,13 @@ ALTER TABLE pagos.pubsub_verificaciones
 -- ==========================================================================
 ALTER TABLE pagos.pubsub_verificaciones
     ADD COLUMN IF NOT EXISTS grupo_origen VARCHAR(10) NOT NULL DEFAULT 'A';
+
+-- ==========================================================================
+-- TDSI-70: nuevo metodo de pago "Vale" (vale de compra emitido por una devolucion).
+-- El codigo del vale (VAL-XXXXXX) queda en la venta; el saldo vive en el microservicio de devoluciones.
+-- ==========================================================================
+ALTER TABLE pagos.transacciones DROP CONSTRAINT IF EXISTS transacciones_metodo_check;
+ALTER TABLE pagos.transacciones ADD CONSTRAINT transacciones_metodo_check CHECK (metodo IN ('Efectivo','Tarjeta','QR','Vale'));
+ALTER TABLE pagos.detalles_pago DROP CONSTRAINT IF EXISTS detalles_pago_metodo_check;
+ALTER TABLE pagos.detalles_pago ADD CONSTRAINT detalles_pago_metodo_check CHECK (metodo IN ('Efectivo','Tarjeta','QR','Vale'));
+ALTER TABLE pagos.transacciones ADD COLUMN IF NOT EXISTS codigo_vale VARCHAR(30);

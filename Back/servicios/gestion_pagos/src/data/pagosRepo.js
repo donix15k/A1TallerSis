@@ -10,17 +10,17 @@ const num = (v) => (v === null || v === undefined ? v : Number(v));
  * correlativo de la propia tabla (nextval de su secuencia), asi queda unico
  * por construccion, sin depender de que el cajero no repita un numero.
  */
-async function insertarTransaccionSimple({ metodo, monto, nit, razon_social, tipo_documento, telefono, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, vuelto, cobro_duplicado, moneda_recibida, monto_usd, tipo_cambio }) {
+async function insertarTransaccionSimple({ metodo, monto, nit, razon_social, tipo_documento, telefono, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, vuelto, cobro_duplicado, moneda_recibida, monto_usd, tipo_cambio, codigo_vale }) {
   const { rows } = await query(
     `WITH nuevo AS (
        SELECT nextval(pg_get_serial_sequence('pagos.transacciones', 'id')) AS id
      )
      INSERT INTO pagos.transacciones
-       (id, id_transaccion, metodo, monto, tipo_pago, nit, razon_social, tipo_documento, telefono, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, vuelto, cobro_duplicado, moneda_recibida, monto_usd, tipo_cambio)
-     SELECT id, 'VTA-' || lpad(id::text, 6, '0'), $1, $2, 'Simple', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+       (id, id_transaccion, metodo, monto, tipo_pago, nit, razon_social, tipo_documento, telefono, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, vuelto, cobro_duplicado, moneda_recibida, monto_usd, tipo_cambio, codigo_vale)
+     SELECT id, 'VTA-' || lpad(id::text, 6, '0'), $1, $2, 'Simple', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
      FROM nuevo
      RETURNING *`,
-    [metodo, monto, nit || null, razon_social || null, tipo_documento || null, telefono || null, caja_id || null, turno_id || null, cajero || null, cajero_id || null, cajero_nombre || null, monto_recibido ?? null, vuelto ?? null, cobro_duplicado || false, moneda_recibida || null, monto_usd ?? null, tipo_cambio ?? null]
+    [metodo, monto, nit || null, razon_social || null, tipo_documento || null, telefono || null, caja_id || null, turno_id || null, cajero || null, cajero_id || null, cajero_nombre || null, monto_recibido ?? null, vuelto ?? null, cobro_duplicado || false, moneda_recibida || null, monto_usd ?? null, tipo_cambio ?? null, codigo_vale || null]
   );
   return {
     ...rows[0],
@@ -369,8 +369,8 @@ async function reporteTurno(caja_id, desde, hasta) {
     [caja_id, desde, hasta]
   );
 
-  const totales = { Efectivo: 0, Tarjeta: 0, QR: 0 };
-  const operacionesPorMetodo = { Efectivo: 0, Tarjeta: 0, QR: 0 };
+  const totales = { Efectivo: 0, Tarjeta: 0, QR: 0, Vale: 0 };
+  const operacionesPorMetodo = { Efectivo: 0, Tarjeta: 0, QR: 0, Vale: 0 };
   for (const fila of porMetodo) {
     totales[fila.metodo] = num(fila.total);
     operacionesPorMetodo[fila.metodo] = fila.operaciones;
@@ -392,8 +392,9 @@ async function reporteTurno(caja_id, desde, hasta) {
     totalEfectivo: totales.Efectivo,
     totalTarjeta: totales.Tarjeta,
     totalQR: totales.QR,
+    totalVale: totales.Vale, // TDSI-70: ventas cobradas con vale de compra (no es efectivo ni digital)
     totalDigital: totales.Tarjeta + totales.QR,
-    totalGeneral: totales.Efectivo + totales.Tarjeta + totales.QR,
+    totalGeneral: totales.Efectivo + totales.Tarjeta + totales.QR + totales.Vale,
     operacionesPorMetodo,
     cantidadVentas,
     cantidadAnuladas,
@@ -565,8 +566,8 @@ async function totalesGenerales(desde, hasta) {
     [desde, hasta]
   );
 
-  const totales = { Efectivo: 0, Tarjeta: 0, QR: 0 };
-  const operacionesPorMetodo = { Efectivo: 0, Tarjeta: 0, QR: 0 };
+  const totales = { Efectivo: 0, Tarjeta: 0, QR: 0, Vale: 0 };
+  const operacionesPorMetodo = { Efectivo: 0, Tarjeta: 0, QR: 0, Vale: 0 };
   for (const fila of porMetodo) {
     totales[fila.metodo] = num(fila.total);
     operacionesPorMetodo[fila.metodo] = fila.operaciones;
@@ -588,8 +589,9 @@ async function totalesGenerales(desde, hasta) {
     totalEfectivo: totales.Efectivo,
     totalTarjeta: totales.Tarjeta,
     totalQR: totales.QR,
+    totalVale: totales.Vale, // TDSI-70: ventas cobradas con vale de compra (no es efectivo ni digital)
     totalDigital: totales.Tarjeta + totales.QR,
-    totalGeneral: totales.Efectivo + totales.Tarjeta + totales.QR,
+    totalGeneral: totales.Efectivo + totales.Tarjeta + totales.QR + totales.Vale,
     operacionesPorMetodo,
     cantidadVentas,
     cantidadAnuladas,
@@ -668,6 +670,15 @@ async function registrarPagoMixtoCompleto({ id_transaccion, cajaId, turnoId, tot
       transacciones: transacciones.map((t) => ({ ...t, monto: num(t.monto) })),
     };
   });
+}
+
+/**
+ * TDSI-70: borra una venta recien registrada (simple o mixta) por su id_transaccion. Solo para deshacer una venta
+ * cuando el vale con el que se cobro no se pudo descontar: nadie la llego a ver ni a facturar.
+ */
+async function eliminarVentaRegistrada(id_transaccion) {
+  await query(`DELETE FROM pagos.transacciones WHERE id_transaccion = $1`, [id_transaccion]);
+  await query(`DELETE FROM pagos.pagos_mixtos WHERE id_transaccion = $1`, [id_transaccion]); // el detalle cae en cascada
 }
 
 async function obtenerPagoMixtoPorTransaccion(id_transaccion) {
@@ -772,6 +783,7 @@ module.exports = {
   listarHistorial,
   existePagoMixto,
   registrarPagoMixtoCompleto,
+  eliminarVentaRegistrada,
   obtenerPagoMixtoPorTransaccion,
   buscarPosibleDuplicado,
 };

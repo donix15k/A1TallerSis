@@ -233,3 +233,7 @@ ALTER TABLE facturacion.respuestas_anulacion ALTER COLUMN texto TYPE VARCHAR(100
 CREATE INDEX IF NOT EXISTS idx_respuestas_anulacion_cajero ON facturacion.respuestas_anulacion (cajero_id);
 
 ALTER TABLE facturacion.respuestas_anulacion ENABLE ROW LEVEL SECURITY;
+
+-- TDSI-70: una factura puede pagarse con un vale de compra emitido por una devolucion (metodo "Vale").
+ALTER TABLE facturacion.factura_metodos_pago DROP CONSTRAINT IF EXISTS factura_metodos_pago_metodo_check;
+ALTER TABLE facturacion.factura_metodos_pago ADD CONSTRAINT factura_metodos_pago_metodo_check CHECK (metodo IN ('Efectivo','Tarjeta','QR','Vale'));

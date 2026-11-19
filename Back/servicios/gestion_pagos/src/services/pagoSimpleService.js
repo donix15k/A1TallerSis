@@ -5,7 +5,9 @@ const { emitirActualizacion } = require("../utils/tableroEvents");
 const { TIPOS_DOCUMENTO_VALIDOS, validarFormatoDocumento } = require("../utils/documento");
 const { calcularVuelto, validarMontoRecibido, calcularCobroUsd } = require("./cobroEfectivoService");
 
-const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR"];
+const valesProxy = require("./valesProxy");
+
+const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR", "Vale"];
 
 /**
  * TDSI-85/262/271/272 + TDSI-289 (via proxy a facturacion)
@@ -19,7 +21,7 @@ const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR"];
  * TDSI-61/199: cajero_nombre es el nombre para mostrar ("Atendido por"), se
  * toma de la cuenta con la que el cajero inicio sesion -- nunca se escribe a mano.
  */
-async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_social, telefono, email, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, cobro_duplicado = false, moneda_recibida, monto_usd }) {
+async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_social, telefono, email, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, cobro_duplicado = false, moneda_recibida, monto_usd, codigo_vale }) {
   if (!metodo || monto === undefined) {
     throw new AppError("Los campos metodo y monto son obligatorios.", 400);
   }
@@ -28,6 +30,14 @@ async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_s
   }
   if (typeof monto !== "number" || monto <= 0) {
     throw new AppError("El monto debe ser un numero mayor a 0.", 400);
+  }
+
+  // TDSI-70: con "Vale" el cajero escribe el codigo; antes de registrar nada se valida con Devoluciones que el vale
+  // exista, no este vencido ni usado y que su saldo alcance (si no alcanza, 422 con lo que falta para pago mixto).
+  let codigoVale = null;
+  if (metodo === "Vale") {
+    codigoVale = String(codigo_vale ?? "").trim().toUpperCase();
+    await valesProxy.exigirSaldo({ codigo: codigoVale, monto });
   }
 
   // TDSI-29/550: si pagan en efectivo y mandan cuanto entregó el cliente, se
@@ -96,7 +106,19 @@ async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_s
     moneda_recibida: monedaRecibida,
     monto_usd: montoUsdGuardado,
     tipo_cambio: tipoCambioUsado,
+    codigo_vale: codigoVale,
   });
+
+  // TDSI-70: ya registrada la venta, se descuenta el vale con la transaccion como referencia (idempotente). Si el
+  // descuento falla (el saldo cambio justo antes, Devoluciones cae...) la venta se deshace: no queda cobrada sin vale.
+  if (codigoVale) {
+    try {
+      await valesProxy.usarVale({ codigo: codigoVale, monto, referencia: pago.id_transaccion });
+    } catch (e) {
+      await repo.eliminarVentaRegistrada(pago.id_transaccion);
+      throw e;
+    }
+  }
   const totalTransacciones = await repo.contarTransacciones();
   emitirActualizacion();
 

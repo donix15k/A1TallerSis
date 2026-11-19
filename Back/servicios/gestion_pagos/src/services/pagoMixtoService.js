@@ -6,7 +6,9 @@ const { emitirActualizacion } = require("../utils/tableroEvents");
 const { TIPOS_DOCUMENTO_VALIDOS, validarFormatoDocumento } = require("../utils/documento");
 const { calcularDesgloseVuelto } = require("./cobroEfectivoService");
 
-const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR"];
+const valesProxy = require("./valesProxy");
+
+const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR", "Vale"];
 
 /**
  * TDSI-87: calcula y divide el pago entre dos metodos. (Logica pura, sin BD.)
@@ -117,7 +119,15 @@ async function registrarPagoMixto(payload) {
     }
   }
 
-  const calculo = calcularDivision(payload);
+  // TDSI-70: el metodo "Vale" lleva el codigo del vale (codigo_vale, o referencia): queda guardado en el detalle del pago.
+  const metodosEntrada = Array.isArray(payload.metodos)
+    ? payload.metodos.map((m) => (m && m.metodo === "Vale" ? { ...m, referencia: String(m.codigo_vale ?? m.referencia ?? "").trim().toUpperCase() } : m))
+    : payload.metodos;
+  const calculo = calcularDivision({ ...payload, metodos: metodosEntrada });
+
+  // El vale se valida ANTES de registrar: existe, no esta vencido ni usado y su saldo cubre lo que se le asigna.
+  const parteVale = calculo.metodos.find((m) => m.metodo === "Vale");
+  if (parteVale) await valesProxy.exigirSaldo({ codigo: parteVale.referencia, monto: parteVale.monto });
 
   const clienteAutoguardado = tipoDocumento === "NIT"
     ? await guardarClienteEnFacturacion({ nit, razon_social, email })
@@ -138,6 +148,16 @@ async function registrarPagoMixto(payload) {
     cajeroNombre,
     cobro_duplicado,
   });
+
+  // TDSI-70: descontar el vale con la transaccion como referencia; si falla, la venta se deshace.
+  if (parteVale) {
+    try {
+      await valesProxy.usarVale({ codigo: parteVale.referencia, monto: parteVale.monto, referencia: resultado.pago.id_transaccion });
+    } catch (e) {
+      await repo.eliminarVentaRegistrada(resultado.pago.id_transaccion);
+      throw e;
+    }
+  }
 
   emitirActualizacion();
   return { ...resultado, cambio: calculo.cambio, desgloseVuelto: calculo.desgloseVuelto, clienteGuardado: clienteAutoguardado.creado, cliente: clienteAutoguardado.cliente };

@@ -172,7 +172,8 @@ async function reembolsar(codigo, cuerpo = {}) {
     // TDSI-57: al quedar PROCESADA se emite su nota de credito (misma transaccion: o quedan las dos cosas o ninguna).
     const nota = await notasCreditoRepo.emitirNota(client, actual.id, actual.monto_total);
     // TDSI-68: reembolso en vale de compra: codigo unico VAL-XXXXXX, saldo = monto y vencimiento a 90 dias.
-    const vale = plan.some((p) => p.tipo === "VALE") ? await valesRepo.emitirVale(client, actual.id, actual.monto_total) : null;
+    const parteVale = plan.find((p) => p.tipo === "VALE"); // todo el monto, o solo la parte pagada con vale (pago mixto)
+    const vale = parteVale ? await valesRepo.emitirVale(client, actual.id, parteVale.monto) : null;
     return { id: actual.id, reembolsos, nota, vale };
   });
 
