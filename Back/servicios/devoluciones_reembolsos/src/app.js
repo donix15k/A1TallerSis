@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const devolucionesRoutes = require("./routes/devolucionesRoutes");
 const valesRoutes = require("./routes/valesRoutes");
+const integracionesRoutes = require("./routes/integracionesRoutes");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { verificarEsquema } = require("./config/db");
 
@@ -23,6 +24,7 @@ app.get("/health", async (req, res) => {
 
 app.use("/api/devoluciones", devolucionesRoutes); // TDSI-12
 app.use("/api/vales", valesRoutes); // TDSI-69
+app.use("/api/integraciones", integracionesRoutes); // TDSI-126/129: monitor de integraciones
 
 app.use(errorHandler);
 

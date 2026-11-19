@@ -85,4 +85,16 @@ async function tomarPendientes(limite = 10) {
   return rows.map(aEnvio);
 }
 
-module.exports = { obtener, listarPorCodigo, crear, marcarEnviado, registrarFallo, tomarPendientes };
+/** "Reenviar" un aviso en Error: misma fila, nuevo ciclo de intentos. Null si no estaba en Error. */
+async function prepararReenvio(id) {
+  const { rows } = await query(
+    `UPDATE devoluciones.envios_marketplace_dev
+        SET estado = 'Pendiente', intentos = 0, proximo_intento_en = now() + interval '2 minutes'
+      WHERE id = $1 AND estado = 'Error'
+      RETURNING id`,
+    [id]
+  );
+  return rows[0] ? obtener(id, { conPayload: true }) : null;
+}
+
+module.exports = { prepararReenvio, obtener, listarPorCodigo, crear, marcarEnviado, registrarFallo, tomarPendientes };
