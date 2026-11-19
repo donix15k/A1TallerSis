@@ -41,7 +41,7 @@ function validarForma(valor) {
  *   - los pedidos del Marketplace (canal Online) NUNCA se reembolsan con efectivo de caja: 422.
  * Es una funcion pura (no consulta nada): recibe la devolucion y la factura ya leidas.
  */
-function planificarReembolso({ monto, factura, forma }) {
+function planificarReembolso({ monto, factura, forma, origen }) {
   // TDSI-68: si el cliente prefiere un vale de compra, todo el monto va a un vale (no sale efectivo ni se revierte nada).
   if (forma === "VALE") {
     return [{ tipo: "VALE", metodo: "Vale", monto: redondear(monto), descripcion: TEXTO_POR_TIPO.VALE(monto) }];
@@ -57,6 +57,21 @@ function planificarReembolso({ monto, factura, forma }) {
   const desconocido = metodos.find((m) => !tipoDeReembolso(m.metodo));
   if (desconocido) {
     throw new AppError(`El método de pago "${desconocido.metodo}" no tiene un tipo de reembolso.`, 422, { metodo: desconocido.metodo });
+  }
+  // TDSI-116: una devolucion del MARKETPLACE se reembolsa SIEMPRE por reversion del pago online y nunca con salida de
+  // efectivo de la caja: lo que se pago "en efectivo" en un pedido online se revierte como pago online (QR), sumado al resto.
+  if (origen === "MARKETPLACE") {
+    const porTipo = new Map();
+    for (const parte of repartirMonto(monto, metodos).filter((x) => x.monto > 0)) {
+      const tipo = tipoDeReembolso(parte.metodo === "Efectivo" ? "QR" : parte.metodo);
+      porTipo.set(tipo, redondear((porTipo.get(tipo) ?? 0) + parte.monto));
+    }
+    return [...porTipo.entries()].map(([tipo, importe]) => ({
+      tipo,
+      metodo: tipo === "REVERSION_TARJETA" ? "Tarjeta" : "QR",
+      monto: importe,
+      descripcion: `Revertir ${bs(importe)} del pago online (${tipo === "REVERSION_TARJETA" ? "tarjeta" : "QR"}); no sale efectivo de la caja`,
+    }));
   }
   if (factura.canal === "Online" && metodos.some((m) => m.metodo === "Efectivo")) {
     throw new AppError(
@@ -101,7 +116,7 @@ async function consultarReembolso(codigo, { forma = "ORIGINAL" } = {}) {
     );
   }
   const factura = await facturacionProxy.obtenerFactura(devolucion.factura_numero);
-  const plan = planificarReembolso({ monto: devolucion.monto_total, factura, forma });
+  const plan = planificarReembolso({ monto: devolucion.monto_total, factura, forma, origen: devolucion.origen });
   return {
     codigo: devolucion.codigo,
     estado: devolucion.estado,
