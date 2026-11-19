@@ -19,7 +19,7 @@ function PubSubVerificacion() {
   const [grupoOrigen, setGrupoOrigen] = useState('A')
   const [grupo, setGrupo] = useState('')
   // TDSI-962: para descartar si un envio que falla es culpa del topico o de nuestro
-  // codigo, se puede mandar a un topico cualquiera en vez de a uno de los 9 grupos
+  // codigo, se puede mandar a un topico cualquiera en vez de a uno de los grupos
   // conocidos (Pub/Sub no tiene "topico de origen": publicar siempre es hacia un
   // destino, nunca "desde" uno -- esto reemplaza el selector de grupo por ese destino).
   const [usarTopicoPersonalizado, setUsarTopicoPersonalizado] = useState(false)

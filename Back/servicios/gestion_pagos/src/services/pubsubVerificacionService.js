@@ -5,7 +5,7 @@ const { AppError } = require("../utils/AppError");
 
 const LARGO_MAXIMO_MENSAJE = 2000;
 
-// TDSI-962: para probar un topico que NO es ninguno de los 9 grupos conocidos (uno
+// TDSI-962: para probar un topico que NO es ninguno de los grupos conocidos (A a I, A1 y A2) (uno
 // de prueba propio, o incluso de otro proyecto de GCP) -- asi se puede distinguir si
 // un envio que falla es porque el topico/proyecto esta mal, o porque es nuestro codigo.
 const TOPICO_REGEX = /^projects\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/topics\/[A-Za-z][\w.~+%-]{2,254}$/;

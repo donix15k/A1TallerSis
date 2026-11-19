@@ -21,7 +21,7 @@ router.get("/pubsub-verificacion", wrap(async (req, res) => {
 
 // Manda `mensaje` simulando que viene de `grupo_origen` (A por defecto, el real) al
 // tópico de `grupo`, o a `topico_personalizado` si se indica uno (para probar un
-// tópico fuera de los 9 grupos conocidos, TDSI-962), y deja constancia de si llegó o no.
+// tópico fuera de los grupos conocidos, TDSI-962), y deja constancia de si llegó o no.
 // 400 si falta el mensaje, o si el grupo origen/destino (o el tópico personalizado) no son válidos.
 router.post("/pubsub-verificacion", wrap(async (req, res) => {
   const data = await enviarVerificacion({

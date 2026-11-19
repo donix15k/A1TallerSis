@@ -6,6 +6,9 @@ const PROYECTO = "project-a96e5fe1-5ba6-4698-a85";
 
 const GRUPOS = [
   { grupo: "A", nombre: "Gestión de Pagos y Facturación", sufijo: "sub-a" },
+  // Topicos adicionales de nuestro equipo (A1 y A2), junto al topico principal del grupo A.
+  { grupo: "A1", nombre: "Grupo A1", sufijo: "sub-a1" },
+  { grupo: "A2", nombre: "Grupo A2", sufijo: "sub-a2" },
   { grupo: "B", nombre: "CRM", sufijo: "sub-b" },
   { grupo: "C", nombre: "Gestión de Compras y Proveedores", sufijo: "sub-c" },
   { grupo: "D", nombre: "Contabilidad", sufijo: "sub-d" },

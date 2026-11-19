@@ -32,12 +32,23 @@ test.after(async () => {
   await pool.end();
 });
 
-test("TDSI-958: listarGrupos trae los 9 grupos del proyecto con su topico armado", () => {
+test("TDSI-958: listarGrupos trae los grupos del proyecto (A a I, mas los topicos A1 y A2) con su topico armado", () => {
   const grupos = listarGrupos();
-  assert.equal(grupos.length, 9);
-  assert.deepEqual(grupos.map((g) => g.grupo), ["A", "B", "C", "D", "E", "F", "G", "H", "I"]);
+  assert.equal(grupos.length, 11);
+  assert.deepEqual(grupos.map((g) => g.grupo), ["A", "A1", "A2", "B", "C", "D", "E", "F", "G", "H", "I"]);
   const a = grupos.find((g) => g.grupo === "A");
   assert.equal(a.topico, "projects/project-a96e5fe1-5ba6-4698-a85/topics/ucb-sis323-sub-a");
+  // los dos topicos agregados: nombres exactos que dio el docente
+  assert.equal(grupos.find((g) => g.grupo === "A1").topico, "projects/project-a96e5fe1-5ba6-4698-a85/topics/ucb-sis323-sub-a1");
+  assert.equal(grupos.find((g) => g.grupo === "A2").topico, "projects/project-a96e5fe1-5ba6-4698-a85/topics/ucb-sis323-sub-a2");
+});
+
+test("los topicos A1 y A2 se pueden usar como destino de una verificacion (con el publicador de prueba)", async () => {
+  for (const grupo of ["A1", "a2"]) {
+    const registro = await enviarVerificacion({ grupo, mensaje: `TEST-TDSI-958 a ${grupo}` });
+    assert.equal(registro.ok, true);
+    assert.equal(registro.topico, `projects/project-a96e5fe1-5ba6-4698-a85/topics/ucb-sis323-sub-${grupo.toLowerCase()}`);
+  }
 });
 
 test("TDSI-958: rechaza un grupo invalido, un mensaje vacio y uno demasiado largo", async () => {
@@ -102,7 +113,7 @@ test("TDSI-958: si Pub/Sub falla, queda registrado ok=false con el error (no se 
   }
 });
 
-test("TDSI-962: topico_personalizado manda al topico exacto indicado (no a ninguno de los 9 grupos) y queda como grupo CUSTOM", async () => {
+test("TDSI-962: topico_personalizado manda al topico exacto indicado (no a ninguno de los grupos conocidos) y queda como grupo CUSTOM", async () => {
   const topicoDePrueba = "projects/project-a96e5fe1-5ba6-4698-a85/topics/topico-de-prueba-cualquiera";
   const registro = await enviarVerificacion({ topico_personalizado: topicoDePrueba, mensaje: "TEST-TDSI-958 personalizado" });
   assert.equal(registro.grupo, "CUSTOM");
@@ -120,7 +131,7 @@ test("TDSI-962: un topico_personalizado con formato invalido responde 400", asyn
 test("TDSI-958: rutas HTTP -- GET /grupos, POST valida y registra, GET trae el log", async () => {
   const rGrupos = await fetch(`${base}/pubsub-verificacion/grupos`);
   assert.equal(rGrupos.status, 200);
-  assert.equal((await rGrupos.json()).data.length, 9);
+  assert.equal((await rGrupos.json()).data.length, 11);
 
   const rMala = await fetch(`${base}/pubsub-verificacion`, {
     method: "POST", headers: { "Content-Type": "application/json" },
