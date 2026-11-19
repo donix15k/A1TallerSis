@@ -3,6 +3,8 @@ const PDFDocument = require("pdfkit");
 const devolucionService = require("./devolucionService");
 const facturacionProxy = require("./facturacionProxy");
 const notasCreditoRepo = require("../data/notasCreditoRepo");
+const comprobantesRepo = require("../data/comprobantesRepo");
+const emailService = require("./emailService");
 const { query } = require("../config/db");
 const { montoEnLetras } = require("../utils/numeroALetras");
 const { AppError } = require("../utils/AppError");
@@ -128,4 +130,27 @@ async function generarPdf(codigo) {
   return fin;
 }
 
-module.exports = { armarNota, generarPdf, dibujar };
+/**
+ * TDSI-59: envia por correo el PDF de la nota de credito y deja constancia en envios_comprobante.
+ *   cuerpo: { email }
+ * Devuelve { numero, email, estado } con estado ENVIADO, o SIMULADO si el servidor no tiene SMTP configurado.
+ * Si el correo no sale (SMTP rechaza o se cae) responde 502 y el envio queda registrado como ERROR.
+ */
+async function enviarPorCorreo(codigo, cuerpo = {}) {
+  const email = typeof cuerpo.email === "string" ? cuerpo.email.trim() : "";
+  if (!email) throw new AppError("Falta el correo al que se enviará la nota de crédito.", 400);
+
+  const datos = await armarNota(codigo); // 404 / 409 si no tiene nota
+  const pdf = await generarPdf(codigo);
+  const { rows } = await query(`SELECT id FROM devoluciones.devoluciones WHERE codigo = $1`, [datos.devolucion.codigo]);
+  const devolucionId = Number(rows[0].id);
+
+  const resultado = await emailService.enviarNotaPorCorreo({ email, nota: datos.nota, devolucion: datos.devolucion, empresa: datos.empresa, pdf });
+  const envio = await comprobantesRepo.registrarEnvio({ devolucionId, email, estado: resultado.estado });
+  if (resultado.estado === "ERROR") {
+    throw new AppError("No se pudo enviar el correo. Intente de nuevo.", 502, { envio_id: envio.id, causa: resultado.error });
+  }
+  return { numero: datos.nota.numero, email, estado: resultado.estado, enviado_en: envio.enviado_en };
+}
+
+module.exports = { armarNota, generarPdf, dibujar, enviarPorCorreo };

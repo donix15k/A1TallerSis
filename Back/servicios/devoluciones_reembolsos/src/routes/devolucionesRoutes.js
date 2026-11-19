@@ -61,6 +61,16 @@ router.get("/:codigo/nota-credito.pdf", wrap(async (req, res) => {
   res.send(pdf);
 }));
 
+// TDSI-59: envia por correo el PDF de la nota de credito y registra el envio.
+router.post("/:codigo/nota-credito/enviar", wrap(async (req, res) => {
+  const data = await notaCreditoService.enviarPorCorreo(req.params.codigo, req.body);
+  res.status(201).json({
+    ok: true,
+    mensaje: data.estado === "SIMULADO" ? `Envío simulado a ${data.email} (el servidor no tiene correo configurado)` : `Nota de crédito enviada a ${data.email}`,
+    data,
+  });
+}));
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo. Va al final: "motivos" y
 // "factura/:numero" son rutas fijas y no deben confundirse con un codigo.
 router.get("/:codigo", wrap(async (req, res) => {

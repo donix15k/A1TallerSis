@@ -122,6 +122,10 @@ CREATE TABLE IF NOT EXISTS devoluciones.envios_comprobante (
     enviado_en      TIMESTAMPTZ
 );
 
+-- TDSI-59: sin credenciales SMTP el correo se "simula" (se deja constancia pero no sale nada): estado propio SIMULADO.
+ALTER TABLE devoluciones.envios_comprobante DROP CONSTRAINT IF EXISTS envios_comprobante_estado_check;
+ALTER TABLE devoluciones.envios_comprobante ADD CONSTRAINT envios_comprobante_estado_check CHECK (estado IN ('PENDIENTE','ENVIADO','ERROR','SIMULADO'));
+
 -- TDSI-77: notificacion al subsistema de inventario
 CREATE TABLE IF NOT EXISTS devoluciones.notificaciones_inventario (
     id              BIGSERIAL PRIMARY KEY,
