@@ -305,6 +305,47 @@ async function listarDevoluciones({ estado, limite } = {}) {
   return devolucionesRepo.listarDevoluciones({ estado: estadoNormalizado, limite: limiteNormalizado });
 }
 
+/**
+ * Datos del supervisor que vienen en el cuerpo: { supervisor_id, pin } (tambien se acepta "usuario" como
+ * otro nombre de supervisor_id). El PIN nunca se registra ni se devuelve.
+ */
+function credencialesDelCuerpo(cuerpo = {}) {
+  return { usuario: cuerpo.supervisor_id ?? cuerpo.usuario, pin: cuerpo.pin };
+}
+
+/** Solo se resuelven (aprueban o rechazan) devoluciones PENDIENTES: cualquier otro estado es un conflicto (409). */
+function exigirPendiente(devolucion, accion) {
+  if (devolucion.estado !== "PENDIENTE") {
+    throw new AppError(
+      `La devolución ${devolucion.codigo} ya está ${devolucion.estado} y no se puede ${accion}: solo se resuelven las PENDIENTES.`,
+      409,
+      { codigo: devolucion.codigo, estado: devolucion.estado }
+    );
+  }
+}
+
+/**
+ * TDSI-35: el supervisor aprueba una devolucion PENDIENTE con su usuario y PIN (validados por Facturacion).
+ * La devolucion pasa a APROBADA y queda guardado quien la autorizo (autorizado_por) y a que hora (autorizado_en).
+ * Orden de las comprobaciones: 1) el codigo existe, 2) sigue PENDIENTE (409 si no; asi un PIN no se gasta
+ * en algo que ya no se puede aprobar), 3) usuario y PIN, 4) el cambio de estado (que solo toca filas todavia
+ * PENDIENTES: si otro supervisor la resolvio justo antes, tambien 409).
+ */
+async function aprobarDevolucion(codigo, cuerpo = {}) {
+  const actual = await obtenerDevolucion(codigo);
+  exigirPendiente(actual, "aprobar");
+
+  const { usuario, pin } = credencialesDelCuerpo(cuerpo);
+  const supervisor = await facturacionProxy.validarSupervisor(usuario, pin);
+
+  const aprobada = await devolucionesRepo.aprobarPendiente(actual.codigo, supervisor.supervisor_id);
+  if (!aprobada) {
+    const ahora = await devolucionesRepo.obtenerPorCodigo(actual.codigo);
+    exigirPendiente(ahora, "aprobar");
+  }
+  return obtenerDevolucion(actual.codigo);
+}
+
 module.exports = {
   consultarFacturaParaDevolucion,
   repartirYaDevuelto,
@@ -314,4 +355,5 @@ module.exports = {
   registrarDevolucion,
   obtenerDevolucion,
   listarDevoluciones,
+  aprobarDevolucion,
 };

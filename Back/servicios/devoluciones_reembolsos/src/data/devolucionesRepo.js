@@ -126,6 +126,21 @@ async function listarDevoluciones({ estado = null, limite = 200 } = {}) {
   };
 }
 
+/**
+ * TDSI-35: pasa una devolucion de PENDIENTE a APROBADA guardando quien la autorizo y cuando. El UPDATE solo
+ * toca filas que SIGAN en PENDIENTE, asi que si dos supervisores aprueban a la vez solo uno lo logra.
+ * Devuelve true si la aprobo, false si ya no estaba pendiente (o no existe).
+ */
+async function aprobarPendiente(codigo, supervisorId) {
+  const { rowCount } = await query(
+    `UPDATE devoluciones.devoluciones
+        SET estado = 'APROBADA', autorizado_por = $2, autorizado_en = now()
+      WHERE codigo = $1 AND estado = 'PENDIENTE'`,
+    [codigo, supervisorId]
+  );
+  return rowCount === 1;
+}
+
 const claveProducto = (descripcion, precio) => `${String(descripcion).trim().toLowerCase()}|${Number(precio).toFixed(2)}`;
 
 /**
@@ -204,4 +219,4 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
   });
 }
 
-module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, crearDevolucion };
+module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, aprobarPendiente, crearDevolucion };

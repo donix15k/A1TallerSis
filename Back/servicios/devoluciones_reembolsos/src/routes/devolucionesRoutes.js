@@ -28,6 +28,12 @@ router.get("/", wrap(async (req, res) => {
   res.json({ ok: true, total, data: filas });
 }));
 
+// TDSI-35: el supervisor aprueba una devolucion pendiente con su usuario y PIN ({ supervisor_id, pin }).
+router.post("/:codigo/aprobar", wrap(async (req, res) => {
+  const data = await devolucionService.aprobarDevolucion(req.params.codigo, req.body);
+  res.json({ ok: true, mensaje: "Devolución aprobada", data });
+}));
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo. Va al final: "motivos" y
 // "factura/:numero" son rutas fijas y no deben confundirse con un codigo.
 router.get("/:codigo", wrap(async (req, res) => {
