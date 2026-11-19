@@ -34,6 +34,12 @@ router.post("/:codigo/aprobar", wrap(async (req, res) => {
   res.json({ ok: true, mensaje: "Devolución aprobada", data });
 }));
 
+// TDSI-36: el supervisor rechaza una devolucion pendiente ({ supervisor_id, pin, motivo_rechazo >= 10 caracteres }).
+router.post("/:codigo/rechazar", wrap(async (req, res) => {
+  const data = await devolucionService.rechazarDevolucion(req.params.codigo, req.body);
+  res.json({ ok: true, mensaje: "Devolución rechazada", data });
+}));
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo. Va al final: "motivos" y
 // "factura/:numero" son rutas fijas y no deben confundirse con un codigo.
 router.get("/:codigo", wrap(async (req, res) => {

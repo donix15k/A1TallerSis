@@ -141,6 +141,20 @@ async function aprobarPendiente(codigo, supervisorId) {
   return rowCount === 1;
 }
 
+/**
+ * TDSI-36: pasa una devolucion de PENDIENTE a RECHAZADA guardando el motivo del rechazo. Igual que al aprobar,
+ * solo toca filas que SIGAN en PENDIENTE. Devuelve true si la rechazo, false si ya no estaba pendiente.
+ */
+async function rechazarPendiente(codigo, motivoRechazo) {
+  const { rowCount } = await query(
+    `UPDATE devoluciones.devoluciones
+        SET estado = 'RECHAZADA', motivo_rechazo = $2
+      WHERE codigo = $1 AND estado = 'PENDIENTE'`,
+    [codigo, motivoRechazo]
+  );
+  return rowCount === 1;
+}
+
 const claveProducto = (descripcion, precio) => `${String(descripcion).trim().toLowerCase()}|${Number(precio).toFixed(2)}`;
 
 /**
@@ -219,4 +233,4 @@ async function crearDevolucion({ factura, comprados, tipo, monto_total, motivo_i
   });
 }
 
-module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, aprobarPendiente, crearDevolucion };
+module.exports = { listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, aprobarPendiente, rechazarPendiente, crearDevolucion };

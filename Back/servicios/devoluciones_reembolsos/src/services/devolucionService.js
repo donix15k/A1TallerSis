@@ -346,6 +346,44 @@ async function aprobarDevolucion(codigo, cuerpo = {}) {
   return obtenerDevolucion(actual.codigo);
 }
 
+const MOTIVO_RECHAZO_MIN = 10;
+const MOTIVO_RECHAZO_MAX = 300; // largo de devoluciones.devoluciones.motivo_rechazo
+
+/** El motivo del rechazo: texto de al menos 10 caracteres (sin contar espacios de los extremos) y a lo sumo 300. */
+function validarMotivoRechazo(valor) {
+  const motivo = typeof valor === "string" ? valor.trim() : "";
+  if (motivo.length < MOTIVO_RECHAZO_MIN) {
+    throw new AppError(`El motivo del rechazo debe tener al menos ${MOTIVO_RECHAZO_MIN} caracteres.`, 400, { minimo: MOTIVO_RECHAZO_MIN });
+  }
+  if (motivo.length > MOTIVO_RECHAZO_MAX) {
+    throw new AppError(`El motivo del rechazo puede tener como máximo ${MOTIVO_RECHAZO_MAX} caracteres.`, 400, { maximo: MOTIVO_RECHAZO_MAX });
+  }
+  return motivo;
+}
+
+/**
+ * TDSI-36: el supervisor rechaza una devolucion PENDIENTE: escribe el motivo del rechazo (minimo 10 caracteres)
+ * y su usuario y PIN. La devolucion pasa a RECHAZADA y el motivo queda guardado. Comprobaciones en este orden
+ * (para no gastar un intento de PIN en algo que ya falla): codigo existe -> sigue PENDIENTE (409) -> motivo
+ * valido (400) -> usuario y PIN (401/423/400) -> cambio de estado (409 si otro la resolvio justo antes).
+ *   cuerpo: { supervisor_id, pin, motivo_rechazo }  (tambien se acepta "motivo")
+ */
+async function rechazarDevolucion(codigo, cuerpo = {}) {
+  const actual = await obtenerDevolucion(codigo);
+  exigirPendiente(actual, "rechazar");
+  const motivoRechazo = validarMotivoRechazo(cuerpo.motivo_rechazo ?? cuerpo.motivo);
+
+  const { usuario, pin } = credencialesDelCuerpo(cuerpo);
+  await facturacionProxy.validarSupervisor(usuario, pin);
+
+  const rechazada = await devolucionesRepo.rechazarPendiente(actual.codigo, motivoRechazo);
+  if (!rechazada) {
+    const ahora = await devolucionesRepo.obtenerPorCodigo(actual.codigo);
+    exigirPendiente(ahora, "rechazar");
+  }
+  return obtenerDevolucion(actual.codigo);
+}
+
 module.exports = {
   consultarFacturaParaDevolucion,
   repartirYaDevuelto,
@@ -356,4 +394,5 @@ module.exports = {
   obtenerDevolucion,
   listarDevoluciones,
   aprobarDevolucion,
+  rechazarDevolucion,
 };
