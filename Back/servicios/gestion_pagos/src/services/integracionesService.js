@@ -96,4 +96,28 @@ async function listarMensajes({ token = null, ...consulta } = {}) {
   };
 }
 
-module.exports = { reunirMensajes, listarMensajes, validarFiltros, GRUPOS };
+const NOMBRES = { C: "Compras", D: "Contabilidad", E: "Marketplace" };
+
+/**
+ * TDSI-128: totales por grupo (Compras C, Contabilidad D, Marketplace E) y por estado: Enviado (salio y espera respuesta),
+ * Respondido (el otro grupo ya contesto), Pendiente (se esta reintentando) y Error. Siempre trae los tres grupos, aunque
+ * esten en 0, y "total" general. Alimenta las tarjetas del Monitor y las del Panel de KPIs (Integraciones y proveedores).
+ */
+async function resumen({ token = null } = {}) {
+  const { mensajes, fuentes: estadoFuentes } = await reunirMensajes({ token });
+  const grupos = GRUPOS.map((g) => ({ grupo: g, nombre: NOMBRES[g], total: 0, enviados: 0, respondidos: 0, pendientes: 0, errores: 0 }));
+  const clave = { Enviado: "enviados", Respondido: "respondidos", Pendiente: "pendientes", Error: "errores" };
+  for (const m of mensajes) {
+    const g = grupos.find((x) => x.grupo === m.grupo);
+    if (!g) continue;
+    g.total += 1;
+    g[clave[m.estado] || "pendientes"] += 1;
+  }
+  const total = grupos.reduce(
+    (a, g) => ({ total: a.total + g.total, enviados: a.enviados + g.enviados, respondidos: a.respondidos + g.respondidos, pendientes: a.pendientes + g.pendientes, errores: a.errores + g.errores }),
+    { total: 0, enviados: 0, respondidos: 0, pendientes: 0, errores: 0 }
+  );
+  return { grupos, total, fuentes: estadoFuentes, actualizado_en: new Date().toISOString() };
+}
+
+module.exports = { reunirMensajes, listarMensajes, resumen, validarFiltros, GRUPOS };

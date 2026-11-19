@@ -15,4 +15,9 @@ router.get("/mensajes", wrap(async (req, res) => {
   res.json({ ok: true, total, pagina, por_pagina, total_paginas, fuentes, data });
 }));
 
+// TDSI-128: totales por grupo (Compras, Marketplace, Contabilidad) y por estado (Enviado, Respondido, Pendiente, Error).
+router.get("/resumen", wrap(async (req, res) => {
+  res.json({ ok: true, data: await integraciones.resumen({ token: req.tokenAdministrador }) });
+}));
+
 module.exports = router;
