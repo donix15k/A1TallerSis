@@ -347,3 +347,18 @@ CREATE TABLE IF NOT EXISTS caja.cajeros (
 );
 
 ALTER TABLE caja.cajeros ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================================================
+-- TDSI-46: salidas de efectivo por devoluciones (microservicio devoluciones_reembolsos)
+-- --------------------------------------------------------------------------
+-- IDEMPOTENTE. 1) 'DEVOLUCIONES' pasa a ser un origen valido de movimiento.
+-- 2) Una devolucion solo puede sacar efectivo UNA vez: la referencia es su codigo (DEV-NNNN) y el indice
+--    unico parcial lo garantiza aunque dos pedidos lleguen a la vez.
+-- ==========================================================================
+ALTER TABLE caja.movimientos DROP CONSTRAINT IF EXISTS movimientos_origen_microservicio_check;
+ALTER TABLE caja.movimientos ADD CONSTRAINT movimientos_origen_microservicio_check
+  CHECK (origen_microservicio IN ('LOCAL','PAGOS','PROVEEDORES','DEVOLUCIONES'));
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_movimientos_devolucion
+  ON caja.movimientos (referencia_externa) WHERE origen_microservicio = 'DEVOLUCIONES';
+
