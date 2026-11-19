@@ -16,6 +16,7 @@ test.before(async () => {
     nit: NIT,
     razon_social: "Juan Perez",
     items: [{ descripcion: "Arroz 1kg", cantidad: 1, precio_unitario: 35 }],
+    metodo_pago: "Efectivo",
   });
   numero = factura.numero;
 });

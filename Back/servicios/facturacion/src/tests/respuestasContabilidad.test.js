@@ -34,7 +34,7 @@ function suscripcionFalsa(textos) {
 
 async function facturaEnviada() {
   const f = await facturasService.crearFactura({
-    nit: "7700112233", razon_social: "Cliente Prueba", items: [{ descripcion: "Item", cantidad: 1, precio_unitario: 35 }],
+    nit: "7700112233", razon_social: "Cliente Prueba", items: [{ descripcion: "Item", cantidad: 1, precio_unitario: 35 }], metodo_pago: "QR",
   });
   creadas.push(f.id);
   await contabilidad.enviarFactura(f.id, "venta");

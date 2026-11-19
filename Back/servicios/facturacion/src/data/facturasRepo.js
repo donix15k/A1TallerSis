@@ -8,7 +8,7 @@ const { query, withTransaction } = require("../config/db");
  * (leer el ultimo numero + insertar) entre transacciones concurrentes, sin bloquear
  * el resto de la tabla.
  */
-async function crearFactura({ cliente_nit, cliente_nombre, items, subtotal, descuento, impuesto, total }) {
+async function crearFactura({ cliente_nit, cliente_nombre, items, metodosPago = [], subtotal, descuento, impuesto, total }) {
   return withTransaction(async (client) => {
     await client.query(`SELECT pg_advisory_xact_lock(hashtext('facturacion.facturas.numero'))`);
 
@@ -33,6 +33,14 @@ async function crearFactura({ cliente_nit, cliente_nombre, items, subtotal, desc
         `INSERT INTO facturacion.factura_items (factura_id, descripcion, cantidad, precio_unitario, subtotal)
          VALUES ($1,$2,$3,$4,$5)`,
         [factura.id, item.descripcion, item.cantidad, item.precio_unitario, item.subtotal]
+      );
+    }
+
+    // Metodo(s) de pago, en la misma transaccion que la factura y sus items.
+    for (const m of metodosPago) {
+      await client.query(
+        `INSERT INTO facturacion.factura_metodos_pago (factura_id, metodo, monto) VALUES ($1,$2,$3)`,
+        [factura.id, m.metodo, m.monto]
       );
     }
 

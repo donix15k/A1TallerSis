@@ -99,6 +99,7 @@ async function recibirVenta(json) {
       nit: venta.nit,
       razon_social: venta.razon_social || venta.cliente_id,
       items: itemsProcesados.map((it) => ({ descripcion: it.descripcion, cantidad: it.cantidad, precio_unitario: it.precioUnitario })),
+      metodo_pago: venta.metodo_pago, // la factura lleva el metodo con que se pago la orden
     });
     numeroFactura = factura.numero;
     await repo.guardarNumeroFactura(venta.id, numeroFactura);

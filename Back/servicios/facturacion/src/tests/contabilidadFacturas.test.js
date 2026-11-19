@@ -38,12 +38,9 @@ async function nuevaFactura() {
       { descripcion: "Martillo", cantidad: 2, precio_unitario: 45.5 },
       { descripcion: "Clavos 1kg", cantidad: 1, precio_unitario: 19 },
     ],
+    metodos_pago: [{ metodo: "Efectivo", monto: 60 }, { metodo: "QR", monto: 50 }], // pago mixto: suma 110
   });
   creadas.push(f.id);
-  await pool.query(
-    `INSERT INTO facturacion.factura_metodos_pago (factura_id, metodo, monto) VALUES ($1,'Efectivo',60),($1,'QR',50)`,
-    [f.id]
-  );
   return f;
 }
 
@@ -226,7 +223,7 @@ test("TDSI-22: POST /api/facturas crea la factura y responde con el envio a Cont
     const res = await fetch(base, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nit: NIT, razon_social: "Ferreteria Prueba S.R.L.", items: [{ descripcion: "Pala", cantidad: 1, precio_unitario: 80 }] }),
+      body: JSON.stringify({ nit: NIT, razon_social: "Ferreteria Prueba S.R.L.", items: [{ descripcion: "Pala", cantidad: 1, precio_unitario: 80 }], metodo_pago: "QR" }),
     });
     const cuerpo = await res.json();
     creadas.push(cuerpo.data.id);
@@ -239,12 +236,23 @@ test("TDSI-22: POST /api/facturas crea la factura y responde con el envio a Cont
     const res2 = await fetch(base, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nit: NIT, razon_social: "Ferreteria Prueba S.R.L.", items: [{ descripcion: "Pico", cantidad: 1, precio_unitario: 70 }] }),
+      body: JSON.stringify({ nit: NIT, razon_social: "Ferreteria Prueba S.R.L.", items: [{ descripcion: "Pico", cantidad: 1, precio_unitario: 70 }], metodo_pago: "Efectivo" }),
     });
     const cuerpo2 = await res2.json();
     creadas.push(cuerpo2.data.id);
     assert.equal(res2.status, 201);
     assert.equal(cuerpo2.contabilidad.estado, "Pendiente");
+
+    // Sin metodo de pago la factura se rechaza (400) y NO se publica nada a Contabilidad
+    const publicadosAntes = falso.publicados.length;
+    const sinMetodo = await fetch(base, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nit: NIT, razon_social: "Ferreteria Prueba S.R.L.", items: [{ descripcion: "Taladro", cantidad: 1, precio_unitario: 90 }] }),
+    });
+    assert.equal(sinMetodo.status, 400);
+    assert.match((await sinMetodo.json()).mensaje, /metodo de pago/);
+    assert.equal(falso.publicados.length, publicadosAntes, "una factura rechazada no debe publicarse");
 
     const lista = await (await fetch(`${base}/envios-contabilidad?tipo=venta&limite=5`)).json();
     assert.ok(lista.data.envios.some((e) => e.factura_numero === cuerpo.data.numero));

@@ -4,13 +4,14 @@
 const FACTURACION_URL = process.env.FACTURACION_URL || "http://localhost:4002";
 
 /** Devuelve la factura creada ({ numero, id, ... }); lanza un Error con un mensaje claro si falla. */
-async function emitirFactura({ nit, razon_social, items }) {
+async function emitirFactura({ nit, razon_social, items, metodo_pago }) {
   let respuesta;
   try {
     respuesta = await fetch(`${FACTURACION_URL}/api/facturas`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nit, razon_social, items }),
+      // metodo_pago: con que se pago la orden (Efectivo, Tarjeta o QR). Facturacion lo exige: toda factura lo lleva.
+      body: JSON.stringify({ nit, razon_social, items, metodo_pago }),
     });
   } catch (e) {
     throw new Error("No se pudo contactar a facturacion para emitir la factura.");

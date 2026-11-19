@@ -22,6 +22,7 @@ test.before(async () => {
     nit: NIT,
     razon_social: "Cliente Prueba Impresora",
     items: [{ descripcion: "Producto", cantidad: 1, precio_unitario: 10 }],
+    metodo_pago: "Tarjeta",
   });
   numero = factura.numero;
 });
