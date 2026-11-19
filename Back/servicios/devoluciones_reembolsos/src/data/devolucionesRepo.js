@@ -98,7 +98,7 @@ async function obtenerPorCodigo(codigo) {
  * de la mas antigua a la mas nueva (se atiende en orden de llegada); las demas, de la mas reciente a la mas antigua.
  * Devuelve { total: cuantas hay en total con ese filtro, filas: hasta "limite" de ellas }.
  */
-async function listarDevoluciones({ estado = null, desde = null, hasta = null, cajero = null, limite = 200, offset = 0 } = {}) {
+async function listarDevoluciones({ estado = null, desde = null, hasta = null, cajero = null, origen = null, limite = 200, offset = 0 } = {}) {
   // TDSI-79: filtros opcionales. Las fechas son dias de Bolivia (America/La_Paz) INCLUSIVOS: "hasta" cuenta el dia
   // completo. El cajero busca por coincidencia parcial sin distinguir mayusculas (los % y _ se toman literales).
   const condiciones = [];
@@ -108,6 +108,7 @@ async function listarDevoluciones({ estado = null, desde = null, hasta = null, c
     condiciones.push(sql.replace("?", `$${parametros.length}`));
   };
   if (estado) agregar("d.estado = ?", estado);
+  if (origen) agregar("d.origen = ?", origen); // TDSI-118: TIENDA o MARKETPLACE
   if (desde) agregar("(d.fecha_solicitud AT TIME ZONE 'America/La_Paz')::date >= ?::date", desde);
   if (hasta) agregar("(d.fecha_solicitud AT TIME ZONE 'America/La_Paz')::date <= ?::date", hasta);
   if (cajero) agregar("d.creado_por ILIKE ? ESCAPE '\\'", `%${String(cajero).replace(/[\\%_]/g, "\\$&")}%`);
@@ -116,7 +117,7 @@ async function listarDevoluciones({ estado = null, desde = null, hasta = null, c
 
   const { rows: conteo } = await query(`SELECT count(*)::int AS total FROM devoluciones.devoluciones d ${filtro}`, parametros);
   const { rows } = await query(
-    `SELECT d.codigo, d.estado, d.tipo, d.factura_numero, d.creado_por, d.monto_total, d.fecha_solicitud,
+    `SELECT d.codigo, d.estado, d.tipo, d.factura_numero, d.creado_por, d.monto_total, d.fecha_solicitud, d.origen, d.orden_id,
             d.requiere_autorizacion, m.id AS motivo_id, m.nombre AS motivo,
             e.estado AS cont_estado, e.resultado AS cont_resultado, e.numero_asiento AS cont_asiento, e.resultado_motivo AS cont_motivo
        FROM devoluciones.devoluciones d
@@ -140,6 +141,8 @@ async function listarDevoluciones({ estado = null, desde = null, hasta = null, c
       motivo: d.motivo_id ? { id: Number(d.motivo_id), nombre: d.motivo } : null,
       fecha_solicitud: d.fecha_solicitud,
       requiere_autorizacion: d.requiere_autorizacion,
+      origen: d.origen,
+      orden_id: d.orden_id,
       // TDSI-92/94: como va su nota de credito en Contabilidad (null si todavia no tiene envio)
       contabilidad: d.cont_estado
         ? estadoVisible({ estado: d.cont_estado, resultado: d.cont_resultado, numero_asiento: d.cont_asiento, resultado_motivo: d.cont_motivo })

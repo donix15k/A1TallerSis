@@ -366,6 +366,16 @@ function validarRangoFechas(desde, hasta) {
   return { desde: d, hasta: h };
 }
 
+const ORIGENES = ["TIENDA", "MARKETPLACE"];
+
+/** TDSI-118: origen de la devolucion (TIENDA o MARKETPLACE), sin distinguir mayusculas. */
+function validarOrigenFiltro(origen) {
+  if (vacio(origen)) return null;
+  const normalizado = String(origen).trim().toUpperCase();
+  if (!ORIGENES.includes(normalizado)) throw new AppError(`El origen debe ser uno de: ${ORIGENES.join(", ")}.`, 400, { origen });
+  return normalizado;
+}
+
 function validarCajeroFiltro(cajero) {
   if (vacio(cajero)) return null;
   const c = String(cajero).trim();
@@ -380,9 +390,10 @@ function validarCajeroFiltro(cajero) {
  *  - Sin ?pagina funciona como la bandeja del supervisor: ?limite=N acota las filas (por defecto 200, maximo 1000).
  * "total" siempre es el conteo completo con esos filtros.
  */
-async function listarDevoluciones({ estado, desde, hasta, cajero, limite, pagina } = {}) {
+async function listarDevoluciones({ estado, desde, hasta, cajero, origen, limite, pagina } = {}) {
   const filtros = {
     estado: validarEstadoFiltro(estado),
+    origen: validarOrigenFiltro(origen),
     ...validarRangoFechas(desde, hasta),
     cajero: validarCajeroFiltro(cajero),
   };
@@ -484,9 +495,10 @@ async function rechazarDevolucion(codigo, cuerpo = {}) {
 }
 
 /** TDSI-81: las filas de un listado con los mismos filtros pero SIN paginar (hasta `maximo`), para exportarlas. */
-async function listarParaExportar({ estado, desde, hasta, cajero } = {}, maximo = 10000) {
+async function listarParaExportar({ estado, desde, hasta, cajero, origen } = {}, maximo = 10000) {
   return devolucionesRepo.listarDevoluciones({
     estado: validarEstadoFiltro(estado),
+    origen: validarOrigenFiltro(origen),
     ...validarRangoFechas(desde, hasta),
     cajero: validarCajeroFiltro(cajero),
     limite: maximo,
