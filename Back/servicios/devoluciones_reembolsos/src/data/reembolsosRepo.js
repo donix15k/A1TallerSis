@@ -14,7 +14,8 @@ const PASARELA_DE = { REVERSION_TARJETA: "Pasarela de tarjetas", REVERSION_QR: "
 async function guardarReembolsos(client, devolucionId, plan) {
   const guardados = [];
   for (const p of plan) {
-    const esEfectivo = p.tipo === "EFECTIVO";
+    // Efectivo y vale ya quedan hechos al reembolsar (no hay pasarela de por medio).
+    const esEfectivo = p.tipo === "EFECTIVO" || p.tipo === "VALE";
     const { rows } = await client.query(
       `INSERT INTO devoluciones.reembolsos (devolucion_id, tipo, monto, estado, procesado_en)
        VALUES ($1, $2, $3, $4, ${esEfectivo ? "now()" : "NULL"})

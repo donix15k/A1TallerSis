@@ -5,6 +5,7 @@ const reversionService = require("./reversionService");
 const devolucionesRepo = require("../data/devolucionesRepo");
 const reembolsosRepo = require("../data/reembolsosRepo");
 const notasCreditoRepo = require("../data/notasCreditoRepo");
+const valesRepo = require("../data/valesRepo");
 const { withTransaction, query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { tipoDeReembolso, repartirMonto, redondear } = require("../utils/reembolso");
@@ -15,7 +16,17 @@ const TEXTO_POR_TIPO = {
   EFECTIVO: (monto) => `Entregar ${bs(monto)} en efectivo al cliente (sale de la caja del cajero)`,
   REVERSION_TARJETA: (monto) => `Revertir ${bs(monto)} del cobro con tarjeta`,
   REVERSION_QR: (monto) => `Revertir ${bs(monto)} del cobro por QR`,
+  VALE: (monto) => `Entregar un vale de compra por ${bs(monto)} (válido 90 días; no se cambia por dinero)`,
 };
+
+const FORMAS = ["ORIGINAL", "VALE"];
+/** TDSI-68: "forma" del reembolso: ORIGINAL (segun como pago el cliente, por defecto) o VALE de compra. */
+function validarForma(valor) {
+  if (valor === undefined || valor === null || valor === "") return "ORIGINAL";
+  const forma = String(valor).trim().toUpperCase();
+  if (!FORMAS.includes(forma)) throw new AppError(`La forma de reembolso debe ser ${FORMAS.join(" o ")}.`, 400, { forma: valor });
+  return forma;
+}
 
 /**
  * TDSI-45: decide COMO se devuelve el dinero de una devolucion: segun el metodo de pago ORIGINAL de la factura
@@ -28,7 +39,11 @@ const TEXTO_POR_TIPO = {
  *   - los pedidos del Marketplace (canal Online) NUNCA se reembolsan con efectivo de caja: 422.
  * Es una funcion pura (no consulta nada): recibe la devolucion y la factura ya leidas.
  */
-function planificarReembolso({ monto, factura }) {
+function planificarReembolso({ monto, factura, forma }) {
+  // TDSI-68: si el cliente prefiere un vale de compra, todo el monto va a un vale (no sale efectivo ni se revierte nada).
+  if (forma === "VALE") {
+    return [{ tipo: "VALE", metodo: "Vale", monto: redondear(monto), descripcion: TEXTO_POR_TIPO.VALE(monto) }];
+  }
   const metodos = factura.metodos_pago ?? [];
   if (metodos.length === 0) {
     throw new AppError(
@@ -61,7 +76,8 @@ function planificarReembolso({ monto, factura }) {
  * TDSI-45: lo que ve el cajero al abrir "Reembolsar" en una devolucion APROBADA: como se va a devolver el dinero
  * (segun el metodo de pago original y el monto) antes de confirmar. No cambia nada.
  */
-async function consultarReembolso(codigo) {
+async function consultarReembolso(codigo, { forma = "ORIGINAL" } = {}) {
+  forma = validarForma(forma);
   const devolucion = await devolucionService.obtenerDevolucion(codigo);
   if (devolucion.estado === "PROCESADA") {
     // Ya reembolsada: se muestra lo que se hizo (reembolsos guardados y estado de cada reversion).
@@ -83,7 +99,7 @@ async function consultarReembolso(codigo) {
     );
   }
   const factura = await facturacionProxy.obtenerFactura(devolucion.factura_numero);
-  const plan = planificarReembolso({ monto: devolucion.monto_total, factura });
+  const plan = planificarReembolso({ monto: devolucion.monto_total, factura, forma });
   return {
     codigo: devolucion.codigo,
     estado: devolucion.estado,
@@ -91,14 +107,17 @@ async function consultarReembolso(codigo) {
     factura_numero: devolucion.factura_numero,
     canal: factura.canal,
     metodo_pago: factura.metodo_pago,
+    forma,
+    formas_disponibles: FORMAS, // el cajero puede elegir "VALE" si el cliente lo prefiere
     plan,
     sale_efectivo_de_caja: plan.some((p) => p.tipo === "EFECTIVO"),
   };
 }
 
 /** Mensaje para el cajero de cada reembolso: lo que debe hacer o lo que ya paso. */
-function mensajeDe(r) {
+function mensajeDe(r, vale) {
   if (r.tipo === "EFECTIVO") return `Entregue ${bs(r.monto)} al cliente`;
+  if (r.tipo === "VALE") return `Vale ${vale.codigo} por ${bs(r.monto)} emitido: válido hasta el ${new Date(vale.expira_en).toLocaleDateString("es-BO", { timeZone: "America/La_Paz" })}`;
   const medio = r.tipo === "REVERSION_QR" ? "QR" : "tarjeta";
   return r.envio?.estado === "ENVIADO"
     ? `Reversión enviada: ${bs(r.monto)} del cobro con ${medio}`
@@ -122,8 +141,9 @@ function mensajeDe(r) {
 async function reembolsar(codigo, cuerpo = {}) {
   const cajero = devolucionService.validarCajero(cuerpo.cajero);
   const cajaId = typeof cuerpo.caja_id === "string" ? cuerpo.caja_id.trim() : "";
+  const forma = validarForma(cuerpo.forma);
 
-  const consulta = await consultarReembolso(codigo); // 404 / 409 (no aprobada) / 422 (plan imposible)
+  const consulta = await consultarReembolso(codigo, { forma }); // 404 / 409 (no aprobada) / 422 (plan imposible)
   if (consulta.ya_reembolsada) {
     throw new AppError(`La devolución ${consulta.codigo} ya fue reembolsada: un reembolso solo se hace una vez.`, 409, { codigo: consulta.codigo, estado: consulta.estado });
   }
@@ -151,7 +171,9 @@ async function reembolsar(codigo, cuerpo = {}) {
     await devolucionesRepo.marcarProcesada(client, actual.id, cajero);
     // TDSI-57: al quedar PROCESADA se emite su nota de credito (misma transaccion: o quedan las dos cosas o ninguna).
     const nota = await notasCreditoRepo.emitirNota(client, actual.id, actual.monto_total);
-    return { id: actual.id, reembolsos, nota };
+    // TDSI-68: reembolso en vale de compra: codigo unico VAL-XXXXXX, saldo = monto y vencimiento a 90 dias.
+    const vale = plan.some((p) => p.tipo === "VALE") ? await valesRepo.emitirVale(client, actual.id, actual.monto_total) : null;
+    return { id: actual.id, reembolsos, nota, vale };
   });
 
   // Reversiones de tarjeta/QR: primer intento ya (si falla, el proceso periodico las reintenta).
@@ -166,7 +188,8 @@ async function reembolsar(codigo, cuerpo = {}) {
     monto_total: devolucion.monto_total,
     reembolsos,
     nota_credito: guardado.nota,
-    mensajes: reembolsos.map(mensajeDe),
+    vale: guardado.vale,
+    mensajes: reembolsos.map((r) => mensajeDe(r, guardado.vale)),
     historial: devolucion.historial,
   };
 }

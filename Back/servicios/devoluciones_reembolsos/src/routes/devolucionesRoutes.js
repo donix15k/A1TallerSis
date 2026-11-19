@@ -50,7 +50,7 @@ router.post("/:codigo/reembolsar", wrap(async (req, res) => {
 
 // TDSI-45: como se va a devolver el dinero de una devolucion APROBADA (segun como pago el cliente) y el monto.
 router.get("/:codigo/reembolso", wrap(async (req, res) => {
-  res.json({ ok: true, data: await reembolsoService.consultarReembolso(req.params.codigo) });
+  res.json({ ok: true, data: await reembolsoService.consultarReembolso(req.params.codigo, { forma: req.query.forma }) });
 }));
 
 // TDSI-58: nota de credito en PDF (empresa, factura original, productos devueltos y monto en letras).

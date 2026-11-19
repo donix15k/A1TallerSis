@@ -122,6 +122,11 @@ CREATE TABLE IF NOT EXISTS devoluciones.envios_comprobante (
     enviado_en      TIMESTAMPTZ
 );
 
+-- TDSI-68: el reembolso puede ser un VALE de compra (no sale efectivo); una devolucion genera como maximo un vale.
+ALTER TABLE devoluciones.reembolsos DROP CONSTRAINT IF EXISTS reembolsos_tipo_check;
+ALTER TABLE devoluciones.reembolsos ADD CONSTRAINT reembolsos_tipo_check CHECK (tipo IN ('EFECTIVO','REVERSION_TARJETA','REVERSION_QR','VALE'));
+CREATE UNIQUE INDEX IF NOT EXISTS uq_vales_compra_devolucion ON devoluciones.vales_compra (devolucion_id);
+
 -- TDSI-59: sin credenciales SMTP el correo se "simula" (se deja constancia pero no sale nada): estado propio SIMULADO.
 ALTER TABLE devoluciones.envios_comprobante DROP CONSTRAINT IF EXISTS envios_comprobante_estado_check;
 ALTER TABLE devoluciones.envios_comprobante ADD CONSTRAINT envios_comprobante_estado_check CHECK (estado IN ('PENDIENTE','ENVIADO','ERROR','SIMULADO'));
