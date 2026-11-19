@@ -7,6 +7,7 @@ const reembolsosRepo = require("../data/reembolsosRepo");
 const notasCreditoRepo = require("../data/notasCreditoRepo");
 const valesRepo = require("../data/valesRepo");
 const contabilidadService = require("./contabilidadService");
+const comprasService = require("./comprasService");
 const { withTransaction, query } = require("../config/db");
 const { AppError } = require("../utils/AppError");
 const { tipoDeReembolso, repartirMonto, redondear } = require("../utils/reembolso");
@@ -185,6 +186,8 @@ async function reembolsar(codigo, cuerpo = {}) {
   // TDSI-92: la nota de credito se informa a Contabilidad (asincrono: se publica y no se espera). Nunca hace fallar el
   // reembolso: si Pub/Sub falla, el envio queda para los reintentos.
   const contabilidad = await contabilidadService.enviarNotaSegura(codigo);
+  // TDSI-104: y a Compras se le avisa de los productos devueltos (en buen estado o defectuosos), igual de asincrono.
+  const compras = await comprasService.enviarDevolucionSegura(codigo);
 
   const reembolsos = await reembolsosRepo.listarPorDevolucion(guardado.id);
   const devolucion = await devolucionService.obtenerDevolucion(codigo);
@@ -197,6 +200,9 @@ async function reembolsar(codigo, cuerpo = {}) {
     contabilidad: contabilidad.estado
       ? { estado: contabilidad.estado, intentos: contabilidad.intentos, pubsub_message_id: contabilidad.pubsub_message_id }
       : { estado: null, publicado: false, motivo: contabilidad.motivo || contabilidad.error || null },
+    compras: compras.estado
+      ? { estado: compras.estado, intentos: compras.intentos, pubsub_message_id: compras.pubsub_message_id }
+      : { estado: null, publicado: false, motivo: compras.motivo || compras.error || null },
     vale: guardado.vale,
     mensajes: reembolsos.map((r) => mensajeDe(r, guardado.vale)),
     historial: devolucion.historial,

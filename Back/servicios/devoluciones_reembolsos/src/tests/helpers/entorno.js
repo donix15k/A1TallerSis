@@ -74,10 +74,10 @@ async function iniciarEntorno() {
   // credenciales: todo lo que se "publica" queda en pubsub.publicados; con pubsub.falla = Error, la publicacion falla.
   const pubsub = { publicados: [], falla: null };
   require("../../clients/pubsubPublisher").usarClienteDePrueba({
-    topic: () => ({
+    topic: (nombre) => ({
       publishMessage: async (m) => {
         if (pubsub.falla) throw pubsub.falla;
-        pubsub.publicados.push(m);
+        pubsub.publicados.push({ ...m, topico: nombre });
         return `fake-msg-${pubsub.publicados.length}`;
       },
       iam: { testPermissions: async () => [{ "pubsub.topics.publish": true }] },

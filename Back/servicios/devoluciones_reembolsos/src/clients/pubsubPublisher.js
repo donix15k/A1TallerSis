@@ -20,12 +20,13 @@ function crearCliente() {
   });
 }
 
-function obtenerTopico() {
+// Sin `nombre` es el topico de Contabilidad; Compras (TDSI-104) pasa el suyo.
+function obtenerTopico(nombre = cfg.PUBSUB_TOPIC) {
   if (!cliente) cliente = crearCliente();
-  if (!topicos.has(cfg.PUBSUB_TOPIC)) {
-    topicos.set(cfg.PUBSUB_TOPIC, cliente.topic(cfg.PUBSUB_TOPIC, { batching: { maxMessages: 1, maxMilliseconds: 0 } }));
+  if (!topicos.has(nombre)) {
+    topicos.set(nombre, cliente.topic(nombre, { batching: { maxMessages: 1, maxMilliseconds: 0 } }));
   }
-  return topicos.get(cfg.PUBSUB_TOPIC);
+  return topicos.get(nombre);
 }
 
 function conTiempoLimite(promesa, ms) {
@@ -36,15 +37,18 @@ function conTiempoLimite(promesa, ms) {
   return Promise.race([promesa, limite]).finally(() => clearTimeout(timer));
 }
 
-/** Publica `mensaje` como JSON. Devuelve { ok: true, messageId } o { ok: false, reintentable, error }. */
-async function publicar(mensaje, atributos = {}) {
-  if (!cfg.PUBSUB_TOPIC) return { ok: false, reintentable: false, error: "CONTABILIDAD_PUBSUB_TOPIC no esta configurado" };
+/**
+ * Publica `mensaje` como JSON en el topico indicado (por defecto el de Contabilidad).
+ * Devuelve { ok: true, messageId } o { ok: false, reintentable, error }.
+ */
+async function publicar(mensaje, atributos = {}, { topico = cfg.PUBSUB_TOPIC, variable = "CONTABILIDAD_PUBSUB_TOPIC" } = {}) {
+  if (!topico) return { ok: false, reintentable: false, error: `${variable} no esta configurado` };
 
   const attributes = Object.fromEntries(
     Object.entries(atributos).filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => [k, String(v)])
   );
   try {
-    const messageId = await conTiempoLimite(obtenerTopico().publishMessage({ json: mensaje, attributes }), cfg.PUBSUB_TIMEOUT_MS);
+    const messageId = await conTiempoLimite(obtenerTopico(topico).publishMessage({ json: mensaje, attributes }), cfg.PUBSUB_TIMEOUT_MS);
     return { ok: true, messageId };
   } catch (e) {
     const reintentable = e.tiempoAgotado || !NO_REINTENTABLES.has(e.code);
