@@ -62,3 +62,16 @@ services:
       - ./servicios/pagos_proveedores/.env
     networks:
       - app-network
+
+  devoluciones_reembolsos:
+    build: ./servicios/devoluciones_reembolsos
+    ports:
+      - "4007:4007"
+    environment:
+      - NODE_ENV=development
+      - PORT=4007
+      - FACTURACION_URL=http://facturacion:4002
+    env_file:
+      - ./servicios/devoluciones_reembolsos/.env
+    networks:
+      - app-network
