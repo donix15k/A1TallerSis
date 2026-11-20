@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { obtenerAnulacionesPorCajero, obtenerResumenKpis, obtenerRiesgo, obtenerVentasVsMeta } from '../api/kpis.js'
+import { obtenerAnulacionesPorCajero, obtenerCumplimientoMetas, obtenerResumenKpis, obtenerRiesgo, obtenerVentasVsMeta } from '../api/kpis.js'
 import PestanaRiesgo from '../components/kpis/PestanaRiesgo.jsx'
+import PestanaCajas from '../components/kpis/PestanaCajas.jsx'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import Icono from '../components/ui/Icono.jsx'
 import { Aviso, Esqueleto } from '../components/ui/Aviso.jsx'
@@ -78,7 +79,18 @@ const TARJETAS = [
       return { valor: porcentaje(t.valor), color: t.color, detalle: `${bs(t.detalle?.monto_devuelto)} devueltos` }
     },
   },
-  { id: 'metas', nombre: 'Metas por caja', pestana: 'cajas', leer: () => null },
+  {
+    // TDSI-164: "Metas por caja" con el % general; clic abre la pestaña Cajas
+    id: 'metas',
+    nombre: 'Metas por caja',
+    pestana: 'cajas',
+    leer: ({ metas }) => {
+      if (!metas) return null
+      const g = metas.general
+      if (g.porcentaje === null) return { valor: '—', color: null, detalle: 'Sin metas configuradas' }
+      return { valor: `${numero(g.porcentaje, g.porcentaje % 1 ? 1 : 0)} %`, color: g.color, detalle: `${bs(g.vendido)} de ${bs(g.meta)}` }
+    },
+  },
   { id: 'cuadre', nombre: 'Cuadre de caja', pestana: 'cajas', leer: () => null },
   { id: 'aceptacion', nombre: 'Aceptación contable', pestana: 'integraciones', leer: () => null },
   { id: 'pago_proveedores', nombre: 'Pago a proveedores', pestana: 'integraciones', leer: () => null },
@@ -106,6 +118,7 @@ function PanelKpis() {
       ventas: () => obtenerVentasVsMeta(periodo, token),
       riesgo: () => obtenerRiesgo(periodo, token),
       porCajero: () => obtenerAnulacionesPorCajero(periodo, token),
+      metas: () => obtenerCumplimientoMetas(periodo, token),
     }
     const claves = Object.keys(fuentes)
     const resultados = await Promise.allSettled(claves.map((k) => fuentes[k]()))
@@ -200,7 +213,13 @@ function PanelKpis() {
         </div>
       )}
 
-      {pestana !== 'resumen' && pestana !== 'riesgo' && (
+      {pestana === 'cajas' && (
+        <div role="tabpanel" aria-label="Cajas">
+          <PestanaCajas metas={datos.metas} cargando={cargando} />
+        </div>
+      )}
+
+      {pestana === 'integraciones' && (
         <div className="vxp-card" role="tabpanel">
           <Aviso tono="info" titulo={PESTANAS.find((p) => p.id === pestana)?.etiqueta}>
             Esta pestaña muestra sus indicadores del periodo {nombrePeriodo(periodo)}.

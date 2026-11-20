@@ -18,5 +18,8 @@ export const obtenerRiesgo = (periodo, token) => apiFetch(conPeriodo('/api/kpis/
 // TDSI-151/153: anulaciones por cajero (de mayor a menor).
 export const obtenerAnulacionesPorCajero = (periodo, token) => apiFetch(conPeriodo('/api/kpis/anulaciones/por-cajero', periodo), opciones(token), PAGOS)
 
+// TDSI-159/162: cumplimiento de metas por caja (vendido, meta, % y color) y el % general (Gestion de Caja).
+export const obtenerCumplimientoMetas = (periodo, token) => apiFetch(conPeriodo('/api/kpis/cumplimiento-metas', periodo), opciones(token), CAJA)
+
 // TDSI-139/143: ventas de cada dia (ultimos 30 dias del periodo) y la meta diaria.
 export const obtenerVentasVsMeta = (periodo, token) => apiFetch(conPeriodo('/api/kpis/ventas-vs-meta', periodo), opciones(token), PAGOS)
