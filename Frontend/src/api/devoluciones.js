@@ -54,6 +54,11 @@ export function reembolsarDevolucion(codigo, { cajero, caja_id, forma = 'ORIGINA
   })
 }
 
+// TDSI-108/121: estado de los avisos de la devolucion a Compras y al Marketplace ({ compras, marketplace }).
+export function obtenerAvisosDevolucion(codigo) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/avisos`)
+}
+
 // TDSI-58/61: URL del PDF de la nota de credito (para verla o imprimirla).
 export function urlNotaCreditoPdf(codigo) {
   return `${DEVOLUCIONES_API_BASE_URL}/api/devoluciones/${encodeURIComponent(codigo)}/nota-credito.pdf`

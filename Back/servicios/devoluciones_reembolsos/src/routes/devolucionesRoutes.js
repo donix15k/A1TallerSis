@@ -8,6 +8,8 @@ const { estadoVisible } = require("../data/enviosContabilidadRepo");
 const { requireAdministrador, requireAdministradorSalvoBandeja } = require("../middlewares/requireAdministrador");
 
 const marketplaceService = require("../services/marketplaceService");
+const enviosComprasRepo = require("../data/enviosComprasRepo");
+const enviosMarketplaceRepo = require("../data/enviosMarketplaceRepo");
 
 /** Lo que se muestra del aviso al Marketplace: su estado (Pendiente, Enviado, Error) o null si no aplica (devolucion de la tienda). */
 const resumenAviso = (a) => (a.estado ? { estado: a.estado, intentos: a.intentos, pubsub_message_id: a.pubsub_message_id } : null);
@@ -107,6 +109,27 @@ router.post("/:codigo/nota-credito/enviar", wrap(async (req, res) => {
     ok: true,
     mensaje: data.estado === "SIMULADO" ? `Envío simulado a ${data.email} (el servidor no tiene correo configurado)` : `Nota de crédito enviada a ${data.email}`,
     data,
+  });
+}));
+
+// TDSI-108/121: como van los avisos de una devolucion a Compras (Enviado, Recibido, Reclamo registrado N° X o Error) y al
+// Marketplace (Enviado o Error), para la seccion del detalle. Solo lectura; null si ese aviso no existe.
+router.get("/:codigo/avisos", wrap(async (req, res) => {
+  const d = await devolucionService.obtenerDevolucion(req.params.codigo); // 400 / 404
+  const compras = await enviosComprasRepo.obtenerPorCodigo(d.codigo);
+  const marketplace = d.origen === "MARKETPLACE" ? await enviosMarketplaceRepo.listarPorCodigo(d.codigo) : [];
+  const ultimoMarketplace = marketplace[marketplace.length - 1] ?? null;
+  res.json({
+    ok: true,
+    data: {
+      codigo: d.codigo,
+      compras: compras
+        ? { ...enviosComprasRepo.estadoVisible(compras), intentos: compras.intentos, pubsub_message_id: compras.pubsub_message_id, enviado_en: compras.enviado_en, acuse_en: compras.acuse_en, ultimo_error: compras.ultimo_error }
+        : null,
+      marketplace: ultimoMarketplace
+        ? { estado: ultimoMarketplace.estado, resultado: ultimoMarketplace.resultado, intentos: ultimoMarketplace.intentos, pubsub_message_id: ultimoMarketplace.pubsub_message_id, enviado_en: ultimoMarketplace.enviado_en, ultimo_error: ultimoMarketplace.ultimo_error }
+        : null,
+    },
   });
 }));
 

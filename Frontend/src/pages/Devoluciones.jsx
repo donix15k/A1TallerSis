@@ -12,12 +12,23 @@ import ModalDevolucionRegistrada from '../components/devoluciones/ModalDevolucio
 import BandejaPendientes from '../components/devoluciones/BandejaPendientes.jsx'
 import ConsultarDevolucion, { recordarDevolucion } from '../components/devoluciones/ConsultarDevolucion.jsx'
 import SeccionNotaCredito from '../components/devoluciones/SeccionNotaCredito.jsx'
+import SeccionAvisos from '../components/devoluciones/SeccionAvisos.jsx'
 
 // Secciones extra del detalle de una devolucion, segun su estado.
 function seccionesDetalle(devolucion) {
   if (devolucion.estado !== 'PROCESADA') return null
-  return <SeccionNotaCredito key={`nc-${devolucion.codigo}`} devolucion={devolucion} /> // TDSI-61/62/63
+  return (
+    <>
+      <SeccionNotaCredito key={`nc-${devolucion.codigo}`} devolucion={devolucion} /> {/* TDSI-61/62/63 */}
+      <SeccionAvisos key={`av-${devolucion.codigo}`} devolucion={devolucion} /> {/* TDSI-108 */}
+    </>
+  )
 }
+
+const ESTADOS_PRODUCTO = [
+  { id: 'BUEN_ESTADO', etiqueta: 'En buen estado', icono: 'checkCirculo' },
+  { id: 'DEFECTUOSO', etiqueta: 'Defectuoso', icono: 'alerta' },
+]
 
 const redondear = (n) => Math.round(n * 100) / 100
 
@@ -51,6 +62,7 @@ function Devoluciones() {
   const [errorMotivo, setErrorMotivo] = useState(null)
   const [registrando, setRegistrando] = useState(false)
   const [registrada, setRegistrada] = useState(null)
+  const [errorEstados, setErrorEstados] = useState(false) // TDSI-107: falta elegir el estado de algun producto
 
   // TDSI-32/38: pestañas de la pantalla (nueva devolucion y bandeja del supervisor)
   const [pestana, setPestana] = useState('nueva')
@@ -103,7 +115,8 @@ function Devoluciones() {
     setSeleccion((previa) => {
       const nueva = { ...previa }
       if (nueva[clave]) delete nueva[clave]
-      else nueva[clave] = { cantidad: item.cantidad_disponible >= 1 ? 1 : item.cantidad_disponible, estado_producto: 'BUEN_ESTADO' }
+      // TDSI-107: el estado del producto lo elige el cajero (obligatorio): no se asume ninguno.
+      else nueva[clave] = { cantidad: item.cantidad_disponible >= 1 ? 1 : item.cantidad_disponible, estado_producto: '' }
       return nueva
     })
   }
@@ -111,6 +124,45 @@ function Devoluciones() {
   function cambiarCantidad(item, cantidad) {
     const clave = claveProducto(item)
     setSeleccion((previa) => (previa[clave] ? { ...previa, [clave]: { ...previa[clave], cantidad } } : previa))
+  }
+
+  function cambiarEstadoProducto(item, estado_producto) {
+    const clave = claveProducto(item)
+    setSeleccion((previa) => (previa[clave] ? { ...previa, [clave]: { ...previa[clave], estado_producto } } : previa))
+  }
+
+  // TDSI-107: "Estado del producto: En buen estado / Defectuoso" para cada producto elegido.
+  const columnaEstadoProducto = {
+    titulo: 'Estado del producto',
+    render: (item, elegida) => (
+      <div className="vxp-segmentos" role="radiogroup" aria-label={`Estado de ${item.descripcion}`} style={{ padding: 3, flexWrap: 'nowrap' }}>
+        {ESTADOS_PRODUCTO.map((e) => {
+          const activo = elegida.estado_producto === e.id
+          return (
+            <button
+              key={e.id}
+              type="button"
+              role="radio"
+              aria-checked={activo}
+              className={`vxp-segmento${activo ? ' vxp-segmento--activo' : ''}`}
+              style={{
+                padding: '0.35rem 0.6rem',
+                fontSize: '0.78rem',
+                ...(activo && { color: e.id === 'DEFECTUOSO' ? 'var(--vxp-bad)' : 'var(--vxp-ok)' }),
+                ...(!elegida.estado_producto && errorEstados && { color: 'var(--vxp-bad)' }),
+              }}
+              onClick={() => {
+                cambiarEstadoProducto(item, e.id)
+                setErrorEstados(false)
+              }}
+            >
+              <Icono nombre={e.icono} tam={14} />
+              {e.etiqueta}
+            </button>
+          )
+        })}
+      </div>
+    ),
   }
 
   // Lo elegido con su precio de la factura, para el resumen y para enviar.
@@ -129,6 +181,12 @@ function Devoluciones() {
   async function registrar() {
     if (!motivoId) {
       setErrorMotivo('Seleccione el motivo de la devolución')
+      return
+    }
+    const sinEstado = elegidos.find((it) => !it.estado_producto)
+    if (sinEstado) {
+      setErrorEstados(true)
+      toast.aviso('Indique el estado del producto', `Elija "En buen estado" o "Defectuoso" para "${sinEstado.descripcion}".`)
       return
     }
     const sinCantidad = elegidos.find((it) => !(it.cantidad > 0))
@@ -300,6 +358,7 @@ function Devoluciones() {
               seleccion={seleccion}
               onAlternar={alternar}
               onCantidad={cambiarCantidad}
+              columnaExtra={columnaEstadoProducto}
             />
           </div>
 
