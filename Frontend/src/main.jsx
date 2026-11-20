@@ -5,8 +5,10 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { AdminAuthProvider } from './context/AdminAuthContext.jsx'
 import { BloqueoProvider } from './context/BloqueoContext.jsx'
+import { ToastProvider } from './components/ui/Toasts.jsx'
 import './index.css'
 import './styles/vortrix.css'
+import './styles/premium.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -14,7 +16,9 @@ createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <AdminAuthProvider>
           <BloqueoProvider>
-            <App />
+            <ToastProvider>
+              <App />
+            </ToastProvider>
           </BloqueoProvider>
         </AdminAuthProvider>
       </AuthProvider>

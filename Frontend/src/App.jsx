@@ -26,6 +26,7 @@ import VentasOnline from './pages/VentasOnline.jsx'
 import LibroVentas from './pages/LibroVentas.jsx'
 import Usuarios from './pages/Usuarios.jsx'
 import PubSubVerificacion from './pages/PubSubVerificacion.jsx'
+import Devoluciones from './pages/Devoluciones.jsx'
 import './App.css'
 
 // Pantallas de lista: solo se desplaza la tabla (menu, titulo, filtros y buscador quedan fijos).
@@ -81,6 +82,7 @@ function App() {
           <Route path="/pagos" element={<RutaProtegida><Pagos /></RutaProtegida>} />
           <Route path="/facturas" element={<RutaProtegida><Facturas /></RutaProtegida>} />
           <Route path="/cierre-caja" element={<RutaProtegida><CierreCaja /></RutaProtegida>} />
+          <Route path="/devoluciones" element={<RutaProtegida><Devoluciones /></RutaProtegida>} />
 
           {/* Panel de Administración */}
           <Route path="/admin/cajeros" element={<RutaProtegidaAdmin><Cajeros /></RutaProtegidaAdmin>} />

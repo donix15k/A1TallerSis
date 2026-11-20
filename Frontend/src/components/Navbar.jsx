@@ -46,6 +46,7 @@ function Navbar() {
           <NavLink to="/" end>Inicio</NavLink>
           <NavLink to="/pagos">Pagos</NavLink>
           <NavLink to="/facturas">Facturas</NavLink>
+          <NavLink to="/devoluciones">Devoluciones</NavLink>
         </>
       )}
 
