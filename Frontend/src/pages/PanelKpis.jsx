@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { obtenerAnulacionesPorCajero, obtenerCuadreCaja, obtenerCumplimientoMetas, obtenerResumenKpis, obtenerRiesgo, obtenerVentasVsMeta } from '../api/kpis.js'
+import PestanaIntegraciones from '../components/kpis/PestanaIntegraciones.jsx'
+import {
+  obtenerAceptacionContable,
+  obtenerDiasPagoProveedores,
+  obtenerTarjetasIntegraciones,
+  obtenerAnulacionesPorCajero,
+  obtenerCuadreCaja,
+  obtenerCumplimientoMetas,
+  obtenerResumenKpis, obtenerRiesgo, obtenerVentasVsMeta } from '../api/kpis.js'
 import PestanaRiesgo from '../components/kpis/PestanaRiesgo.jsx'
 import PestanaCajas from '../components/kpis/PestanaCajas.jsx'
 import { SeccionCuadre, UltimosTurnosCerrados } from '../components/kpis/CuadreCaja.jsx'
@@ -103,8 +111,28 @@ const TARJETAS = [
       return { valor: `${numero(cuadre.porcentaje, 1)} %`, color: cuadre.color, detalle: `${cuadre.turnos_cuadran} de ${cuadre.turnos_cerrados} turnos cuadran` }
     },
   },
-  { id: 'aceptacion', nombre: 'Aceptación contable', pestana: 'integraciones', leer: () => null },
-  { id: 'pago_proveedores', nombre: 'Pago a proveedores', pestana: 'integraciones', leer: () => null },
+  {
+    // TDSI-185: tarjeta "Aceptación contable" en Resumen
+    id: 'aceptacion',
+    nombre: 'Aceptación contable',
+    pestana: 'integraciones',
+    leer: ({ aceptacion }) => {
+      if (!aceptacion) return null
+      if (aceptacion.sin_asientos) return { valor: '—', color: null, detalle: 'Sin asientos enviados' }
+      return { valor: `${numero(aceptacion.porcentaje, 1)} %`, color: aceptacion.color, detalle: `${numero(aceptacion.registrados)} de ${numero(aceptacion.enviados)} asientos` }
+    },
+  },
+  {
+    // TDSI-185: tarjeta "Pago a proveedores" en Resumen
+    id: 'pago_proveedores',
+    nombre: 'Pago a proveedores',
+    pestana: 'integraciones',
+    leer: ({ dias }) => {
+      if (!dias) return null
+      if (dias.valor === null) return { valor: '—', color: null, detalle: 'Sin órdenes pagadas' }
+      return { valor: `${numero(dias.valor, 1)} días`, color: dias.color, detalle: dias.ordenes_vencidas_total ? `${dias.ordenes_vencidas_total} vencidas` : 'Sin órdenes vencidas' }
+    },
+  },
 ]
 
 /**
@@ -131,6 +159,9 @@ function PanelKpis() {
       porCajero: () => obtenerAnulacionesPorCajero(periodo, token),
       metas: () => obtenerCumplimientoMetas(periodo, token),
       cuadre: () => obtenerCuadreCaja(periodo, token),
+      aceptacion: () => obtenerAceptacionContable(periodo, token),
+      dias: () => obtenerDiasPagoProveedores(periodo, token),
+      integraciones: () => obtenerTarjetasIntegraciones(periodo, token),
     }
     const claves = Object.keys(fuentes)
     const resultados = await Promise.allSettled(claves.map((k) => fuentes[k]()))
@@ -235,10 +266,15 @@ function PanelKpis() {
       )}
 
       {pestana === 'integraciones' && (
-        <div className="vxp-card" role="tabpanel">
-          <Aviso tono="info" titulo={PESTANAS.find((p) => p.id === pestana)?.etiqueta}>
-            Esta pestaña muestra sus indicadores del periodo {nombrePeriodo(periodo)}.
-          </Aviso>
+        <div role="tabpanel" aria-label="Integraciones y proveedores">
+          <PestanaIntegraciones
+            tarjetas={datos.integraciones?.tarjetas}
+            aceptacion={datos.aceptacion}
+            dias={datos.dias}
+            cargando={cargando}
+            token={token}
+            onRecargar={cargar}
+          />
         </div>
       )}
     </section>

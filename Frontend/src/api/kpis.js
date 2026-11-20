@@ -24,5 +24,14 @@ export const obtenerCumplimientoMetas = (periodo, token) => apiFetch(conPeriodo(
 // TDSI-169/172: efectividad de cuadre (turnos que cuadran, sobrantes, faltantes, turnos con diferencia y ultimos turnos).
 export const obtenerCuadreCaja = (periodo, token) => apiFetch(conPeriodo('/api/kpis/cuadre-caja', periodo, '&ultimos=6'), opciones(token), CAJA)
 
+// TDSI-179/180/183: aceptacion contable (asientos enviados, registrados, rechazados y la lista de rechazados) (Facturacion).
+export const obtenerAceptacionContable = (periodo, token) => apiFetch(conPeriodo('/api/kpis/aceptacion-contable', periodo, '&limite=50'), opciones(token), FACTURACION)
+
+// TDSI-181/182/185: dias promedio de pago a proveedores, ordenes vencidas y pagadas (Pagos a Proveedores).
+export const obtenerDiasPagoProveedores = (periodo, token) => apiFetch(conPeriodo('/api/kpis/dias-pago-proveedores', periodo, '&limite=20'), opciones(token), PROVEEDORES)
+
+// TDSI-182/183: tarjetas de estado de Contabilidad, Compras / Proveedores y Marketplace (Monitor de integraciones).
+export const obtenerTarjetasIntegraciones = (periodo, token) => apiFetch(conPeriodo('/api/integraciones/resumen', periodo), opciones(token), PAGOS)
+
 // TDSI-139/143: ventas de cada dia (ultimos 30 dias del periodo) y la meta diaria.
 export const obtenerVentasVsMeta = (periodo, token) => apiFetch(conPeriodo('/api/kpis/ventas-vs-meta', periodo), opciones(token), PAGOS)
