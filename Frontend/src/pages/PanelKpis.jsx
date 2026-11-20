@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { obtenerAnulacionesPorCajero, obtenerCumplimientoMetas, obtenerResumenKpis, obtenerRiesgo, obtenerVentasVsMeta } from '../api/kpis.js'
+import { obtenerAnulacionesPorCajero, obtenerCuadreCaja, obtenerCumplimientoMetas, obtenerResumenKpis, obtenerRiesgo, obtenerVentasVsMeta } from '../api/kpis.js'
 import PestanaRiesgo from '../components/kpis/PestanaRiesgo.jsx'
 import PestanaCajas from '../components/kpis/PestanaCajas.jsx'
+import { SeccionCuadre, UltimosTurnosCerrados } from '../components/kpis/CuadreCaja.jsx'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import Icono from '../components/ui/Icono.jsx'
 import { Aviso, Esqueleto } from '../components/ui/Aviso.jsx'
@@ -91,7 +92,17 @@ const TARJETAS = [
       return { valor: `${numero(g.porcentaje, g.porcentaje % 1 ? 1 : 0)} %`, color: g.color, detalle: `${bs(g.vendido)} de ${bs(g.meta)}` }
     },
   },
-  { id: 'cuadre', nombre: 'Cuadre de caja', pestana: 'cajas', leer: () => null },
+  {
+    // TDSI-174: tarjeta "Cuadre de caja" en Resumen
+    id: 'cuadre',
+    nombre: 'Cuadre de caja',
+    pestana: 'cajas',
+    leer: ({ cuadre }) => {
+      if (!cuadre) return null
+      if (cuadre.sin_turnos) return { valor: '—', color: null, detalle: 'Sin turnos cerrados' }
+      return { valor: `${numero(cuadre.porcentaje, 1)} %`, color: cuadre.color, detalle: `${cuadre.turnos_cuadran} de ${cuadre.turnos_cerrados} turnos cuadran` }
+    },
+  },
   { id: 'aceptacion', nombre: 'Aceptación contable', pestana: 'integraciones', leer: () => null },
   { id: 'pago_proveedores', nombre: 'Pago a proveedores', pestana: 'integraciones', leer: () => null },
 ]
@@ -119,6 +130,7 @@ function PanelKpis() {
       riesgo: () => obtenerRiesgo(periodo, token),
       porCajero: () => obtenerAnulacionesPorCajero(periodo, token),
       metas: () => obtenerCumplimientoMetas(periodo, token),
+      cuadre: () => obtenerCuadreCaja(periodo, token),
     }
     const claves = Object.keys(fuentes)
     const resultados = await Promise.allSettled(claves.map((k) => fuentes[k]()))
@@ -204,6 +216,9 @@ function PanelKpis() {
               {cargando ? <Esqueleto filas={6} alto={30} /> : datos.ventas ? <GraficoVentasMeta key={periodo} serie={datos.ventas.serie} metaDiaria={datos.ventas.meta_diaria} /> : <Aviso tono="warn" titulo="Sin datos del gráfico" />}
             </div>
           </div>
+
+          {/* TDSI-174: franja inferior "Últimos turnos cerrados" */}
+          <UltimosTurnosCerrados turnos={datos.cuadre?.ultimos_turnos} cargando={cargando} />
         </div>
       )}
 
@@ -215,7 +230,7 @@ function PanelKpis() {
 
       {pestana === 'cajas' && (
         <div role="tabpanel" aria-label="Cajas">
-          <PestanaCajas metas={datos.metas} cargando={cargando} />
+          <PestanaCajas metas={datos.metas} cargando={cargando} abajo={<SeccionCuadre cuadre={datos.cuadre} cargando={cargando} />} />
         </div>
       )}
 

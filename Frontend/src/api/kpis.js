@@ -21,5 +21,8 @@ export const obtenerAnulacionesPorCajero = (periodo, token) => apiFetch(conPerio
 // TDSI-159/162: cumplimiento de metas por caja (vendido, meta, % y color) y el % general (Gestion de Caja).
 export const obtenerCumplimientoMetas = (periodo, token) => apiFetch(conPeriodo('/api/kpis/cumplimiento-metas', periodo), opciones(token), CAJA)
 
+// TDSI-169/172: efectividad de cuadre (turnos que cuadran, sobrantes, faltantes, turnos con diferencia y ultimos turnos).
+export const obtenerCuadreCaja = (periodo, token) => apiFetch(conPeriodo('/api/kpis/cuadre-caja', periodo, '&ultimos=6'), opciones(token), CAJA)
+
 // TDSI-139/143: ventas de cada dia (ultimos 30 dias del periodo) y la meta diaria.
 export const obtenerVentasVsMeta = (periodo, token) => apiFetch(conPeriodo('/api/kpis/ventas-vs-meta', periodo), opciones(token), PAGOS)
