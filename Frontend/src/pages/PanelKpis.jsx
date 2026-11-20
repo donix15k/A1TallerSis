@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import PestanaIntegraciones from '../components/kpis/PestanaIntegraciones.jsx'
 import BarraSemaforo from '../components/kpis/BarraSemaforo.jsx'
 import AlertasDelDia from '../components/kpis/AlertasDelDia.jsx'
+import ModalObjetivos from '../components/kpis/ModalObjetivos.jsx'
+import Boton from '../components/ui/Boton.jsx'
+import { useToast } from '../components/ui/Toasts.jsx'
 import {
   obtenerAlertas,
   obtenerAceptacionContable,
@@ -151,6 +154,8 @@ function PanelKpis() {
   const [datos, setDatos] = useState({})
   const [cargando, setCargando] = useState(true)
   const [errores, setErrores] = useState([])
+  const [configurando, setConfigurando] = useState(false) // TDSI-203
+  const toast = useToast()
 
   const cargar = useCallback(async () => {
     if (!token) return
@@ -217,9 +222,24 @@ function PanelKpis() {
           ))}
         </div>
         <div className="kpi-acciones">
+          <Boton variante="claro" icono="engranaje" onClick={() => setConfigurando(true)}>
+            Configurar objetivos
+          </Boton>
           <SelectorPeriodo valor={periodo} onCambiar={setPeriodo} />
         </div>
       </div>
+
+      {configurando && (
+        <ModalObjetivos
+          token={token}
+          onCerrar={() => setConfigurando(false)}
+          onGuardado={() => {
+            setConfigurando(false)
+            toast.ok('Objetivos guardados', 'Los colores del panel se recalcularon con los nuevos límites.')
+            cargar() // TDSI-205: recargar los colores del panel
+          }}
+        />
+      )}
 
       {errores.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>

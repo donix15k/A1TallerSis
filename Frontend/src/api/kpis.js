@@ -36,5 +36,13 @@ export const obtenerTarjetasIntegraciones = (periodo, token) => apiFetch(conPeri
 // TDSI-192/195: "Alertas del dia": una linea por alerta, primero las ROJAS y luego las AMARILLAS.
 export const obtenerAlertas = (periodo, token) => apiFetch(conPeriodo('/api/kpis/alertas', periodo), opciones(token), PAGOS)
 
+// TDSI-200/203: limites Verde / Amarillo / Rojo de los 7 KPIs y la meta mensual de cada caja.
+export const obtenerObjetivos = (token) => apiFetch('/api/kpis/objetivos', opciones(token), PAGOS)
+
+// TDSI-201/205: guarda limites ({ indicadores: [{ indicador, verde, amarillo, rojo }] }) y metas ({ metas_cajas: [{ caja_id, monto_mensual }] }).
+// 400 con detalle.errores = [{ campo: "tasa_anulacion.amarillo", mensaje }] si algo no es coherente (no guarda nada).
+export const guardarObjetivos = (cuerpo, token) =>
+  apiFetch('/api/kpis/objetivos', opciones(token, { method: 'PUT', body: JSON.stringify(cuerpo) }), PAGOS)
+
 // TDSI-139/143: ventas de cada dia (ultimos 30 dias del periodo) y la meta diaria.
 export const obtenerVentasVsMeta = (periodo, token) => apiFetch(conPeriodo('/api/kpis/ventas-vs-meta', periodo), opciones(token), PAGOS)
