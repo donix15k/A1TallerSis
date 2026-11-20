@@ -45,6 +45,7 @@ function AdminNavbar() {
       <NavLink to="/admin/tablero">Tablero</NavLink>
       <NavLink to="/admin/cierre-diario">Cierre diario</NavLink>
       <NavLink to="/admin/historial-operaciones">Historial de operaciones</NavLink>
+      <NavLink to="/admin/devoluciones">Devoluciones</NavLink>
       <AdminNavDropdown etiqueta="Gestión de roles y clientes" items={GESTION_ROLES_Y_CLIENTES} />
       <AdminNavDropdown etiqueta="Reportes" items={REPORTES} />
       <AdminNavDropdown etiqueta="Integraciones" items={INTEGRACIONES} />

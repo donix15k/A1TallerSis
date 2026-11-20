@@ -27,6 +27,7 @@ import LibroVentas from './pages/LibroVentas.jsx'
 import Usuarios from './pages/Usuarios.jsx'
 import PubSubVerificacion from './pages/PubSubVerificacion.jsx'
 import Devoluciones from './pages/Devoluciones.jsx'
+import DevolucionesAdmin from './pages/DevolucionesAdmin.jsx'
 import './App.css'
 
 // Pantallas de lista: solo se desplaza la tabla (menu, titulo, filtros y buscador quedan fijos).
@@ -100,6 +101,7 @@ function App() {
           <Route path="/admin/libro-ventas" element={<RutaProtegidaAdmin><LibroVentas /></RutaProtegidaAdmin>} />
           <Route path="/admin/usuarios" element={<RutaProtegidaAdmin><Usuarios /></RutaProtegidaAdmin>} />
           <Route path="/admin/pubsub-verificacion" element={<RutaProtegidaAdmin><PubSubVerificacion /></RutaProtegidaAdmin>} />
+          <Route path="/admin/devoluciones" element={<RutaProtegidaAdmin><DevolucionesAdmin /></RutaProtegidaAdmin>} />
         </Routes>
         </div>
       </main>

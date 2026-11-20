@@ -79,6 +79,52 @@ export function consultarVale(codigo) {
   return apiFetch(`/api/vales/${encodeURIComponent(codigo)}`, {}, DEVOLUCIONES_API_BASE_URL)
 }
 
+// ---------------------------------------------------------------------------------------------
+// Vista del ADMINISTRADOR (Bearer token de su sesion: administrador.access_token)
+// ---------------------------------------------------------------------------------------------
+const conToken = (token) => ({ Authorization: `Bearer ${token}` })
+
+function parametros(filtros = {}) {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(filtros)) if (v !== undefined && v !== null && String(v).trim() !== '') p.set(k, String(v).trim())
+  return p.toString()
+}
+
+// TDSI-79/83: listado con filtros (desde, hasta, estado, cajero, origen) de 20 en 20.
+export function listarDevolucionesAdmin(filtros, token) {
+  return llamar(`/api/devoluciones?${parametros({ ...filtros, pagina: filtros.pagina ?? 1 })}`, { headers: conToken(token) })
+}
+
+// TDSI-80/84: linea de tiempo de una devolucion (quien registro, quien aprobo o rechazo y cuando se reembolso).
+export function obtenerHistorialDevolucion(codigo, token) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/historial`, { headers: conToken(token) })
+}
+
+// TDSI-81/85: Excel con los mismos filtros. Devuelve { blob, nombre, truncado }.
+export async function exportarDevolucionesExcel(filtros, token) {
+  const { pagina, ...sinPagina } = filtros
+  const respuesta = await fetch(`${DEVOLUCIONES_API_BASE_URL}/api/devoluciones/exportar?${parametros(sinPagina)}`, { headers: conToken(token) })
+  if (!respuesta.ok) {
+    const cuerpo = await respuesta.json().catch(() => null)
+    throw new Error(cuerpo?.mensaje ?? `Error ${respuesta.status} al exportar`)
+  }
+  const disposicion = respuesta.headers.get('Content-Disposition') ?? ''
+  const nombre = /filename="?([^";]+)"?/.exec(disposicion)?.[1] ?? 'devoluciones.xlsx'
+  return { blob: await respuesta.blob(), nombre, truncado: respuesta.headers.get('X-Exportacion-Truncada') === 'true' }
+}
+
+/** Descarga un Blob con el nombre indicado. */
+export function descargarBlob(blob, nombre) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombre
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 5000)
+}
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo.
 export function obtenerDevolucion(codigo) {
   return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}`)
