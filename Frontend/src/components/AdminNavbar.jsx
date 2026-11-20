@@ -22,6 +22,7 @@ const REPORTES = [
 // Las 3 integraciones por Pub/Sub con los otros grupos del proyecto (Marketplace,
 // Compras, Contabilidad), cada una identificada por el sistema externo al que llama.
 const INTEGRACIONES = [
+  { to: '/admin/monitor-integraciones', etiqueta: 'Monitor de integraciones' }, // TDSI-130
   { to: '/admin/ventas-online', etiqueta: 'Ventas online (Marketplace)' },
   { to: '/admin/productos-vendidos', etiqueta: 'Productos vendidos (Compras)' },
   { to: '/admin/diferencias', etiqueta: 'Diferencias de caja (Contabilidad)' },
