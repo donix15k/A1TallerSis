@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
 import Splash from './components/Splash.jsx'
@@ -29,7 +29,11 @@ import PubSubVerificacion from './pages/PubSubVerificacion.jsx'
 import Devoluciones from './pages/Devoluciones.jsx'
 import DevolucionesAdmin from './pages/DevolucionesAdmin.jsx'
 import MonitorIntegraciones from './pages/MonitorIntegraciones.jsx'
+import Cargando from './components/Cargando.jsx'
 import './App.css'
+
+// TDSI-141: el Panel de KPIs se carga aparte (su grafico y pestañas no hacen falta en el resto de la app).
+const PanelKpis = lazy(() => import('./pages/PanelKpis.jsx'))
 
 // Pantallas de lista: solo se desplaza la tabla (menu, titulo, filtros y buscador quedan fijos).
 const RUTAS_DE_LISTA = [
@@ -104,6 +108,16 @@ function App() {
           <Route path="/admin/pubsub-verificacion" element={<RutaProtegidaAdmin><PubSubVerificacion /></RutaProtegidaAdmin>} />
           <Route path="/admin/devoluciones" element={<RutaProtegidaAdmin><DevolucionesAdmin /></RutaProtegidaAdmin>} />
           <Route path="/admin/monitor-integraciones" element={<RutaProtegidaAdmin><MonitorIntegraciones /></RutaProtegidaAdmin>} />
+          <Route
+            path="/admin/panel-kpis"
+            element={
+              <RutaProtegidaAdmin>
+                <Suspense fallback={<Cargando />}>
+                  <PanelKpis />
+                </Suspense>
+              </RutaProtegidaAdmin>
+            }
+          />
         </Routes>
         </div>
       </main>

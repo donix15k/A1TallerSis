@@ -43,6 +43,8 @@ function AdminNavbar() {
       <span className="navbar-brand">
         <Marca sufijo="Administración" />
       </span>
+      {/* TDSI-141: el Panel de KPIs es el primer enlace de la barra del administrador */}
+      <NavLink to="/admin/panel-kpis">Panel de KPIs</NavLink>
       <NavLink to="/admin/tablero">Tablero</NavLink>
       <NavLink to="/admin/cierre-diario">Cierre diario</NavLink>
       <NavLink to="/admin/historial-operaciones">Historial de operaciones</NavLink>
