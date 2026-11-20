@@ -1,10 +1,16 @@
-import { useRef, useState } from 'react'
-import { buscarFacturaParaDevolucion } from '../api/devoluciones.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { buscarFacturaParaDevolucion, listarMotivos, registrarDevolucion } from '../api/devoluciones.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import Boton from '../components/ui/Boton.jsx'
 import Icono from '../components/ui/Icono.jsx'
 import { Aviso, Esqueleto, Vacio } from '../components/ui/Aviso.jsx'
+import { useToast } from '../components/ui/Toasts.jsx'
 import DatosFactura from '../components/devoluciones/DatosFactura.jsx'
 import TablaProductosDevolucion, { claveProducto } from '../components/devoluciones/TablaProductosDevolucion.jsx'
+import FormularioRegistroDevolucion from '../components/devoluciones/FormularioRegistroDevolucion.jsx'
+import ModalDevolucionRegistrada from '../components/devoluciones/ModalDevolucionRegistrada.jsx'
+
+const redondear = (n) => Math.round(n * 100) / 100
 
 const FORMATO_FACTURA = /^F-\d{6}$/
 
@@ -26,10 +32,26 @@ function Devoluciones() {
   const [errorApi, setErrorApi] = useState(null)
   const [seleccion, setSeleccion] = useState({})
   const inputRef = useRef(null)
+  const { cajero } = useAuth()
+  const toast = useToast()
 
-  async function buscar(e) {
+  // TDSI-19: registro de la devolucion
+  const [motivos, setMotivos] = useState([])
+  const [motivoId, setMotivoId] = useState('')
+  const [observaciones, setObservaciones] = useState('')
+  const [errorMotivo, setErrorMotivo] = useState(null)
+  const [registrando, setRegistrando] = useState(false)
+  const [registrada, setRegistrada] = useState(null)
+
+  useEffect(() => {
+    listarMotivos()
+      .then((r) => setMotivos(r.data ?? []))
+      .catch(() => setMotivos([]))
+  }, [])
+
+  async function buscar(e, numeroForzado) {
     e?.preventDefault()
-    const normalizado = normalizarNumeroFactura(numero)
+    const normalizado = normalizarNumeroFactura(numeroForzado ?? numero)
     if (!FORMATO_FACTURA.test(normalizado)) {
       setErrorFormato('Escriba el número con el formato F-NNNNNN (por ejemplo F-000123).')
       inputRef.current?.focus()
@@ -44,6 +66,9 @@ function Devoluciones() {
       const respuesta = await buscarFacturaParaDevolucion(normalizado)
       setConsulta(respuesta.data)
       setSeleccion({})
+      setMotivoId('')
+      setObservaciones('')
+      setErrorMotivo(null)
     } catch (err) {
       setConsulta(null)
       if (err.status === 404) setNoEncontrada(normalizado)
@@ -58,9 +83,61 @@ function Devoluciones() {
     setSeleccion((previa) => {
       const nueva = { ...previa }
       if (nueva[clave]) delete nueva[clave]
-      else nueva[clave] = { cantidad: Math.min(1, item.cantidad_disponible) || item.cantidad_disponible }
+      else nueva[clave] = { cantidad: item.cantidad_disponible >= 1 ? 1 : item.cantidad_disponible, estado_producto: 'BUEN_ESTADO' }
       return nueva
     })
+  }
+
+  function cambiarCantidad(item, cantidad) {
+    const clave = claveProducto(item)
+    setSeleccion((previa) => (previa[clave] ? { ...previa, [clave]: { ...previa[clave], cantidad } } : previa))
+  }
+
+  // Lo elegido con su precio de la factura, para el resumen y para enviar.
+  const elegidos = useMemo(() => {
+    if (!consulta) return []
+    return consulta.items
+      .filter((it) => seleccion[claveProducto(it)])
+      .map((it) => ({ ...it, ...seleccion[claveProducto(it)] }))
+  }, [consulta, seleccion])
+
+  const monto = redondear(elegidos.reduce((acc, it) => acc + redondear(it.cantidad * it.precio_unitario), 0))
+  // TOTAL solo si se devuelve TODO lo comprado de cada producto de la factura (mismo criterio que el servidor).
+  const tipo =
+    consulta && elegidos.length > 0 && consulta.items.every((it) => seleccion[claveProducto(it)]?.cantidad === it.cantidad_comprada) ? 'TOTAL' : 'PARCIAL'
+
+  async function registrar() {
+    if (!motivoId) {
+      setErrorMotivo('Seleccione el motivo de la devolución')
+      return
+    }
+    const sinCantidad = elegidos.find((it) => !(it.cantidad > 0))
+    if (sinCantidad) {
+      toast.aviso('Revise las cantidades', `La cantidad de "${sinCantidad.descripcion}" debe ser mayor a 0.`)
+      return
+    }
+    setRegistrando(true)
+    try {
+      const respuesta = await registrarDevolucion({
+        factura_numero: consulta.factura.numero,
+        items: elegidos.map((it) => ({
+          descripcion: it.descripcion,
+          precio_unitario: it.precio_unitario,
+          cantidad: it.cantidad,
+          estado_producto: it.estado_producto,
+        })),
+        motivo_id: Number(motivoId),
+        observaciones: observaciones.trim() || undefined,
+        cajero: cajero?.nombre,
+      })
+      setRegistrada(respuesta.data)
+      // la tabla se refresca para que la cantidad disponible ya descuente lo registrado
+      buscar(null, consulta.factura.numero)
+    } catch (err) {
+      toast.error('No se registró la devolución', err.message)
+    } finally {
+      setRegistrando(false)
+    }
   }
 
   const fueraDePlazo = consulta?.bloqueo?.codigo === 'FUERA_DE_PLAZO'
@@ -160,10 +237,40 @@ function Devoluciones() {
               Productos de la factura
               <small>{consulta.items.length} {consulta.items.length === 1 ? 'producto' : 'productos'}</small>
             </h2>
-            <TablaProductosDevolucion items={consulta.items} devolvible={consulta.devolvible} seleccion={seleccion} onAlternar={alternar} />
+            <TablaProductosDevolucion
+              items={consulta.items}
+              devolvible={consulta.devolvible}
+              seleccion={seleccion}
+              onAlternar={alternar}
+              onCantidad={cambiarCantidad}
+            />
           </div>
+
+          {consulta.devolvible && elegidos.length > 0 && (
+            <div className="vxp-card" style={{ marginTop: '1rem' }}>
+              <h2 className="vxp-card-titulo">Registrar devolución</h2>
+              <FormularioRegistroDevolucion
+                motivos={motivos}
+                motivoId={motivoId}
+                onMotivo={(v) => {
+                  setMotivoId(v)
+                  if (v) setErrorMotivo(null)
+                }}
+                observaciones={observaciones}
+                onObservaciones={setObservaciones}
+                errorMotivo={errorMotivo}
+                cantidadProductos={elegidos.length}
+                monto={monto}
+                tipo={tipo}
+                registrando={registrando}
+                onRegistrar={registrar}
+              />
+            </div>
+          )}
         </div>
       )}
+
+      <ModalDevolucionRegistrada devolucion={registrada} onCerrar={() => setRegistrada(null)} />
     </section>
   )
 }
