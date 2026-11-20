@@ -7,6 +7,7 @@ import Drawer from '../components/ui/Drawer.jsx'
 import { Aviso, Esqueleto, Vacio } from '../components/ui/Aviso.jsx'
 import { useToast } from '../components/ui/Toasts.jsx'
 import LineaTiempoDevolucion from '../components/devoluciones/LineaTiempoDevolucion.jsx'
+import CeldaContabilidad from '../components/devoluciones/CeldaContabilidad.jsx'
 import { ESTADO_BADGE } from '../components/devoluciones/DetalleDevolucion.jsx'
 import { bs, fechaHora } from '../utils/formato.js'
 
@@ -39,9 +40,9 @@ function DevolucionesAdmin() {
   const [abierta, setAbierta] = useState(null)
   const [exportando, setExportando] = useState(false)
 
-  const cargar = useCallback(async () => {
+  const cargar = useCallback(async ({ silencioso = false } = {}) => {
     if (!token) return
-    setCargando(true)
+    if (!silencioso) setCargando(true)
     try {
       const r = await listarDevolucionesAdmin({ ...filtros, pagina }, token)
       setDatos({ filas: r.data, total: r.total, total_paginas: r.total_paginas ?? 1 })
@@ -56,6 +57,15 @@ function DevolucionesAdmin() {
   useEffect(() => {
     cargar()
   }, [cargar])
+
+  // TDSI-96: mientras alguna nota este Pendiente o Enviado en Contabilidad, la tabla se refresca sola cada 10 s
+  // para mostrar "Registrado – Asiento N° X" (o el rechazo) apenas responda Contabilidad.
+  const hayEnviosEnCurso = datos.filas.some((f) => f.contabilidad && ['Pendiente', 'Enviado'].includes(f.contabilidad.estado))
+  useEffect(() => {
+    if (!hayEnviosEnCurso) return undefined
+    const t = setInterval(() => !document.hidden && cargar({ silencioso: true }), 10000)
+    return () => clearInterval(t)
+  }, [hayEnviosEnCurso, cargar])
 
   function aplicar(e) {
     e?.preventDefault()
@@ -175,6 +185,7 @@ function DevolucionesAdmin() {
                     <th>Motivo</th>
                     <th className="num">Monto</th>
                     <th>Estado</th>
+                    <th>Contabilidad</th>
                     <th>Fecha</th>
                   </tr>
                 </thead>
@@ -197,6 +208,13 @@ function DevolucionesAdmin() {
                       <td className="num vxp-monto">{bs(d.monto_total)}</td>
                       <td>
                         <span className={`vxp-badge vxp-badge--${ESTADO_BADGE[d.estado] ?? 'neutro'}`}>{d.estado}</span>
+                      </td>
+                      <td onClick={(e) => d.contabilidad?.estado === 'Error' && e.stopPropagation()}>
+                        <CeldaContabilidad
+                          devolucion={d}
+                          token={token}
+                          onActualizada={(nueva) => setDatos((prev) => ({ ...prev, filas: prev.filas.map((f) => (f.codigo === nueva.codigo ? nueva : f)) }))}
+                        />
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>{fechaHora(d.fecha_solicitud)}</td>
                     </tr>

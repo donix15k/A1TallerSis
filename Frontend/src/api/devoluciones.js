@@ -113,6 +113,12 @@ export async function exportarDevolucionesExcel(filtros, token) {
   return { blob: await respuesta.blob(), nombre, truncado: respuesta.headers.get('X-Exportacion-Truncada') === 'true' }
 }
 
+// TDSI-95/97: reenvia a Contabilidad la nota de credito cuyo envio quedo en Error.
+// data.contabilidad = { estado, numero_asiento, motivo } (lo que muestra la columna "Contabilidad").
+export function reenviarNotaContabilidad(codigo, token) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/contabilidad/reenviar`, { method: 'POST', headers: conToken(token) })
+}
+
 /** Descarga un Blob con el nombre indicado. */
 export function descargarBlob(blob, nombre) {
   const url = URL.createObjectURL(blob)
