@@ -22,6 +22,24 @@ export function registrarDevolucion(datos) {
   return llamar('/api/devoluciones', { method: 'POST', body: JSON.stringify(datos) })
 }
 
+// TDSI-33/38: bandeja del supervisor: devoluciones PENDIENTES (de la mas antigua a la mas nueva) y "total" (el contador).
+export function listarPendientes({ limite = 200 } = {}) {
+  return llamar(`/api/devoluciones?estado=PENDIENTE&limite=${limite}`)
+}
+
+// TDSI-35/39: el supervisor aprueba con su usuario y PIN ({ supervisor_id, pin }).
+export function aprobarDevolucion(codigo, { supervisor_id, pin }) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/aprobar`, { method: 'POST', body: JSON.stringify({ supervisor_id, pin }) })
+}
+
+// TDSI-36/40: el supervisor rechaza con el motivo (minimo 10 caracteres), su usuario y PIN.
+export function rechazarDevolucion(codigo, { supervisor_id, pin, motivo_rechazo }) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/rechazar`, {
+    method: 'POST',
+    body: JSON.stringify({ supervisor_id, pin, motivo_rechazo }),
+  })
+}
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo.
 export function obtenerDevolucion(codigo) {
   return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}`)

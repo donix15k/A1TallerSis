@@ -9,6 +9,7 @@ import DatosFactura from '../components/devoluciones/DatosFactura.jsx'
 import TablaProductosDevolucion, { claveProducto } from '../components/devoluciones/TablaProductosDevolucion.jsx'
 import FormularioRegistroDevolucion from '../components/devoluciones/FormularioRegistroDevolucion.jsx'
 import ModalDevolucionRegistrada from '../components/devoluciones/ModalDevolucionRegistrada.jsx'
+import BandejaPendientes from '../components/devoluciones/BandejaPendientes.jsx'
 
 const redondear = (n) => Math.round(n * 100) / 100
 
@@ -42,6 +43,11 @@ function Devoluciones() {
   const [errorMotivo, setErrorMotivo] = useState(null)
   const [registrando, setRegistrando] = useState(false)
   const [registrada, setRegistrada] = useState(null)
+
+  // TDSI-32/38: pestañas de la pantalla (nueva devolucion y bandeja del supervisor)
+  const [pestana, setPestana] = useState('nueva')
+  const [pendientes, setPendientes] = useState(0)
+  const [versionBandeja, setVersionBandeja] = useState(0) // al registrar una devolucion la bandeja se recarga
 
   useEffect(() => {
     listarMotivos()
@@ -131,6 +137,7 @@ function Devoluciones() {
         cajero: cajero?.nombre,
       })
       setRegistrada(respuesta.data)
+      setVersionBandeja((v) => v + 1)
       // la tabla se refresca para que la cantidad disponible ya descuente lo registrado
       buscar(null, consulta.factura.numero)
     } catch (err) {
@@ -152,11 +159,36 @@ function Devoluciones() {
           </span>
           <div>
             <h1>Devoluciones</h1>
-            <p>Busque la factura del cliente para ver qué productos todavía puede devolver.</p>
+            <p>Registre devoluciones, autorícelas con un supervisor y entregue el reembolso al cliente.</p>
           </div>
+        </div>
+        <div className="vxp-segmentos" role="tablist" aria-label="Secciones de devoluciones" style={{ background: 'rgba(255,255,255,.12)', borderColor: 'rgba(255,255,255,.2)' }}>
+          {[
+            { id: 'nueva', etiqueta: 'Nueva devolución', icono: 'mas' },
+            { id: 'pendientes', etiqueta: 'Pendientes', icono: 'bandeja', cuenta: pendientes },
+          ].map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="tab"
+              aria-selected={pestana === p.id}
+              className={`vxp-segmento${pestana === p.id ? ' vxp-segmento--activo' : ''}`}
+              style={pestana === p.id ? undefined : { color: 'rgba(255,255,255,.85)' }}
+              onClick={() => setPestana(p.id)}
+            >
+              <Icono nombre={p.icono} tam={15} />
+              {p.etiqueta}
+              {p.cuenta > 0 && <span className="vxp-segmento-cuenta">{p.cuenta}</span>}
+            </button>
+          ))}
         </div>
       </header>
 
+      <div hidden={pestana !== 'pendientes'}>
+        <BandejaPendientes key={versionBandeja} onContador={setPendientes} />
+      </div>
+
+      <div hidden={pestana !== 'nueva'}>
       <div className="vxp-card">
         <h2 className="vxp-card-titulo">
           Buscar factura
@@ -269,6 +301,7 @@ function Devoluciones() {
           )}
         </div>
       )}
+      </div>
 
       <ModalDevolucionRegistrada devolucion={registrada} onCerrar={() => setRegistrada(null)} />
     </section>
