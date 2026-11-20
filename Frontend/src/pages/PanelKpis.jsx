@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { obtenerResumenKpis, obtenerVentasVsMeta } from '../api/kpis.js'
+import { obtenerAnulacionesPorCajero, obtenerResumenKpis, obtenerRiesgo, obtenerVentasVsMeta } from '../api/kpis.js'
+import PestanaRiesgo from '../components/kpis/PestanaRiesgo.jsx'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import Icono from '../components/ui/Icono.jsx'
 import { Aviso, Esqueleto } from '../components/ui/Aviso.jsx'
 import TarjetaKPI from '../components/kpis/TarjetaKPI.jsx'
 import GraficoVentasMeta from '../components/kpis/GraficoVentasMeta.jsx'
-import { bs, mesActualBolivia, nombrePeriodo, numero } from '../utils/formato.js'
+import { bs, mesActualBolivia, nombrePeriodo, numero, porcentaje } from '../utils/formato.js'
 
 export const PESTANAS = [
   { id: 'resumen', etiqueta: 'Resumen', icono: 'grafico' },
@@ -55,8 +56,28 @@ const TARJETAS = [
       return { valor: bs(t.valor), color: t.color, detalle: t.detalle?.sin_ventas ? 'Sin ventas en el mes' : `${numero(t.detalle?.ventas_validas)} ventas válidas` }
     },
   },
-  { id: 'anulacion', nombre: 'Anulación', pestana: 'riesgo', leer: () => null },
-  { id: 'devoluciones', nombre: 'Devoluciones', pestana: 'riesgo', leer: () => null },
+  {
+    // TDSI-152: tarjeta "Anulación" en el Resumen
+    id: 'anulacion',
+    nombre: 'Anulación',
+    pestana: 'riesgo',
+    leer: ({ resumen }) => {
+      const t = resumen?.tarjetas?.find((x) => x.id === 'anulacion')
+      return t ? { valor: porcentaje(t.valor), color: t.color, detalle: `${numero(t.detalle?.anuladas)} de ${numero(t.detalle?.emitidas)} facturas` } : null
+    },
+  },
+  {
+    // TDSI-152: tarjeta "Devoluciones" en el Resumen
+    id: 'devoluciones',
+    nombre: 'Devoluciones',
+    pestana: 'riesgo',
+    leer: ({ resumen }) => {
+      const t = resumen?.tarjetas?.find((x) => x.id === 'devoluciones')
+      if (!t) return null
+      if (t.detalle?.disponible === false) return { valor: '—', color: null, detalle: 'Devoluciones no respondió' }
+      return { valor: porcentaje(t.valor), color: t.color, detalle: `${bs(t.detalle?.monto_devuelto)} devueltos` }
+    },
+  },
   { id: 'metas', nombre: 'Metas por caja', pestana: 'cajas', leer: () => null },
   { id: 'cuadre', nombre: 'Cuadre de caja', pestana: 'cajas', leer: () => null },
   { id: 'aceptacion', nombre: 'Aceptación contable', pestana: 'integraciones', leer: () => null },
@@ -83,6 +104,8 @@ function PanelKpis() {
     const fuentes = {
       resumen: () => obtenerResumenKpis(periodo, token),
       ventas: () => obtenerVentasVsMeta(periodo, token),
+      riesgo: () => obtenerRiesgo(periodo, token),
+      porCajero: () => obtenerAnulacionesPorCajero(periodo, token),
     }
     const claves = Object.keys(fuentes)
     const resultados = await Promise.allSettled(claves.map((k) => fuentes[k]()))
@@ -171,7 +194,13 @@ function PanelKpis() {
         </div>
       )}
 
-      {pestana !== 'resumen' && (
+      {pestana === 'riesgo' && (
+        <div role="tabpanel" aria-label="Riesgo">
+          <PestanaRiesgo riesgo={datos.riesgo} porCajero={datos.porCajero} cargando={cargando} />
+        </div>
+      )}
+
+      {pestana !== 'resumen' && pestana !== 'riesgo' && (
         <div className="vxp-card" role="tabpanel">
           <Aviso tono="info" titulo={PESTANAS.find((p) => p.id === pestana)?.etiqueta}>
             Esta pestaña muestra sus indicadores del periodo {nombrePeriodo(periodo)}.

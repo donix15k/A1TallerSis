@@ -1555,6 +1555,12 @@
   animation: kpi-aparece 600ms ease 450ms forwards;
 }
 
+@keyframes kpi-crece {
+  from {
+    transform: scaleX(0.02);
+  }
+}
+
 @keyframes kpi-aparece {
   to {
     opacity: 1;
@@ -1620,8 +1626,9 @@
     opacity: 1;
   }
 
-  .kpi-punto--ROJO::after {
-    animation: none;
+  .kpi-punto--ROJO::after,
+  [style*='kpi-crece'] {
+    animation: none !important;
   }
 
   .kpi-tarjeta:hover,

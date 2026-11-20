@@ -12,5 +12,11 @@ const conPeriodo = (ruta, periodo, extra = '') => `${ruta}?periodo=${encodeURICo
 // TDSI-138/142: tarjetas del Resumen (ticket promedio, anulacion y devoluciones) con su color.
 export const obtenerResumenKpis = (periodo, token) => apiFetch(conPeriodo('/api/kpis/resumen', periodo), opciones(token), PAGOS)
 
+// TDSI-150/152: pestaña Riesgo: tasa de anulacion y tasa de devoluciones (con motivos) y su color.
+export const obtenerRiesgo = (periodo, token) => apiFetch(conPeriodo('/api/kpis/riesgo', periodo), opciones(token), PAGOS)
+
+// TDSI-151/153: anulaciones por cajero (de mayor a menor).
+export const obtenerAnulacionesPorCajero = (periodo, token) => apiFetch(conPeriodo('/api/kpis/anulaciones/por-cajero', periodo), opciones(token), PAGOS)
+
 // TDSI-139/143: ventas de cada dia (ultimos 30 dias del periodo) y la meta diaria.
 export const obtenerVentasVsMeta = (periodo, token) => apiFetch(conPeriodo('/api/kpis/ventas-vs-meta', periodo), opciones(token), PAGOS)
