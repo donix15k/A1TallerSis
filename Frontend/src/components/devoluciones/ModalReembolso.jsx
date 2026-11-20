@@ -23,7 +23,10 @@ function tituloError(mensaje = '') {
  * "Reversión enviada" (tarjeta/QR). Si no hay turno abierto, el error lo dice claramente.
  *   formasExtra: opciones adicionales de reembolso (TDSI-67: vale de compra).
  */
-function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale = false, renderResultadoExtra }) {
+function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale = false, renderResultadoExtra, origen }) {
+  // TDSI-121: un pedido del Marketplace se devuelve revirtiendo el pago online: no se ofrece efectivo ni vale de caja.
+  const esMarketplace = origen === 'MARKETPLACE'
+  if (esMarketplace) permitirVale = false
   const [forma, setForma] = useState('ORIGINAL')
   const [plan, setPlan] = useState(null)
   const [cargando, setCargando] = useState(true)
@@ -131,8 +134,13 @@ function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale 
                   {plan.metodo_pago && <div>Pagó con {plan.metodo_pago}</div>}
                 </div>
               </div>
+              {esMarketplace && (
+                <Aviso tono="info" titulo="Pedido del Marketplace">
+                  Se revierte el pago online del cliente. Nunca sale efectivo de la caja.
+                </Aviso>
+              )}
               <div style={{ display: 'grid', gap: 8 }}>
-                {plan.plan.map((p) => (
+                {plan.plan.filter((p) => !(esMarketplace && p.tipo === 'EFECTIVO')).map((p) => (
                   <div key={p.tipo} className="vxp-dato" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span className="vxp-modal-icono" style={{ width: 36, height: 36 }}>
                       <Icono nombre={ICONO_TIPO[p.tipo] ?? 'dinero'} tam={17} />

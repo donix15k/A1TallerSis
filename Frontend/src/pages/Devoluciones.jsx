@@ -13,14 +13,19 @@ import BandejaPendientes from '../components/devoluciones/BandejaPendientes.jsx'
 import ConsultarDevolucion, { recordarDevolucion } from '../components/devoluciones/ConsultarDevolucion.jsx'
 import SeccionNotaCredito from '../components/devoluciones/SeccionNotaCredito.jsx'
 import SeccionAvisos from '../components/devoluciones/SeccionAvisos.jsx'
+import { EtiquetaMarketplace, FiltroOrigen } from '../components/devoluciones/Origen.jsx'
 
 // Secciones extra del detalle de una devolucion, segun su estado.
 function seccionesDetalle(devolucion) {
+  // TDSI-121: una del Marketplace rechazada tambien muestra el aviso que se le mando al Marketplace.
+  if (devolucion.estado === 'RECHAZADA' && devolucion.origen === 'MARKETPLACE') {
+    return <SeccionAvisos key={`av-${devolucion.codigo}`} devolucion={devolucion} mostrarMarketplace ocultarCompras />
+  }
   if (devolucion.estado !== 'PROCESADA') return null
   return (
     <>
       <SeccionNotaCredito key={`nc-${devolucion.codigo}`} devolucion={devolucion} /> {/* TDSI-61/62/63 */}
-      <SeccionAvisos key={`av-${devolucion.codigo}`} devolucion={devolucion} /> {/* TDSI-108 */}
+      <SeccionAvisos key={`av-${devolucion.codigo}`} devolucion={devolucion} mostrarMarketplace /> {/* TDSI-108/121 */}
     </>
   )
 }
@@ -67,6 +72,7 @@ function Devoluciones() {
   // TDSI-32/38: pestañas de la pantalla (nueva devolucion y bandeja del supervisor)
   const [pestana, setPestana] = useState('nueva')
   const [pendientes, setPendientes] = useState(0)
+  const [origenBandeja, setOrigenBandeja] = useState('') // TDSI-120
   const [versionBandeja, setVersionBandeja] = useState(0) // al registrar una devolucion la bandeja se recarga
   const [codigoConsulta, setCodigoConsulta] = useState(null) // TDSI-44: abre "Consultar" con una devolucion
 
@@ -261,6 +267,9 @@ function Devoluciones() {
         <BandejaPendientes
           key={versionBandeja}
           onContador={setPendientes}
+          renderEtiqueta={(d) => <EtiquetaMarketplace devolucion={d} />}
+          filtrarFila={origenBandeja ? (d) => (d.origen ?? 'TIENDA') === origenBandeja : undefined}
+          filtros={<FiltroOrigen valor={origenBandeja} onCambiar={setOrigenBandeja} compacto />}
           onAprobada={(d) => {
             // queda lista en "Consultar y reembolsar" sin sacar al supervisor de la bandeja
             recordarDevolucion(d)

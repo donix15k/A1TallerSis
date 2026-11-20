@@ -8,6 +8,7 @@ import { Aviso, Esqueleto, Vacio } from '../components/ui/Aviso.jsx'
 import { useToast } from '../components/ui/Toasts.jsx'
 import LineaTiempoDevolucion from '../components/devoluciones/LineaTiempoDevolucion.jsx'
 import CeldaContabilidad from '../components/devoluciones/CeldaContabilidad.jsx'
+import { EtiquetaMarketplace, FiltroOrigen } from '../components/devoluciones/Origen.jsx'
 import { ESTADO_BADGE } from '../components/devoluciones/DetalleDevolucion.jsx'
 import { bs, fechaHora } from '../utils/formato.js'
 
@@ -19,7 +20,7 @@ const ESTADOS = [
   { id: 'PROCESADA', etiqueta: 'Procesada' },
 ]
 
-const FILTROS_INICIALES = { desde: '', hasta: '', estado: '', cajero: '' }
+const FILTROS_INICIALES = { desde: '', hasta: '', estado: '', cajero: '', origen: '' }
 
 /**
  * TDSI-78/83: vista de control del administrador: todas las devoluciones con filtros por fechas (dia completo),
@@ -153,6 +154,21 @@ function DevolucionesAdmin() {
             )}
           </div>
         </div>
+        {/* TDSI-120: Origen: Tienda / Marketplace (se aplica al instante) */}
+        <div className="vxp-fila" style={{ marginTop: '0.85rem' }}>
+          <span className="vxp-texto-suave" style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+            Origen:
+          </span>
+          <FiltroOrigen
+            valor={filtros.origen}
+            compacto
+            onCambiar={(origen) => {
+              setBorrador((b) => ({ ...b, origen }))
+              setFiltros((f) => ({ ...f, origen }))
+              setPagina(1)
+            }}
+          />
+        </div>
       </form>
 
       <div className="vxp-card">
@@ -198,7 +214,10 @@ function DevolucionesAdmin() {
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && setAbierta(d)}
                     >
-                      <td className="vxp-codigo">{d.codigo}</td>
+                      <td>
+                        <span className="vxp-codigo">{d.codigo}</span>
+                        <EtiquetaMarketplace devolucion={d} />
+                      </td>
                       <td className="vxp-codigo" style={{ fontWeight: 600 }}>{d.factura_numero}</td>
                       <td style={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.cajero}>{d.cajero}</td>
                       <td>

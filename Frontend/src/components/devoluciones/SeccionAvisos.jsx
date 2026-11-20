@@ -37,7 +37,7 @@ function Paso({ activo, hecho, error, etiqueta }) {
  * N° de reclamo cuando Compras reclama al proveedor). TDSI-121: estado del aviso al Marketplace (Enviado o Error)
  * cuando la devolucion vino de un pedido online. Se refresca sola mientras el aviso siga en camino.
  */
-function SeccionAvisos({ devolucion, mostrarMarketplace = false }) {
+function SeccionAvisos({ devolucion, mostrarMarketplace = false, ocultarCompras = false }) {
   const [avisos, setAvisos] = useState(null)
   const [cargando, setCargando] = useState(true)
 
@@ -68,6 +68,7 @@ function SeccionAvisos({ devolucion, mostrarMarketplace = false }) {
     <div style={{ marginTop: '1.1rem' }}>
       <hr className="vxp-separador" />
       <div className="vxp-grid vxp-grid--2">
+        {!ocultarCompras && (
         <div className="vxp-dato" style={{ padding: '0.95rem 1rem' }}>
           <div className="vxp-fila vxp-fila--entre" style={{ marginBottom: 10 }}>
             <strong style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--vx-navy)' }}>
@@ -99,6 +100,7 @@ function SeccionAvisos({ devolucion, mostrarMarketplace = false }) {
             </span>
           )}
         </div>
+        )}
 
         {esMarketplace && (
           <div className="vxp-dato" style={{ padding: '0.95rem 1rem' }}>

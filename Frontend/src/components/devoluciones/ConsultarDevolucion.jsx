@@ -158,6 +158,7 @@ function ConsultarDevolucion({ cajero, codigoInicial, permitirVale, seccionesDet
       {reembolsando && devolucion && (
         <ModalReembolso
           codigo={devolucion.codigo}
+          origen={devolucion.origen}
           cajero={cajero}
           permitirVale={permitirVale}
           renderResultadoExtra={renderResultadoReembolso}
