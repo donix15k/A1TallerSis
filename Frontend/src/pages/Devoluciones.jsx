@@ -10,6 +10,7 @@ import TablaProductosDevolucion, { claveProducto } from '../components/devolucio
 import FormularioRegistroDevolucion from '../components/devoluciones/FormularioRegistroDevolucion.jsx'
 import ModalDevolucionRegistrada from '../components/devoluciones/ModalDevolucionRegistrada.jsx'
 import BandejaPendientes from '../components/devoluciones/BandejaPendientes.jsx'
+import ConsultarDevolucion, { recordarDevolucion } from '../components/devoluciones/ConsultarDevolucion.jsx'
 
 const redondear = (n) => Math.round(n * 100) / 100
 
@@ -48,6 +49,12 @@ function Devoluciones() {
   const [pestana, setPestana] = useState('nueva')
   const [pendientes, setPendientes] = useState(0)
   const [versionBandeja, setVersionBandeja] = useState(0) // al registrar una devolucion la bandeja se recarga
+  const [codigoConsulta, setCodigoConsulta] = useState(null) // TDSI-44: abre "Consultar" con una devolucion
+
+  function abrirEnConsulta(codigo) {
+    setCodigoConsulta(codigo)
+    setPestana('consultar')
+  }
 
   useEffect(() => {
     listarMotivos()
@@ -166,6 +173,7 @@ function Devoluciones() {
           {[
             { id: 'nueva', etiqueta: 'Nueva devolución', icono: 'mas' },
             { id: 'pendientes', etiqueta: 'Pendientes', icono: 'bandeja', cuenta: pendientes },
+            { id: 'consultar', etiqueta: 'Consultar y reembolsar', icono: 'dinero' },
           ].map((p) => (
             <button
               key={p.id}
@@ -185,8 +193,18 @@ function Devoluciones() {
       </header>
 
       <div hidden={pestana !== 'pendientes'}>
-        <BandejaPendientes key={versionBandeja} onContador={setPendientes} />
+        <BandejaPendientes
+          key={versionBandeja}
+          onContador={setPendientes}
+          onAprobada={(d) => {
+            // queda lista en "Consultar y reembolsar" sin sacar al supervisor de la bandeja
+            recordarDevolucion(d)
+            setCodigoConsulta(d.codigo)
+          }}
+        />
       </div>
+
+      {pestana === 'consultar' && <ConsultarDevolucion cajero={cajero} codigoInicial={codigoConsulta} />}
 
       <div hidden={pestana !== 'nueva'}>
       <div className="vxp-card">
@@ -303,7 +321,13 @@ function Devoluciones() {
       )}
       </div>
 
-      <ModalDevolucionRegistrada devolucion={registrada} onCerrar={() => setRegistrada(null)} />
+      <ModalDevolucionRegistrada
+        devolucion={registrada}
+        onCerrar={() => {
+          if (registrada) recordarDevolucion(registrada)
+          setRegistrada(null)
+        }}
+      />
     </section>
   )
 }

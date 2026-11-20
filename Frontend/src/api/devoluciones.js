@@ -40,6 +40,20 @@ export function rechazarDevolucion(codigo, { supervisor_id, pin, motivo_rechazo 
   })
 }
 
+// TDSI-45/51: como se va a devolver el dinero de una devolucion APROBADA (plan por metodo) y el monto.
+// forma: ORIGINAL (segun como pago el cliente) o VALE (vale de compra, TDSI-67).
+export function consultarReembolso(codigo, { forma = 'ORIGINAL' } = {}) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/reembolso?forma=${forma}`)
+}
+
+// TDSI-49/52: reembolsa y deja la devolucion PROCESADA. caja_id hace falta si sale efectivo de la caja.
+export function reembolsarDevolucion(codigo, { cajero, caja_id, forma = 'ORIGINAL' }) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/reembolsar`, {
+    method: 'POST',
+    body: JSON.stringify({ cajero, caja_id, forma }),
+  })
+}
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo.
 export function obtenerDevolucion(codigo) {
   return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}`)
