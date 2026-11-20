@@ -54,6 +54,26 @@ export function reembolsarDevolucion(codigo, { cajero, caja_id, forma = 'ORIGINA
   })
 }
 
+// TDSI-58/61: URL del PDF de la nota de credito (para verla o imprimirla).
+export function urlNotaCreditoPdf(codigo) {
+  return `${DEVOLUCIONES_API_BASE_URL}/api/devoluciones/${encodeURIComponent(codigo)}/nota-credito.pdf`
+}
+
+// TDSI-60/63: la nota de credito con su estado de envio (numero, enviada_por_correo, enviada_en, enviada_a, envios).
+export function obtenerNotaCredito(codigo) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/nota-credito`)
+}
+
+// TDSI-59/62: envia el PDF por correo. 400 "El correo no es válido" si esta mal escrito.
+export function enviarNotaCreditoPorCorreo(codigo, email) {
+  return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}/nota-credito/enviar`, { method: 'POST', body: JSON.stringify({ email }) })
+}
+
+// Correo del cliente frecuente (Facturacion), para precargar el envio de la nota de credito.
+export function obtenerClientePorNit(nit) {
+  return apiFetch(`/api/clientes/${encodeURIComponent(nit)}`, {}, import.meta.env.VITE_FACTURACION_API_BASE_URL ?? '')
+}
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo.
 export function obtenerDevolucion(codigo) {
   return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}`)

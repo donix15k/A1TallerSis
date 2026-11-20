@@ -11,6 +11,13 @@ import FormularioRegistroDevolucion from '../components/devoluciones/FormularioR
 import ModalDevolucionRegistrada from '../components/devoluciones/ModalDevolucionRegistrada.jsx'
 import BandejaPendientes from '../components/devoluciones/BandejaPendientes.jsx'
 import ConsultarDevolucion, { recordarDevolucion } from '../components/devoluciones/ConsultarDevolucion.jsx'
+import SeccionNotaCredito from '../components/devoluciones/SeccionNotaCredito.jsx'
+
+// Secciones extra del detalle de una devolucion, segun su estado.
+function seccionesDetalle(devolucion) {
+  if (devolucion.estado !== 'PROCESADA') return null
+  return <SeccionNotaCredito key={`nc-${devolucion.codigo}`} devolucion={devolucion} /> // TDSI-61/62/63
+}
 
 const redondear = (n) => Math.round(n * 100) / 100
 
@@ -204,7 +211,7 @@ function Devoluciones() {
         />
       </div>
 
-      {pestana === 'consultar' && <ConsultarDevolucion cajero={cajero} codigoInicial={codigoConsulta} />}
+      {pestana === 'consultar' && <ConsultarDevolucion cajero={cajero} codigoInicial={codigoConsulta} seccionesDetalle={seccionesDetalle} />}
 
       <div hidden={pestana !== 'nueva'}>
       <div className="vxp-card">
