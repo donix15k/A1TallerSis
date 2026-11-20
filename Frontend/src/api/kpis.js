@@ -33,5 +33,8 @@ export const obtenerDiasPagoProveedores = (periodo, token) => apiFetch(conPeriod
 // TDSI-182/183: tarjetas de estado de Contabilidad, Compras / Proveedores y Marketplace (Monitor de integraciones).
 export const obtenerTarjetasIntegraciones = (periodo, token) => apiFetch(conPeriodo('/api/integraciones/resumen', periodo), opciones(token), PAGOS)
 
+// TDSI-192/195: "Alertas del dia": una linea por alerta, primero las ROJAS y luego las AMARILLAS.
+export const obtenerAlertas = (periodo, token) => apiFetch(conPeriodo('/api/kpis/alertas', periodo), opciones(token), PAGOS)
+
 // TDSI-139/143: ventas de cada dia (ultimos 30 dias del periodo) y la meta diaria.
 export const obtenerVentasVsMeta = (periodo, token) => apiFetch(conPeriodo('/api/kpis/ventas-vs-meta', periodo), opciones(token), PAGOS)

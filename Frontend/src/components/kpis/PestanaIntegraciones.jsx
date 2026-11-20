@@ -16,7 +16,10 @@ function TarjetaEstado({ titulo, icono, color, lineas, cargando }) {
         <strong style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-display)', color: 'var(--vx-navy)' }}>
           <Icono nombre={icono} tam={18} /> {titulo}
         </strong>
-        <PuntoSemaforo color={color} />
+        <span className="vxp-fila" style={{ gap: 6, fontSize: '0.72rem', fontWeight: 800 }}>
+          <span className={color ? `kpi-texto--${color}` : 'vxp-texto-suave'}>{color ?? 'SIN DATOS'}</span>
+          <PuntoSemaforo color={color} />
+        </span>
       </div>
       {cargando ? (
         <Esqueleto filas={2} />

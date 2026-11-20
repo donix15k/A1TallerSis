@@ -24,7 +24,11 @@ function TarjetaCaja({ caja, indice }) {
         <strong style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: 'var(--vx-navy)' }}>
           {nombre} · <span className={caja.color ? `kpi-texto--${caja.color}` : undefined}>{pct === null ? 'sin meta' : `${numero(pct, pct % 1 ? 1 : 0)} %`}</span>
         </strong>
-        <PuntoSemaforo color={caja.color} />
+        {/* TDSI-193: estado en texto junto al punto */}
+        <span className="vxp-fila" style={{ gap: 6, fontSize: '0.72rem', fontWeight: 800 }}>
+          <span className={caja.color ? `kpi-texto--${caja.color}` : 'vxp-texto-suave'}>{caja.color ?? 'SIN META'}</span>
+          <PuntoSemaforo color={caja.color} />
+        </span>
       </div>
       <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, margin: '0.8rem 0' }}>
         <div>

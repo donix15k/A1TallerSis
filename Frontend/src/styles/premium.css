@@ -1555,6 +1555,13 @@
   animation: kpi-aparece 600ms ease 450ms forwards;
 }
 
+@keyframes kpi-baja {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+
 @keyframes kpi-crece {
   from {
     transform: scaleX(0.02);
@@ -1627,7 +1634,8 @@
   }
 
   .kpi-punto--ROJO::after,
-  [style*='kpi-crece'] {
+  [style*='kpi-crece'],
+  [style*='kpi-baja'] {
     animation: none !important;
   }
 

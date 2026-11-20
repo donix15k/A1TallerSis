@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import PestanaIntegraciones from '../components/kpis/PestanaIntegraciones.jsx'
+import BarraSemaforo from '../components/kpis/BarraSemaforo.jsx'
+import AlertasDelDia from '../components/kpis/AlertasDelDia.jsx'
 import {
+  obtenerAlertas,
   obtenerAceptacionContable,
   obtenerDiasPagoProveedores,
   obtenerTarjetasIntegraciones,
@@ -162,6 +165,7 @@ function PanelKpis() {
       aceptacion: () => obtenerAceptacionContable(periodo, token),
       dias: () => obtenerDiasPagoProveedores(periodo, token),
       integraciones: () => obtenerTarjetasIntegraciones(periodo, token),
+      alertas: () => obtenerAlertas(periodo, token),
     }
     const claves = Object.keys(fuentes)
     const resultados = await Promise.allSettled(claves.map((k) => fuentes[k]()))
@@ -246,6 +250,8 @@ function PanelKpis() {
               </h2>
               {cargando ? <Esqueleto filas={6} alto={30} /> : datos.ventas ? <GraficoVentasMeta key={periodo} serie={datos.ventas.serie} metaDiaria={datos.ventas.meta_diaria} /> : <Aviso tono="warn" titulo="Sin datos del gráfico" />}
             </div>
+            {/* TDSI-195: a la derecha del grafico, "⚠ Alertas del dia" (primero las rojas) */}
+            <AlertasDelDia datos={datos.alertas} cargando={cargando} onIr={setPestana} />
           </div>
 
           {/* TDSI-174: franja inferior "Últimos turnos cerrados" */}
@@ -255,7 +261,12 @@ function PanelKpis() {
 
       {pestana === 'riesgo' && (
         <div role="tabpanel" aria-label="Riesgo">
-          <PestanaRiesgo riesgo={datos.riesgo} porCajero={datos.porCajero} cargando={cargando} />
+          <PestanaRiesgo
+            riesgo={datos.riesgo}
+            porCajero={datos.porCajero}
+            cargando={cargando}
+            barra={(k) => <BarraSemaforo valor={k.valor} verde={k.umbrales?.verde} amarillo={k.umbrales?.amarillo} sentido="MENOR" unidad={k.unidad} />}
+          />
         </div>
       )}
 
