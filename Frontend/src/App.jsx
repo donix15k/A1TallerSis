@@ -29,6 +29,7 @@ import PubSubVerificacion from './pages/PubSubVerificacion.jsx'
 import Devoluciones from './pages/Devoluciones.jsx'
 import DevolucionesAdmin from './pages/DevolucionesAdmin.jsx'
 import MonitorIntegraciones from './pages/MonitorIntegraciones.jsx'
+import MiTurno from './pages/MiTurno.jsx'
 import Cargando from './components/Cargando.jsx'
 import './App.css'
 
@@ -89,6 +90,7 @@ function App() {
           <Route path="/facturas" element={<RutaProtegida><Facturas /></RutaProtegida>} />
           <Route path="/cierre-caja" element={<RutaProtegida><CierreCaja /></RutaProtegida>} />
           <Route path="/devoluciones" element={<RutaProtegida><Devoluciones /></RutaProtegida>} />
+          <Route path="/caja/mi-turno" element={<RutaProtegida><MiTurno /></RutaProtegida>} />
 
           {/* Panel de Administración */}
           <Route path="/admin/cajeros" element={<RutaProtegidaAdmin><Cajeros /></RutaProtegidaAdmin>} />

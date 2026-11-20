@@ -45,6 +45,8 @@ function Navbar() {
         <>
           <NavLink to="/" end>Inicio</NavLink>
           <NavLink to="/pagos">Pagos</NavLink>
+          {/* TDSI-223: "Mi turno" va despues de vender y antes de cerrar el turno */}
+          <NavLink to="/caja/mi-turno">Mi turno</NavLink>
           <NavLink to="/facturas">Facturas</NavLink>
           <NavLink to="/devoluciones">Devoluciones</NavLink>
         </>

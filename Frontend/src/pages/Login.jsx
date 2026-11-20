@@ -145,6 +145,8 @@ function Login() {
           cajero_id: respuesta.data.cajero.cajero_id, // TDSI-53: lo pide el desbloqueo de pantalla
           caja: respuesta.data.caja.codigo,
           cajaNombre: respuesta.data.caja.nombre,
+          // TDSI-219: "Mi turno" pide sus datos con el token del propio cajero (solo ve su turno)
+          access_token: respuesta.data.cajero.access_token,
         })
         // Al llegar a Inicio, el TurnoModal avisa si la caja esta activa o
         // inactiva, y exige abrir el turno con un supervisor si hace falta.
