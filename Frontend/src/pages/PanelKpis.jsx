@@ -3,6 +3,7 @@ import PestanaIntegraciones from '../components/kpis/PestanaIntegraciones.jsx'
 import BarraSemaforo from '../components/kpis/BarraSemaforo.jsx'
 import AlertasDelDia from '../components/kpis/AlertasDelDia.jsx'
 import ModalObjetivos from '../components/kpis/ModalObjetivos.jsx'
+import ModalExportar from '../components/kpis/ModalExportar.jsx'
 import Boton from '../components/ui/Boton.jsx'
 import { useToast } from '../components/ui/Toasts.jsx'
 import {
@@ -155,6 +156,7 @@ function PanelKpis() {
   const [cargando, setCargando] = useState(true)
   const [errores, setErrores] = useState([])
   const [configurando, setConfigurando] = useState(false) // TDSI-203
+  const [exportando, setExportando] = useState(false) // TDSI-213
   const toast = useToast()
 
   const cargar = useCallback(async () => {
@@ -226,8 +228,24 @@ function PanelKpis() {
             Configurar objetivos
           </Boton>
           <SelectorPeriodo valor={periodo} onCambiar={setPeriodo} />
+          {/* TDSI-213: boton negro "Exportar" a la derecha del selector de periodo */}
+          <Boton variante="negro" icono="descargar" onClick={() => setExportando(true)}>
+            Exportar
+          </Boton>
         </div>
       </div>
+
+      {exportando && (
+        <ModalExportar
+          periodo={periodo}
+          token={token}
+          onCerrar={() => setExportando(false)}
+          onDescargado={(nombre) => {
+            setExportando(false)
+            toast.ok('Reporte descargado', nombre)
+          }}
+        />
+      )}
 
       {configurando && (
         <ModalObjetivos

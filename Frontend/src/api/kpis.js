@@ -44,5 +44,19 @@ export const obtenerObjetivos = (token) => apiFetch('/api/kpis/objetivos', opcio
 export const guardarObjetivos = (cuerpo, token) =>
   apiFetch('/api/kpis/objetivos', opciones(token, { method: 'PUT', body: JSON.stringify(cuerpo) }), PAGOS)
 
+// TDSI-210/211/215: descarga el reporte del panel (formato 'pdf' | 'xlsx') con el periodo y las secciones elegidas
+// (resumen, cajas, integraciones). El nombre del archivo (KPIs_[periodo]) viene del servidor en Content-Disposition.
+export async function exportarReporteKpis({ formato, desde, hasta, secciones }, token) {
+  const params = new URLSearchParams({ desde, hasta, secciones: secciones.join(',') })
+  const respuesta = await fetch(`${PAGOS}/api/kpis/exportar.${formato}?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!respuesta.ok) {
+    const cuerpo = await respuesta.json().catch(() => null)
+    throw new Error(cuerpo?.mensaje ?? `No se pudo generar el reporte (error ${respuesta.status}).`)
+  }
+  const disposicion = respuesta.headers.get('Content-Disposition') ?? ''
+  const nombre = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposicion)?.[1] ?? `KPIs_${desde.slice(0, 7)}.${formato}`
+  return { blob: await respuesta.blob(), nombre: decodeURIComponent(nombre) }
+}
+
 // TDSI-139/143: ventas de cada dia (ultimos 30 dias del periodo) y la meta diaria.
 export const obtenerVentasVsMeta = (periodo, token) => apiFetch(conPeriodo('/api/kpis/ventas-vs-meta', periodo), opciones(token), PAGOS)
