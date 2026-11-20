@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { registrarPago, registrarPagoMixto, calcularPagoMixto, registrarVentaCancelada, contarVentasCanceladas, consultarPosibleDuplicado, obtenerTipoCambio, listarMisFacturas, enviarFacturaPorCorreo, buscarClientePorDocumento } from '../api/pagos.js'
 import { calcularVuelto, calcularCobroUsd, crearCobroQr, consultarEstadoCobroQr, confirmarCobroQr, urlQrCuenta } from '../api/cobros.js'
 import PagoMixtoForm from '../components/PagoMixtoForm.jsx'
+import CampoVale from '../components/pagos/CampoVale.jsx'
 import CancelarVentaModal from '../components/CancelarVentaModal.jsx'
 import MisRespuestasRapidas from '../components/MisRespuestasRapidas.jsx'
 import AvisoCobroDuplicadoModal from '../components/AvisoCobroDuplicadoModal.jsx'
@@ -68,6 +69,18 @@ const METODOS_PAGO = [
       </svg>
     ),
   },
+  // TDSI-73: vale de compra entregado en una devolucion (Devoluciones valida el saldo).
+  {
+    id: 'Vale',
+    etiqueta: 'Vale',
+    icono: (
+      <svg width="32" height="22" viewBox="0 0 32 22" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M2 4a2 2 0 0 1 2-2h24a2 2 0 0 1 2 2v4a3 3 0 0 0 0 6v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a3 3 0 0 0 0-6z" />
+        <line x1="21" y1="3" x2="21" y2="19" strokeDasharray="2 2" />
+        <text x="11.5" y="15" textAnchor="middle" fontSize="9" fontWeight="700" fill="currentColor" stroke="none">VAL</text>
+      </svg>
+    ),
+  },
 ]
 
 const TIPOS_DOCUMENTO = [
@@ -83,6 +96,7 @@ const ESTADO_INICIAL = {
   montoMixto2: '',
   montoRecibido: '', // TDSI-29/793: efectivo que dio el cliente (obligatorio en pago simple, opcional en mixto)
   dolaresRecibidos: '', // TDSI-817: solo aplica a "Efectivo en dólares"
+  codigoVale: '', // TDSI-73: solo aplica al metodo "Vale"
   tipoDocumento: 'NINGUNO',
   numeroDocumento: '',
   razonSocial: '',
@@ -167,6 +181,9 @@ function validarFormulario(datos) {
   if (datos.metodos[0] === EFECTIVO_USD && !(Number(datos.dolaresRecibidos) > 0)) {
     return 'Ingrese cuántos dólares recibió del cliente.'
   }
+  if (datos.metodos.includes('Vale') && !datos.codigoVale.trim()) {
+    return 'Escriba el código del vale.'
+  }
   if (datos.tipoDocumento !== 'NINGUNO') {
     if (!datos.numeroDocumento.trim() || !datos.razonSocial.trim()) {
       return `Complete el número de ${datos.tipoDocumento} y la razón social.`
@@ -219,6 +236,10 @@ function Pagos() {
   const [faltanteBs, setFaltanteBs] = useState(null)
   const [errorCobroUsd, setErrorCobroUsd] = useState(null)
   const [calculandoCobroUsd, setCalculandoCobroUsd] = useState(false)
+
+  // TDSI-73/74: saldo del vale consultado al salir del campo { estado, vale, error }
+  const [valeInfo, setValeInfo] = useState(null)
+  const usaVale = datos.metodos.includes('Vale')
 
   const esMixto = datos.metodos.length === 2
   const esQrSimple = datos.metodos.length === 1 && datos.metodos[0] === 'QR'
@@ -463,7 +484,16 @@ function Pagos() {
 
     if (actuales.includes(id)) {
       setErrorValidacion(null)
-      setDatos((prev) => ({ ...prev, metodos: prev.metodos.filter((m) => m !== id), montoMixto1: '', montoMixto2: '', montoRecibido: '', dolaresRecibidos: '' }))
+      if (id === 'Vale') setValeInfo(null)
+      setDatos((prev) => ({
+        ...prev,
+        metodos: prev.metodos.filter((m) => m !== id),
+        montoMixto1: '',
+        montoMixto2: '',
+        montoRecibido: '',
+        dolaresRecibidos: '',
+        ...(id === 'Vale' && { codigoVale: '' }),
+      }))
       return
     }
 
@@ -488,9 +518,42 @@ function Pagos() {
     setDatos((prev) => ({ ...prev, metodos: [...prev.metodos, id], montoMixto1: '', montoMixto2: '', montoRecibido: '', dolaresRecibidos: '' }))
   }
 
+  // TDSI-74: el vale no alcanza -> pago mixto con el saldo del vale y el resto por cobrar con otro metodo.
+  function completarValeConOtroMetodo(saldoVale, resto) {
+    setErrorValidacion(null)
+    setDatos((prev) => ({
+      ...prev,
+      metodos: ['Vale', 'Efectivo'],
+      montoMixto1: saldoVale.toFixed(2),
+      montoMixto2: resto.toFixed(2),
+      montoRecibido: '',
+      dolaresRecibidos: '',
+    }))
+  }
+
   function continuar(event) {
     event.preventDefault()
     if (cobroUsdBloqueado) return
+    // TDSI-73/74/77: con vale, antes de seguir se exige un vale consultado, con saldo, que cubra su parte.
+    if (usaVale) {
+      if (valeInfo?.estado !== 'ok') {
+        setErrorValidacion(valeInfo?.estado === 'error' ? valeInfo.error : 'Consulte el saldo del vale antes de continuar.')
+        return
+      }
+      if (!valeInfo.vale.utilizable) {
+        setErrorValidacion('El vale no tiene saldo disponible')
+        return
+      }
+      const parteVale = esMixto ? Number(datos.metodos[0] === 'Vale' ? datos.montoMixto1 : datos.montoMixto2) : Number(datos.monto)
+      if (Math.round(parteVale * 100) > Math.round(valeInfo.vale.saldo_disponible * 100)) {
+        setErrorValidacion(
+          esMixto
+            ? `El vale solo tiene ${valeInfo.vale.saldo_disponible.toFixed(2)} Bs de saldo: ajuste el monto asignado al vale.`
+            : 'El vale no cubre el total: use "Completar con otro método".',
+        )
+        return
+      }
+    }
     const mensaje = validarFormulario(datos)
     if (mensaje) {
       // El formato del NIT/CI ya se avisa abajo del propio campo: no repetirlo aquí.
@@ -600,7 +663,7 @@ function Pagos() {
           metodos: [
             { metodo: datos.metodos[0], monto: Number(datos.montoMixto1) },
             { metodo: datos.metodos[1], monto: Number(datos.montoMixto2) },
-          ],
+          ].map((m) => (m.metodo === 'Vale' ? { ...m, codigo_vale: datos.codigoVale.trim() } : m)), // TDSI-74
           cajaId: cajero?.caja,
           cajero: cajero?.nombre,
           // TDSI-61/200: nombre para "Atendido por" en la tirilla/PDF -- hoy es el
@@ -627,6 +690,9 @@ function Pagos() {
         }
         if (esEfectivoSimple && datos.montoRecibido) {
           payload.monto_recibido = Number(datos.montoRecibido)
+        }
+        if (payload.metodo === 'Vale') {
+          payload.codigo_vale = datos.codigoVale.trim() // TDSI-73
         }
         // TDSI-813: la venta sigue en Bs (el backend recalcula el vuelto con monto_recibido);
         // la moneda, el monto en USD y el T.C. son los datos de la leyenda de la factura.
@@ -733,6 +799,7 @@ function Pagos() {
 
   function registrarOtro() {
     setDatos(ESTADO_INICIAL)
+    setValeInfo(null)
     setPagoRegistrado(null)
     setEnvioFactura(null)
     setCobroQr(null)
@@ -791,6 +858,18 @@ function Pagos() {
                 </div>
                 {esMixto && <p className="ayuda-mixto">Pago mixto: complete los montos en el panel de la derecha.</p>}
               </fieldset>
+
+              {usaVale && (
+                <CampoVale
+                  codigo={datos.codigoVale}
+                  onCodigo={(v) => actualizarCampo('codigoVale', v)}
+                  info={valeInfo}
+                  onInfo={setValeInfo}
+                  total={Number(datos.monto) || 0}
+                  esMixto={esMixto}
+                  onCompletarConOtroMetodo={completarValeConOtroMetodo}
+                />
+              )}
 
               {esEfectivoSimple && (
                 <div className="cobro-efectivo">

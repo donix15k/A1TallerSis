@@ -211,7 +211,7 @@ function Devoluciones() {
         />
       </div>
 
-      {pestana === 'consultar' && <ConsultarDevolucion cajero={cajero} codigoInicial={codigoConsulta} seccionesDetalle={seccionesDetalle} />}
+      {pestana === 'consultar' && <ConsultarDevolucion cajero={cajero} codigoInicial={codigoConsulta} seccionesDetalle={seccionesDetalle} permitirVale />}
 
       <div hidden={pestana !== 'nueva'}>
       <div className="vxp-card">

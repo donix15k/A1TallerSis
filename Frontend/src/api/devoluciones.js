@@ -74,6 +74,11 @@ export function obtenerClientePorNit(nit) {
   return apiFetch(`/api/clientes/${encodeURIComponent(nit)}`, {}, import.meta.env.VITE_FACTURACION_API_BASE_URL ?? '')
 }
 
+// TDSI-69/73: saldo disponible, estado (ACTIVO, USADO, EXPIRADO), vencimiento y si se puede cobrar con el vale.
+export function consultarVale(codigo) {
+  return apiFetch(`/api/vales/${encodeURIComponent(codigo)}`, {}, DEVOLUCIONES_API_BASE_URL)
+}
+
 // TDSI-24: estado, items, motivo y monto de una devolucion por su codigo.
 export function obtenerDevolucion(codigo) {
   return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}`)

@@ -5,6 +5,7 @@ import Boton from '../ui/Boton.jsx'
 import Icono from '../ui/Icono.jsx'
 import { Aviso, Esqueleto } from '../ui/Aviso.jsx'
 import { bs } from '../../utils/formato.js'
+import ValeCompra from './ValeCompra.jsx'
 
 const ICONO_TIPO = { EFECTIVO: 'dinero', REVERSION_TARJETA: 'tarjeta', REVERSION_QR: 'qr', VALE: 'vale' }
 const NOMBRE_TIPO = { EFECTIVO: 'Efectivo de caja', REVERSION_TARJETA: 'Reversión de tarjeta', REVERSION_QR: 'Reversión de QR', VALE: 'Vale de compra' }
@@ -177,8 +178,9 @@ function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale 
               {r.envio && r.envio.estado !== 'ENVIADO' ? ' · la pasarela la confirmará en breve' : ''}
             </Aviso>
           ))}
+          {resultado.vale && <ValeCompra vale={resultado.vale} devolucion={codigo} />}
           {resultado.mensajes
-            ?.filter((m) => !/^Entregue|^Reversión/.test(m))
+            ?.filter((m) => !/^Entregue|^Reversión|^Vale /.test(m))
             .map((m) => (
               <Aviso key={m} tono="info">
                 {m}
