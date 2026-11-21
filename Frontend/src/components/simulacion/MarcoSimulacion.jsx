@@ -24,7 +24,10 @@ function MarcoSimulacion({ vista, letra, titulo, volverA, volverTexto = 'Volver 
   useEffect(() => {
     if (!token) return
     obtenerContextoVista(vista, token)
-      .then((r) => setContexto(r.data))
+      .then((r) => {
+        setContexto(r.data)
+        setError(null) // un intento anterior que falló por lentitud ya no cuenta
+      })
       .catch((e) => setError(e.message))
   }, [vista, token])
 
