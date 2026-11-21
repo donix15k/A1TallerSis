@@ -16,7 +16,7 @@ const corto = (topico) => String(topico ?? '').split('/topics/')[1] ?? topico
  * grupo, la cinta SIMULACIÓN, la ruta del mensaje (de qué tópico a qué tópico viaja lo que se envía aquí) y el botón para volver.
  */
 function MarcoSimulacion({ vista, letra, titulo, volverA, volverTexto = 'Volver a Pagos y Facturación', children }) {
-  const { administrador } = useAdminAuth()
+  const { administrador, cerrarSesion } = useAdminAuth()
   const token = administrador?.access_token
   const [contexto, setContexto] = useState(null)
   const [error, setError] = useState(null)
@@ -28,8 +28,12 @@ function MarcoSimulacion({ vista, letra, titulo, volverA, volverTexto = 'Volver 
         setContexto(r.data)
         setError(null) // un intento anterior que falló por lentitud ya no cuenta
       })
-      .catch((e) => setError(e.message))
-  }, [vista, token])
+      .catch((e) => {
+        // sesión vencida (el token de Supabase dura 1 hora): se cierra y se va al inicio de sesión, en vez de dejar la pantalla con errores
+        if (e.status === 401) cerrarSesion()
+        else setError(e.message)
+      })
+  }, [vista, token, cerrarSesion])
 
   if (!administrador) return <Navigate to="/login" replace />
 
