@@ -19,7 +19,7 @@ import HistorialOperaciones from './pages/HistorialOperaciones.jsx'
 import MetasVenta from './pages/MetasVenta.jsx'
 import HorasPico from './pages/HorasPico.jsx'
 import ComparativoMensual from './pages/ComparativoMensual.jsx'
-import Supervisores from './pages/Supervisores.jsx'
+import PerfilAdministrador from './pages/PerfilAdministrador.jsx'
 import ProductosVendidos from './pages/ProductosVendidos.jsx'
 import DiferenciasCaja from './pages/DiferenciasCaja.jsx'
 import VentasOnline from './pages/VentasOnline.jsx'
@@ -48,8 +48,6 @@ const RUTAS_DE_LISTA = [
   '/admin/diferencias',
   '/admin/productos-vendidos',
   '/admin/cajeros',
-  '/admin/supervisores',
-  '/admin/usuarios',
 ]
 
 function RutaProtegida({ children }) {
@@ -107,7 +105,8 @@ function App() {
           <Route path="/admin/metas-venta" element={<RutaProtegidaAdmin><MetasVenta /></RutaProtegidaAdmin>} />
           <Route path="/admin/horas-pico" element={<RutaProtegidaAdmin><HorasPico /></RutaProtegidaAdmin>} />
           <Route path="/admin/comparativo-mensual" element={<RutaProtegidaAdmin><ComparativoMensual /></RutaProtegidaAdmin>} />
-          <Route path="/admin/supervisores" element={<RutaProtegidaAdmin><Supervisores /></RutaProtegidaAdmin>} />
+          <Route path="/admin/supervisores" element={<Navigate to="/admin/usuarios" replace />} />
+          <Route path="/admin/perfil" element={<RutaProtegidaAdmin><PerfilAdministrador /></RutaProtegidaAdmin>} />
           <Route path="/admin/productos-vendidos" element={<RutaProtegidaAdmin><ProductosVendidos /></RutaProtegidaAdmin>} />
           <Route path="/admin/diferencias" element={<RutaProtegidaAdmin><DiferenciasCaja /></RutaProtegidaAdmin>} />
           <Route path="/admin/ventas-online" element={<RutaProtegidaAdmin><VentasOnline /></RutaProtegidaAdmin>} />

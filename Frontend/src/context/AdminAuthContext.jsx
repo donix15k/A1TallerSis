@@ -38,11 +38,16 @@ export function AdminAuthProvider({ children }) {
     setAdministrador(null)
   }
 
+  // el perfil cambió (por ejemplo el nombre): se refleja en la barra sin volver a iniciar sesión
+  function actualizarAdministrador(parcial) {
+    setAdministrador((a) => (a ? { ...a, ...parcial } : a))
+  }
+
   // renueva el token solo, antes de que venza
   useRenovarSesion(administrador, (nuevo) => setAdministrador((a) => (a ? { ...a, ...nuevo } : a)), cerrarSesion)
 
   return (
-    <AdminAuthContext.Provider value={{ administrador, iniciarSesion, cerrarSesion }}>
+    <AdminAuthContext.Provider value={{ administrador, iniciarSesion, cerrarSesion, actualizarAdministrador }}>
       {children}
     </AdminAuthContext.Provider>
   )

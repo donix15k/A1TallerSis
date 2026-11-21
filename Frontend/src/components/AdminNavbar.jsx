@@ -7,8 +7,7 @@ import Marca from './Marca.jsx'
 // en 6 botones (3 directos + 3 desplegables) sin sacar ninguna pantalla del menu.
 const GESTION_ROLES_Y_CLIENTES = [
   { to: '/admin/cajeros', etiqueta: 'Cajeros' },
-  { to: '/admin/supervisores', etiqueta: 'Supervisores' },
-  { to: '/admin/usuarios', etiqueta: 'Usuarios' },
+  { to: '/admin/usuarios', etiqueta: 'Usuarios y accesos' }, // cajeros, supervisores y administradores
   { to: '/admin/clientes', etiqueta: 'Clientes' },
 ]
 
@@ -55,7 +54,9 @@ function AdminNavbar() {
       <AdminNavDropdown etiqueta="Integraciones" items={INTEGRACIONES} />
 
       <div className="navbar-sesion">
-        <span className="navbar-cajero">{administrador?.nombre}</span>
+        <NavLink to="/admin/perfil" className="navbar-cajero" title="Ver y editar mi perfil">
+          {administrador?.nombre || 'Administrador'}
+        </NavLink>
         <button type="button" className="btn btn-logout" onClick={handleCerrarSesion}>
           Cerrar sesión
         </button>
