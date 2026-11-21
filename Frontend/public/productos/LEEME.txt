@@ -1,22 +1,22 @@
 IMAGENES DE PRODUCTOS DEL MARKETPLACE (vista de simulacion)
 
 Medida:   800 x 600 px (proporcion 4:3)
-Formato:  .webp, .png o .jpg  (en ese orden de prioridad; si falta una, se usa la siguiente)
-Peso:     menos de 150 KB
-Nombre:   el codigo del producto, por ejemplo QUI-001.webp
+Formato:  .jpg, .webp o .png (en ese orden de prioridad)
+Peso:     menos de 200 KB
+Nombre:   el codigo del producto, por ejemplo ARR-001.jpg
 
 Codigos:
-  QUI-001  Quinua real organica 500 g
-  CHU-002  Chuño blanco (tunta) 1 kg
-  ARR-003  Arroz benianito 1 kg
-  MAI-004  Mote de maiz pelado 1 kg
-  CAF-005  Cafe de Yungas molido 250 g
-  API-008  Api morado en polvo 400 g
-  QUE-006  Queso chaqueño 500 g
-  CHA-007  Charque de llama 250 g
-  SAL-009  Salteñas de pollo (bolsa de 6)
-  PAN-010  Pan de batalla (bolsa de 10)
-  MIE-011  Miel de abeja de Tarija 500 g
-  CHO-012  Chocolate de cacao beniano 100 g
+  ARR-001  Arroz Grano de Oro 10 kg
+  ACE-002  Aceite Fino vegetal 900 ml
+  AZU-003  Azúcar Aguaí 1 kg
+  FID-004  Fideo Don Vittorio spaghetti 400 g
+  LEC-005  Leche PIL ultrapasteurizada 1 L
+  QUE-006  Queso criollo Esthercita
+  HUE-007  Huevos La Granja (maple de 30)
+  PAN-008  Pan de molde San Gabriel
+  ATU-009  Atún El Pescador 170 g
+  CAF-010  Café Copacabana premium molido
+  JUG-011  Bebida de naranja De la Granja 3 L
+  DET-012  Detergente Bolivar 1 kg
 
-Si un producto no tiene imagen aqui, se muestra la ilustracion dibujada por defecto.
+Si un producto no tiene imagen aqui, se muestra un recuadro gris.
