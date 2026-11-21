@@ -376,3 +376,13 @@ ALTER TABLE caja.movimientos ADD CONSTRAINT movimientos_origen_microservicio_che
 CREATE UNIQUE INDEX IF NOT EXISTS uq_movimientos_devolucion
   ON caja.movimientos (referencia_externa) WHERE origen_microservicio = 'DEVOLUCIONES';
 
+
+-- ==========================================================================
+-- Gestion de administradores desde la pantalla "Usuarios y accesos": el correo de login, el telefono y el documento (datos personales que el
+-- propio administrador edita en su perfil). El correo es unico sin distinguir mayusculas. IDEMPOTENTE.
+-- ==========================================================================
+ALTER TABLE caja.administradores
+    ADD COLUMN IF NOT EXISTS usuario   VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS telefono  VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS documento VARCHAR(20);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_administradores_usuario ON caja.administradores (lower(usuario)) WHERE usuario IS NOT NULL;

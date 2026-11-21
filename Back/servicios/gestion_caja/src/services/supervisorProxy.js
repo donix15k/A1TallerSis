@@ -85,4 +85,23 @@ async function cambiarEstadoSupervisor(id, activo) {
   return datos.data;
 }
 
-module.exports = { validarSupervisor, listarSupervisores, editarSupervisor, cambiarEstadoSupervisor };
+/** Llama a Facturacion (dueno del registro de supervisores) y propaga su error con su estado. */
+async function llamarFacturacion(ruta, { metodo, cuerpo, que }) {
+  let respuesta;
+  try {
+    respuesta = await fetch(`${FACTURACION_URL}${ruta}`, { method: metodo, headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+  } catch (e) {
+    throw new AppError(`No se pudo ${que} en este momento. Intente de nuevo.`, 502);
+  }
+  const datos = await respuesta.json().catch(() => null);
+  if (!respuesta.ok) throw new AppError(datos?.mensaje || `No se pudo ${que}.`, respuesta.status, datos?.detalle);
+  return datos.data;
+}
+
+/** Un supervisor nuevo (usuario unico, PIN de 4 a 6 digitos) desde "Usuarios y accesos". */
+const crearSupervisor = ({ usuario, nombre, pin }) => llamarFacturacion("/api/supervisores", { metodo: "POST", cuerpo: { usuario, nombre, pin }, que: "crear al supervisor" });
+
+/** "Restablecer PIN": PIN nuevo y se limpian los intentos fallidos y el bloqueo. */
+const restablecerPinSupervisor = (id, pin) => llamarFacturacion(`/api/supervisores/${encodeURIComponent(id)}/pin`, { metodo: "PUT", cuerpo: { pin }, que: "restablecer el PIN" });
+
+module.exports = { validarSupervisor, listarSupervisores, editarSupervisor, cambiarEstadoSupervisor, crearSupervisor, restablecerPinSupervisor };
