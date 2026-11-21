@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 // Ilustraciones propias (SVG) de los productos bolivianos del catálogo del Marketplace: nítidas a cualquier tamaño y sin imágenes externas.
 // Cada una dibuja el producto sobre un fondo con su color; si llega un producto nuevo sin ilustración se muestra una caja genérica.
 
@@ -122,7 +124,14 @@ const ARTE = {
   ),
 }
 
+// Imagen real si existe en public/productos/<SKU>.webp|png|jpg (800x600); si no, la ilustración dibujada.
+const EXTENSIONES = ['webp', 'png', 'jpg']
+
 function ImagenProducto({ sku, descripcion }) {
+  const [intento, setIntento] = useState(0)
+  if (intento < EXTENSIONES.length) {
+    return <img className="sim-producto-img" src={`/productos/${sku}.${EXTENSIONES[intento]}`} alt={descripcion} loading="lazy" onError={() => setIntento(intento + 1)} style={{ objectFit: 'cover' }} />
+  }
   const [a, b] = FONDOS[sku] ?? ['#eef1f6', '#d6dde8']
   const id = `fondo-${sku}`
   return (
