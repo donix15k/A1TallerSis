@@ -74,7 +74,7 @@ async function listarMensajes({ limite = 500 } = {}) {
         message_id: r.pubsub_message_id || null,
         intentos: r.intentos,
         error: r.ultimo_error || null,
-        puede_reenviar: r.estado === "Error",
+        puede_reenviar: r.estado === "Error" || (fuente === "contabilidad" && String(r.resultado ?? "").toLowerCase() === "rechazado"), // Error, o rechazado por Contabilidad
         detalle: f.detalle(r),
         datos: r.payload ?? null,
       });
@@ -98,7 +98,7 @@ async function reenviarMensaje(idComun) {
   const actual = await repo.obtener(id);
   if (!actual) throw new AppError(`No existe el mensaje ${idComun}.`, 404, { id: idComun });
   const envio = await repo.prepararReenvio(id);
-  if (!envio) throw new AppError(`Solo se pueden reenviar los envíos con estado Error (este está ${actual.estado}).`, 409, { id: idComun, estado: actual.estado });
+  if (!envio) throw new AppError(`Solo se pueden reenviar los envíos con estado Error o rechazados por Contabilidad (este está ${actual.estado}).`, 409, { id: idComun, estado: actual.estado });
   await intentar(envio);
   return (await listarMensajes()).find((x) => x.id === idComun);
 }

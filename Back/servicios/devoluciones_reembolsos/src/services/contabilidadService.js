@@ -76,7 +76,7 @@ async function reenviarNota(codigo) {
   }
   const envio = await repo.prepararReenvio(actual.id);
   if (!envio) {
-    throw new AppError(`Solo se pueden reenviar los envíos con estado Error (este está ${actual.estado}).`, 409, { codigo: actual.devolucion_codigo, estado: actual.estado });
+    throw new AppError(`Solo se pueden reenviar los envíos con estado Error o rechazados por Contabilidad (este está ${actual.estado}).`, 409, { codigo: actual.devolucion_codigo, estado: actual.estado });
   }
   return intentarEnvio(envio);
 }

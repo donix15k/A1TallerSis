@@ -110,12 +110,17 @@ async function tomarPendientes(limite = 10, { facturaId = null } = {}) {
   return rows.map(aEnvio);
 }
 
-/** "Reenviar" un envio en Error: misma fila, nuevo ciclo de intentos. Null si no estaba en Error. */
+/**
+ * "Reenviar" un envio: misma fila, nuevo ciclo de intentos. Se puede reenviar cuando quedo en Error (no pudo salir) o cuando salio
+ * pero Contabilidad lo RECHAZO (Enviado con resultado 'rechazado'): en ese caso se borra el resultado anterior y vuelve a esperar su
+ * respuesta. Null si no esta en ninguno de esos dos casos.
+ */
 async function prepararReenvio(id) {
   const { rows } = await query(
     `UPDATE facturacion.factura_envios_contabilidad
-     SET estado = 'Pendiente', intentos = 0, proximo_intento_en = now() + interval '2 minutes'
-     WHERE id = $1 AND estado = 'Error'
+     SET estado = 'Pendiente', intentos = 0, proximo_intento_en = now() + interval '2 minutes',
+         resultado = NULL, numero_asiento = NULL, resultado_motivo = NULL, resultado_en = NULL
+     WHERE id = $1 AND (estado = 'Error' OR (estado = 'Enviado' AND lower(coalesce(resultado, '')) = 'rechazado'))
      RETURNING id`,
     [id]
   );

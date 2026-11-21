@@ -141,7 +141,7 @@ async function listarEnvios({ estado, tipo, limite } = {}) {
   return { total: envios.length, envios };
 }
 
-/** "Reenviar" un envio en Error: nuevo ciclo de intentos y un intento inmediato. */
+/** "Reenviar" un envio en Error o rechazado por Contabilidad: nuevo ciclo de intentos y un intento inmediato. */
 async function reenviarEnvio(id) {
   const limpio = String(id ?? "").trim();
   if (!/^\d{1,18}$/.test(limpio) || Number(limpio) === 0) throw err("El id del envio debe ser un numero entero positivo.");
@@ -149,7 +149,8 @@ async function reenviarEnvio(id) {
   if (!envio) {
     const actual = await repo.obtener(limpio);
     if (!actual) throw err(`El envio ${id} no existe.`, 404);
-    throw err(`Solo se pueden reenviar envios con estado Error (este esta ${actual.estado}).`, 409, { envio: actual });
+    const motivo = actual.estado === "Enviado" ? (actual.resultado ? `Contabilidad ya lo respondio como '${actual.resultado}'` : "esta esperando la respuesta de Contabilidad") : `esta en estado ${actual.estado}`;
+    throw err(`Solo se pueden reenviar los envios con estado Error o rechazados por Contabilidad (este ${motivo}).`, 409, { envio: actual });
   }
   return intentarEnvio(envio);
 }

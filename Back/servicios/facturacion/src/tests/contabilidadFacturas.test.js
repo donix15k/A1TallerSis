@@ -204,6 +204,25 @@ test("TDSI-22: sin permiso queda en Error; se lista y se puede reenviar", async 
   await assert.rejects(contabilidad.reenviarEnvio(envio.id), { status: 409 });
 });
 
+test("un asiento RECHAZADO por Contabilidad se puede reenviar: vuelve a salir, borra el rechazo anterior y espera la nueva respuesta", async () => {
+  const f = await nuevaFactura();
+  const envio = await contabilidad.enviarFactura(f.id, "venta");
+  assert.equal(envio.estado, "Enviado");
+  const repo = require("../data/enviosContabilidadRepo");
+  await repo.registrarResultado({ facturaNumero: f.numero, tipo: "venta", resultado: "rechazado", numeroAsiento: null, motivo: "Cuenta contable inexistente", messageId: "resp-1" });
+
+  const reenviado = await contabilidad.reenviarEnvio(envio.id);
+  assert.equal(reenviado.estado, "Enviado");
+  assert.equal(falso.publicados.length, 2); // salio otra vez
+  const despues = await repo.obtener(envio.id);
+  assert.deepEqual([despues.resultado, despues.resultado_motivo, despues.numero_asiento], [null, null, null]);
+  await assert.rejects(contabilidad.reenviarEnvio(envio.id), { status: 409 }); // ya no esta rechazado: nada que reenviar
+
+  // uno ACEPTADO no se reenvia
+  await repo.registrarResultado({ facturaNumero: f.numero, tipo: "venta", resultado: "aceptado", numeroAsiento: "A-1", motivo: null, messageId: "resp-2" });
+  await assert.rejects(contabilidad.reenviarEnvio(envio.id), { status: 409 });
+});
+
 test("TDSI-22: sin topico configurado no registra ni publica nada", async () => {
   cfg.PUBSUB_TOPIC = null;
   const f = await nuevaFactura();

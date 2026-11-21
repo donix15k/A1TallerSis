@@ -65,7 +65,7 @@ test("solo se reenvian los envios en Error: uno Enviado o Pendiente da 409 y no 
   assert.equal((await envioDe(enviada)).estado, "Enviado");
   const r1 = await reenviar(enviada);
   assert.equal(r1.status, 409);
-  assert.match((await r1.json()).mensaje, /Solo se pueden reenviar los envíos con estado Error \(este está Enviado\)/);
+  assert.match((await r1.json()).mensaje, /Solo se pueden reenviar los envíos con estado Error o rechazados por Contabilidad \(este está Enviado\)/);
 
   const pendiente = await procesada({ fallaPubsub: Object.assign(new Error("UNAVAILABLE"), { code: 14 }) });
   const antes = entorno.pubsub.publicados.length; // lo que ya publico el reembolso de "enviada"
@@ -80,6 +80,21 @@ test("devolucion sin envio (no procesada) o inexistente: 404", async () => {
   assert.equal(r.status, 404);
   assert.match((await r.json()).mensaje, /no tiene un envío a Contabilidad/);
   assert.equal((await reenviar("DEV-999999")).status, 404);
+});
+
+test("una nota RECHAZADA por Contabilidad tambien se reenvia: sale otra vez y se borra el rechazo anterior", async () => {
+  const codigo = await procesada();
+  const antes = await envioDe(codigo);
+  const nota = (await query(`SELECT n.numero FROM devoluciones.notas_credito n JOIN devoluciones.devoluciones d ON d.id = n.devolucion_id WHERE d.codigo = $1`, [codigo])).rows[0].numero;
+  await repo.registrarResultado({ notaNumero: nota, resultado: "rechazado", numeroAsiento: null, motivo: "Monto no coincide", messageId: "resp-x" });
+  assert.equal((await envioDe(codigo)).resultado, "rechazado");
+
+  const publicadosAntes = entorno.pubsub.publicados.length;
+  const r = await reenviar(codigo);
+  assert.equal(r.status, 200);
+  const e = await envioDe(codigo);
+  assert.deepEqual([e.id, e.estado, e.resultado, e.resultado_motivo], [antes.id, "Enviado", null, null]);
+  assert.equal(entorno.pubsub.publicados.length, publicadosAntes + 1);
 });
 
 test("solo el administrador puede reenviar: sin token 401, cajero 403", async () => {

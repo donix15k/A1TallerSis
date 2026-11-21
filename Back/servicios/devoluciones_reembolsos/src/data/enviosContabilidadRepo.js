@@ -93,12 +93,13 @@ async function tomarPendientes(limite = 10) {
   return rows.map(aEnvio);
 }
 
-/** "Reenviar" un envio en Error: misma fila, nuevo ciclo de intentos. Null si no estaba en Error. */
+/** "Reenviar" un envio en Error o ya Enviado pero RECHAZADO por Contabilidad (se borra el resultado anterior). Null en cualquier otro caso. */
 async function prepararReenvio(id) {
   const { rows } = await query(
     `UPDATE devoluciones.envios_contabilidad_nc
-        SET estado = 'Pendiente', intentos = 0, proximo_intento_en = now() + interval '2 minutes'
-      WHERE id = $1 AND estado = 'Error'
+        SET estado = 'Pendiente', intentos = 0, proximo_intento_en = now() + interval '2 minutes',
+            resultado = NULL, numero_asiento = NULL, resultado_motivo = NULL, resultado_en = NULL
+      WHERE id = $1 AND (estado = 'Error' OR (estado = 'Enviado' AND lower(coalesce(resultado, '')) = 'rechazado'))
       RETURNING id`,
     [id]
   );

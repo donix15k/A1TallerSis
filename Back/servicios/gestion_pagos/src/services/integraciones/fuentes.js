@@ -23,7 +23,7 @@ function normalizarEstado(texto, { respondido = false } = {}) {
 }
 
 function mensaje({ origen, id, grupo, tipo, referencia, fecha, estado, message_id = null, intentos = null, error = null, detalle = {}, datos = null }) {
-  return { origen, id: String(id), grupo, tipo, referencia: referencia ?? null, fecha: fecha ?? null, estado, message_id: message_id || null, intentos, error: error || null, puede_reenviar: estado === "Error", detalle, datos };
+  return { origen, id: String(id), grupo, tipo, referencia: referencia ?? null, fecha: fecha ?? null, estado, message_id: message_id || null, intentos, error: error || null, puede_reenviar: estado === "Error" || String(detalle?.resultado ?? "").toLowerCase() === "rechazado", detalle, datos };
 }
 
 async function http(url, { metodo = "GET", token = null } = {}) {
