@@ -30,6 +30,10 @@ import Devoluciones from './pages/Devoluciones.jsx'
 import DevolucionesAdmin from './pages/DevolucionesAdmin.jsx'
 import MonitorIntegraciones from './pages/MonitorIntegraciones.jsx'
 import MiTurno from './pages/MiTurno.jsx'
+import SimulacionGrupos from './pages/SimulacionGrupos.jsx'
+import VistaContabilidad from './pages/simulacion/VistaContabilidad.jsx'
+import VistaMarketplace from './pages/simulacion/VistaMarketplace.jsx'
+import VistaCompras from './pages/simulacion/VistaCompras.jsx'
 import Cargando from './components/Cargando.jsx'
 import './App.css'
 
@@ -64,20 +68,22 @@ function App() {
   const esSeccionAdmin = pathname.startsWith('/admin')
   // TDSI-38: pagina publica (sin login) a la que lleva el QR de la factura.
   const esPaginaPublica = pathname.startsWith('/facturas/verificar/')
+  // Vistas "como si fuéramos" otro grupo (Contabilidad, Marketplace, Compras): pantalla completa, sin el menú de Pagos y Facturación.
+  const esSimulacion = pathname.startsWith('/simulacion/')
   // Pantallas donde solo la tabla se desplaza (menu y filtros quedan fijos): ver .vx-app--fija.
   const esPantallaFija = RUTAS_DE_LISTA.includes(pathname)
 
   // Pantalla de bienvenida de Vortrix: una vez al abrir la pagina, salvo en la pagina
   // publica del QR (un cliente que escanea una factura no debe esperar una animacion).
-  const [mostrarSplash, setMostrarSplash] = useState(() => !pathname.startsWith('/facturas/verificar/'))
+  const [mostrarSplash, setMostrarSplash] = useState(() => !pathname.startsWith('/facturas/verificar/') && !pathname.startsWith('/simulacion/'))
   const terminarSplash = useCallback(() => setMostrarSplash(false), [])
 
   return (
     <div className={`vx-app${esPantallaFija ? ' vx-app--fija' : ''}`}>
       {mostrarSplash && <Splash onTerminada={terminarSplash} />}
-      {!esPantallaLogin && !esPaginaPublica && (esSeccionAdmin ? <AdminNavbar /> : <Navbar />)}
+      {!esPantallaLogin && !esPaginaPublica && !esSimulacion && (esSeccionAdmin ? <AdminNavbar /> : <Navbar />)}
       <div className="vx-scroll">
-      <main className={esPantallaLogin || esPaginaPublica ? undefined : esSeccionAdmin || esPantallaFija ? 'container container-ancho' : 'container'}>
+      <main className={esPantallaLogin || esPaginaPublica || esSimulacion ? undefined : esSeccionAdmin || esPantallaFija ? 'container container-ancho' : 'container'}>
         {/* key por ruta: cada pantalla entra con un fundido corto al navegar */}
         <div className="vx-pagina" key={pathname}>
         <Routes>
@@ -110,6 +116,12 @@ function App() {
           <Route path="/admin/pubsub-verificacion" element={<RutaProtegidaAdmin><PubSubVerificacion /></RutaProtegidaAdmin>} />
           <Route path="/admin/devoluciones" element={<RutaProtegidaAdmin><DevolucionesAdmin /></RutaProtegidaAdmin>} />
           <Route path="/admin/monitor-integraciones" element={<RutaProtegidaAdmin><MonitorIntegraciones /></RutaProtegidaAdmin>} />
+          <Route path="/admin/simulacion" element={<RutaProtegidaAdmin><SimulacionGrupos /></RutaProtegidaAdmin>} />
+
+          {/* Vistas simuladas de otros grupos (pantalla completa) */}
+          <Route path="/simulacion/contabilidad" element={<VistaContabilidad />} />
+          <Route path="/simulacion/marketplace" element={<VistaMarketplace />} />
+          <Route path="/simulacion/compras" element={<VistaCompras />} />
           <Route
             path="/admin/panel-kpis"
             element={

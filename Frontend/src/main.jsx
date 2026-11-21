@@ -9,6 +9,7 @@ import { ToastProvider } from './components/ui/Toasts.jsx'
 import './index.css'
 import './styles/vortrix.css'
 import './styles/premium.css'
+import './styles/simulacion.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

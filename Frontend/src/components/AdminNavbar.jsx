@@ -27,6 +27,7 @@ const INTEGRACIONES = [
   { to: '/admin/productos-vendidos', etiqueta: 'Productos vendidos (Compras)' },
   { to: '/admin/diferencias', etiqueta: 'Diferencias de caja (Contabilidad)' },
   { to: '/admin/pubsub-verificacion', etiqueta: 'Verificación de Pub/Sub' },
+  { to: '/admin/simulacion', etiqueta: 'Simulación de grupos' }, // vistas "como si fuéramos" Contabilidad, Marketplace y Compras
 ]
 
 function AdminNavbar() {
