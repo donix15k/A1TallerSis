@@ -6,6 +6,40 @@ const { listarSupervisores, editarSupervisor, cambiarEstadoSupervisor, crearSupe
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// El usuario es un nombre unico (no el correo): letras, numeros, punto, guion y guion bajo.
+const USUARIO_REGEX = /^[a-z0-9._-]{3,30}$/;
+const DOMINIO_CUENTAS = process.env.DOMINIO_CUENTAS || "cuentas.vortrix.app";
+
+/** Normaliza y valida el nombre de usuario (minusculas). */
+function validarUsuario(valor) {
+  const u = String(valor ?? "").trim().toLowerCase();
+  if (!USUARIO_REGEX.test(u)) {
+    throw new AppError("El usuario debe tener de 3 a 30 caracteres: letras, numeros, punto, guion o guion bajo (sin espacios ni @).", 400, { usuario: valor });
+  }
+  return u;
+}
+
+/** El correo es solo informativo: opcional, pero si se escribe debe ser valido. */
+function validarCorreoInformativo(valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === "") return null;
+  const c = String(valor).trim().toLowerCase();
+  if (c.length > 255 || !EMAIL_REGEX.test(c)) throw new AppError("El correo no es valido.", 400, { correo: valor });
+  return c;
+}
+
+/** El usuario no puede repetirse entre cajeros, administradores y supervisores (excluirId = la cuenta que se esta editando). */
+async function verificarUsuarioLibre(usuario, excluirId = null) {
+  const minusculas = String(usuario).toLowerCase();
+  const cajero = await cajerosRepo.buscarPorUsuario(minusculas);
+  const admin = await administradoresRepo.buscarPorUsuario(minusculas);
+  const supervisores = await listarSupervisores();
+  const supervisor = supervisores.find((s) => String(s.usuario || "").toLowerCase() === minusculas);
+  const ocupado = [cajero && cajero.cajero_id, admin && admin.cajero_id, supervisor && String(supervisor.id)].filter(Boolean).some((id) => String(id) !== String(excluirId));
+  if (ocupado) throw new AppError("Ese usuario ya esta en uso: elija otro.", 409, { usuario: minusculas });
+}
+
+/** Correo interno con el que se registra la cuenta en Supabase Auth (el usuario nunca lo escribe: inicia sesion con su usuario). */
+const emailInterno = (usuario) => `${usuario}@${DOMINIO_CUENTAS}`;
 
 /**
  * TDSI-47/171: crea la cuenta de login en Supabase Auth -- ahi se guarda la
@@ -59,11 +93,16 @@ async function actualizarCuentaSupabase(cajero_id, payload) {
   return datos;
 }
 
+async function borrarCuentaSupabase(id) {
+  await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }).catch(() => {});
+}
+
 function aPublico(cajero) {
   return {
     id: cajero.cajero_id,
     cajero_id: cajero.cajero_id,
     usuario: cajero.usuario,
+    correo: cajero.correo ?? null,
     nombre: cajero.nombre,
     rol: "Cajero",
     estado: cajero.activo ? "Activo" : "Inactivo",
@@ -77,27 +116,26 @@ function aPublico(cajero) {
  * mostrar. El nombre/usuario/estado del cajero se guardan en caja.cajeros,
  * con el mismo patron que caja.administradores.
  */
-async function crearCajero({ usuario, password, nombre }) {
-  if (!usuario || !EMAIL_REGEX.test(String(usuario).trim())) {
-    throw new AppError("El usuario debe ser un correo valido.", 400);
-  }
+async function crearCajero({ usuario, password, nombre, correo } = {}) {
+  const user = validarUsuario(usuario);
   if (!password || String(password).length < 6) {
     throw new AppError("La contrasena debe tener al menos 6 caracteres.", 400);
   }
   if (!nombre || !String(nombre).trim()) {
     throw new AppError("El nombre es obligatorio.", 400);
   }
+  const correoInfo = validarCorreoInformativo(correo);
+  await verificarUsuarioLibre(user);
 
-  const email = String(usuario).trim().toLowerCase();
-
-  const yaExiste = await cajerosRepo.buscarPorUsuario(email);
-  if (yaExiste) {
-    throw new AppError("Ese usuario ya esta registrado.", 409, { usuario: email });
-  }
-
+  const email = emailInterno(user);
   const cuenta = await crearCuentaSupabase({ email, password });
-  const cajero = await cajerosRepo.crear({ cajero_id: cuenta.id, usuario: email, nombre: String(nombre).trim() });
-  return aPublico(cajero);
+  try {
+    const cajero = await cajerosRepo.crear({ cajero_id: cuenta.id, usuario: user, nombre: String(nombre).trim(), correo: correoInfo, email_auth: email });
+    return aPublico(cajero);
+  } catch (e) {
+    await borrarCuentaSupabase(cuenta.id);
+    throw e;
+  }
 }
 
 /**
@@ -115,6 +153,7 @@ async function listarUsuarios() {
   const filasCajeros = cajeros.map((c) => ({
     id: c.cajero_id,
     usuario: c.usuario,
+    correo: c.correo ?? null,
     nombre: c.nombre,
     rol: "Cajero",
     estado: c.activo ? "Activo" : "Inactivo",
@@ -136,28 +175,22 @@ async function listarUsuarios() {
  * si existe como cajero_id en caja.cajeros, es un cajero; si no, se intenta
  * como id de supervisor en facturacion).
  */
-async function editarUsuario(id, { usuario, nombre, telefono, documento } = {}) {
-  if (await administradoresRepo.buscarPorCajeroId(id)) return editarAdministrador(id, { usuario, nombre, telefono, documento });
+async function editarUsuario(id, { usuario, nombre, telefono, documento, correo } = {}) {
+  if (await administradoresRepo.buscarPorCajeroId(id)) return editarAdministrador(id, { usuario, nombre, telefono, documento, correo });
   const cajero = await cajerosRepo.buscarPorCajeroId(id);
   if (cajero) {
-    if (!usuario || !EMAIL_REGEX.test(String(usuario).trim())) {
-      throw new AppError("El usuario debe ser un correo valido.", 400);
-    }
     if (!nombre || !String(nombre).trim()) {
       throw new AppError("El nombre es obligatorio.", 400);
     }
-
-    const email = String(usuario).trim().toLowerCase();
-    if (email !== cajero.usuario) {
-      const yaExiste = await cajerosRepo.buscarPorUsuario(email);
-      if (yaExiste) throw new AppError("Ese usuario ya esta registrado.", 409, { usuario: email });
-      await actualizarCuentaSupabase(id, { email });
-    }
-
-    const actualizado = await cajerosRepo.actualizar(id, { usuario: email, nombre: String(nombre).trim() });
+    // si no cambia el usuario se deja tal cual (las cuentas anteriores tienen un correo como usuario)
+    const nuevoUsuario = String(usuario ?? "").trim().toLowerCase() === String(cajero.usuario).toLowerCase() ? cajero.usuario : validarUsuario(usuario);
+    if (nuevoUsuario !== cajero.usuario) await verificarUsuarioLibre(nuevoUsuario, id);
+    const correoInfo = correo === undefined ? cajero.correo : validarCorreoInformativo(correo);
+    const actualizado = await cajerosRepo.actualizar(id, { usuario: nuevoUsuario, nombre: String(nombre).trim(), correo: correoInfo });
     return aPublico(actualizado);
   }
 
+  if (String(usuario ?? "").trim()) await verificarUsuarioLibre(String(usuario).trim(), id);
   return editarSupervisor(id, { usuario, nombre });
 }
 
@@ -242,6 +275,7 @@ function administradorPublico(a) {
   return {
     id: a.cajero_id,
     usuario: a.usuario,
+    correo: a.correo ?? null,
     nombre: a.nombre || a.usuario,
     telefono: a.telefono ?? null,
     documento: a.documento ?? null,
@@ -257,7 +291,7 @@ async function listarAdministradores() {
     filas.map(async (a) => {
       if (a.usuario) return a;
       const correo = await correoDeCuenta(a.cajero_id);
-      return correo ? (await administradoresRepo.actualizarUsuario(a.cajero_id, correo.toLowerCase())) ?? a : a;
+      return correo ? (await administradoresRepo.completarDesdeAuth(a.cajero_id, correo.toLowerCase())) ?? a : a;
     })
   );
   return completas.map(administradorPublico);
@@ -267,37 +301,33 @@ async function listarAdministradores() {
  * Un administrador nuevo: su cuenta de login (Supabase Auth, contrasena de al menos 8 caracteres) y su perfil en caja.administradores.
  * Si falla el perfil se borra la cuenta recien creada (no quedan cuentas huerfanas).
  */
-async function crearAdministrador({ usuario, password, nombre, telefono, documento } = {}) {
-  if (!usuario || !EMAIL_REGEX.test(String(usuario).trim())) throw new AppError("El usuario debe ser un correo valido.", 400);
+async function crearAdministrador({ usuario, password, nombre, telefono, documento, correo } = {}) {
+  const user = validarUsuario(usuario);
   validarPasswordAdmin(password);
   const nom = validarNombre(nombre);
   const tel = validarTelefono(telefono);
   const doc = validarDocumento(documento);
-  const email = String(usuario).trim().toLowerCase();
-  if ((await administradoresRepo.buscarPorUsuario(email)) || (await cajerosRepo.buscarPorUsuario(email))) {
-    throw new AppError("Ese usuario ya esta registrado.", 409, { usuario: email });
-  }
+  const correoInfo = validarCorreoInformativo(correo);
+  await verificarUsuarioLibre(user);
+  const email = emailInterno(user);
   const cuenta = await crearCuentaSupabase({ email, password });
   try {
-    return administradorPublico(await administradoresRepo.crear({ cajero_id: cuenta.id, usuario: email, nombre: nom, telefono: tel, documento: doc }));
+    return administradorPublico(await administradoresRepo.crear({ cajero_id: cuenta.id, usuario: user, nombre: nom, telefono: tel, documento: doc, correo: correoInfo, email_auth: email }));
   } catch (e) {
-    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${cuenta.id}`, { method: "DELETE", headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }).catch(() => {});
+    await borrarCuentaSupabase(cuenta.id);
     throw e;
   }
 }
 
-/** Un administrador cambia nombre, correo y datos personales de otro (o de si mismo). */
-async function editarAdministrador(id, { usuario, nombre, telefono, documento } = {}) {
+/** Un administrador cambia usuario, nombre, correo informativo y datos personales de otro (o de si mismo). */
+async function editarAdministrador(id, { usuario, nombre, telefono, documento, correo } = {}) {
   const actual = await administradoresRepo.buscarPorCajeroId(id);
   if (!actual) throw new AppError("Administrador no encontrado.", 404);
-  if (!usuario || !EMAIL_REGEX.test(String(usuario).trim())) throw new AppError("El usuario debe ser un correo valido.", 400);
-  const email = String(usuario).trim().toLowerCase();
-  const perfil = { nombre: validarNombre(nombre), telefono: validarTelefono(telefono), documento: validarDocumento(documento) };
-  if (email !== (actual.usuario || "").toLowerCase()) {
-    const otro = (await administradoresRepo.buscarPorUsuario(email)) || (await cajerosRepo.buscarPorUsuario(email));
-    if (otro && otro.cajero_id !== id) throw new AppError("Ese usuario ya esta registrado.", 409, { usuario: email });
-    await actualizarCuentaSupabase(id, { email });
-    await administradoresRepo.actualizarUsuario(id, email);
+  const perfil = { nombre: validarNombre(nombre), telefono: validarTelefono(telefono), documento: validarDocumento(documento), correo: correo === undefined ? undefined : validarCorreoInformativo(correo) };
+  const nuevoUsuario = String(usuario ?? "").trim().toLowerCase() === String(actual.usuario || "").toLowerCase() ? actual.usuario : validarUsuario(usuario);
+  if (nuevoUsuario !== actual.usuario) {
+    await verificarUsuarioLibre(nuevoUsuario, id);
+    await administradoresRepo.actualizarUsuario(id, nuevoUsuario);
   }
   return administradorPublico(await administradoresRepo.actualizarPerfil(id, perfil));
 }
@@ -333,22 +363,29 @@ async function restablecerCredencial(id, { password, pin } = {}) {
   return { id, rol: "Supervisor" };
 }
 
+/** Un supervisor nuevo: su usuario tampoco puede repetirse con el de un cajero o administrador. */
+async function crearSupervisorConUsuarioUnico({ usuario, nombre, pin } = {}) {
+  const user = validarUsuario(usuario);
+  await verificarUsuarioLibre(user);
+  return crearSupervisor({ usuario: user, nombre, pin });
+}
+
 // ---------------------------------------------------------------- perfil propio del administrador
 async function obtenerPerfil(id) {
   let a = await administradoresRepo.buscarPorCajeroId(id);
   if (!a) throw new AppError("Administrador no encontrado.", 404);
   if (!a.usuario) {
     const correo = await correoDeCuenta(id);
-    if (correo) a = (await administradoresRepo.actualizarUsuario(id, correo.toLowerCase())) ?? a;
+    if (correo) a = (await administradoresRepo.completarDesdeAuth(id, correo.toLowerCase())) ?? a;
   }
   return administradorPublico(a);
 }
 
 /** El propio administrador edita su nombre y sus datos personales (el correo y el rol los cambia otro administrador). */
-async function actualizarPerfilPropio(id, { nombre, telefono, documento } = {}) {
+async function actualizarPerfilPropio(id, { nombre, telefono, documento, correo } = {}) {
   const a = await administradoresRepo.buscarPorCajeroId(id);
   if (!a) throw new AppError("Administrador no encontrado.", 404);
-  const actualizado = await administradoresRepo.actualizarPerfil(id, { nombre: validarNombre(nombre), telefono: validarTelefono(telefono), documento: validarDocumento(documento) });
+  const actualizado = await administradoresRepo.actualizarPerfil(id, { nombre: validarNombre(nombre), telefono: validarTelefono(telefono), documento: validarDocumento(documento), correo: correo === undefined ? undefined : validarCorreoInformativo(correo) });
   return administradorPublico(actualizado);
 }
 
@@ -367,6 +404,6 @@ async function cambiarPasswordPropia(id, { password_actual, password_nueva } = {
 
 module.exports = {
   crearCajero, listarUsuarios, editarUsuario, cambiarPasswordCajero, cambiarEstadoUsuario,
-  crearAdministrador, listarAdministradores, editarAdministrador, cambiarEstadoAdministrador, restablecerCredencial, crearSupervisor,
+  crearAdministrador, listarAdministradores, editarAdministrador, cambiarEstadoAdministrador, restablecerCredencial, crearSupervisor: crearSupervisorConUsuarioUnico,
   obtenerPerfil, actualizarPerfilPropio, cambiarPasswordPropia,
 };

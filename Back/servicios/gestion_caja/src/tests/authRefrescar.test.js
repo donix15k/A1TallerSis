@@ -10,7 +10,7 @@ const { query, pool } = require("../config/db");
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const EMAIL = `tdsi-refresco-${Date.now()}@test.com`;
+const EMAIL = `tdsi-refresco-${Date.now()}`; // usuario (nombre unico)
 let cuenta, servidor, base, sesion;
 
 test.before(async () => {
@@ -42,7 +42,7 @@ test("renovar: con el refresh_token se obtiene un access_token nuevo (y un refre
   assert.notEqual(r.access_token, sesion.access_token);
   assert.notEqual(r.refresh_token, sesion.refresh_token); // Supabase lo rota
   const usuario = await (await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: process.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${r.access_token}` } })).json();
-  assert.equal(usuario.email, EMAIL);
+  assert.equal(usuario.email, `${EMAIL}@cuentas.vortrix.app`);
   sesion = { ...sesion, ...r }; // el siguiente paso usa el vigente
 });
 

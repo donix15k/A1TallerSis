@@ -1,6 +1,6 @@
 const { query } = require("../config/db");
 
-const COLUMNAS = "id, cajero_id, usuario, nombre, telefono, documento, activo, creado_en";
+const COLUMNAS = "id, cajero_id, usuario, correo, email_auth, nombre, telefono, documento, activo, creado_en";
 
 async function buscarPorCajeroId(cajero_id) {
   const { rows } = await query(`SELECT ${COLUMNAS} FROM caja.administradores WHERE cajero_id = $1`, [cajero_id]);
@@ -18,25 +18,34 @@ async function listar() {
   return rows;
 }
 
-async function crear({ cajero_id, usuario, nombre, telefono = null, documento = null }) {
+async function crear({ cajero_id, usuario, nombre, telefono = null, documento = null, correo = null, email_auth = null }) {
   const { rows } = await query(
-    `INSERT INTO caja.administradores (cajero_id, usuario, nombre, telefono, documento) VALUES ($1, $2, $3, $4, $5) RETURNING ${COLUMNAS}`,
-    [cajero_id, usuario, nombre, telefono, documento]
+    `INSERT INTO caja.administradores (cajero_id, usuario, nombre, telefono, documento, correo, email_auth) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${COLUMNAS}`,
+    [cajero_id, usuario, nombre, telefono, documento, correo, email_auth ?? usuario]
   );
   return rows[0];
 }
 
 /** Datos personales: nombre, telefono y documento (el correo de login se cambia aparte porque vive tambien en Supabase Auth). */
-async function actualizarPerfil(cajero_id, { nombre, telefono, documento }) {
+async function actualizarPerfil(cajero_id, { nombre, telefono, documento, correo }) {
   const { rows } = await query(
-    `UPDATE caja.administradores SET nombre = $2, telefono = $3, documento = $4 WHERE cajero_id = $1 RETURNING ${COLUMNAS}`,
-    [cajero_id, nombre, telefono ?? null, documento ?? null]
+    `UPDATE caja.administradores SET nombre = $2, telefono = $3, documento = $4, correo = COALESCE($5, correo) WHERE cajero_id = $1 RETURNING ${COLUMNAS}`,
+    [cajero_id, nombre, telefono ?? null, documento ?? null, correo === undefined ? null : correo]
   );
   return rows[0] || null;
 }
 
 async function actualizarUsuario(cajero_id, usuario) {
   const { rows } = await query(`UPDATE caja.administradores SET usuario = $2 WHERE cajero_id = $1 RETURNING ${COLUMNAS}`, [cajero_id, usuario]);
+  return rows[0] || null;
+}
+
+/** Administradores creados antes de guardar su correo: se completa usuario, correo y email_auth con el correo de su cuenta de Supabase. */
+async function completarDesdeAuth(cajero_id, email) {
+  const { rows } = await query(
+    `UPDATE caja.administradores SET usuario = COALESCE(usuario, $2), correo = COALESCE(correo, $2), email_auth = COALESCE(email_auth, $2) WHERE cajero_id = $1 RETURNING ${COLUMNAS}`,
+    [cajero_id, email]
+  );
   return rows[0] || null;
 }
 
@@ -54,4 +63,4 @@ async function borrar(cajero_id) {
   await query(`DELETE FROM caja.administradores WHERE cajero_id = $1`, [cajero_id]);
 }
 
-module.exports = { buscarPorCajeroId, buscarPorUsuario, listar, crear, actualizarPerfil, actualizarUsuario, cambiarEstado, contarActivos, borrar };
+module.exports = { buscarPorCajeroId, buscarPorUsuario, listar, crear, actualizarPerfil, actualizarUsuario, completarDesdeAuth, cambiarEstado, contarActivos, borrar };

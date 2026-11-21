@@ -13,7 +13,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const FACTURACION_URL = process.env.FACTURACION_URL || "http://localhost:4002";
 
 const PREFIJO = `tdsi171-${Date.now()}`;
-const emailDePrueba = (n) => `${PREFIJO}-${n}@test.com`;
+const emailDePrueba = (n) => `${PREFIJO}-${n}`; // ahora es el nombre de usuario (unico), no un correo
 const cuentasCreadas = [];
 const supervisoresCreados = [];
 const supervisorIdsCreados = [];
@@ -55,7 +55,7 @@ test("TDSI-171: registra un cajero (cuenta en Supabase Auth + perfil en caja.caj
   assert.equal(rows[0].activo, true);
 });
 
-test("TDSI-171: el usuario (correo) no se puede repetir", async () => {
+test("TDSI-171: el usuario no se puede repetir", async () => {
   const usuario = emailDePrueba(2);
   const primero = await crearCajero({ usuario, password: "clave123", nombre: "Marco Soliz" });
   cuentasCreadas.push(primero.cajero_id);
@@ -66,9 +66,9 @@ test("TDSI-171: el usuario (correo) no se puede repetir", async () => {
   );
 });
 
-test("TDSI-171: rechaza un correo invalido", async () => {
+test("TDSI-171: rechaza un usuario invalido", async () => {
   await assert.rejects(
-    () => crearCajero({ usuario: "no-es-un-correo", password: "clave123", nombre: "X" }),
+    () => crearCajero({ usuario: "usuario con espacios", password: "clave123", nombre: "X" }),
     (e) => e.status === 400
   );
 });
@@ -150,7 +150,7 @@ test("TDSI-917: edita el nombre y el usuario de un cajero", async () => {
     headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
   });
   const datos = await resp.json();
-  assert.equal(datos.email, usuarioNuevo, "el correo de Supabase Auth tambien debe quedar actualizado");
+  assert.equal(datos.email, `${usuarioViejo}@cuentas.vortrix.app`, "cambiar el usuario no toca el correo interno de la cuenta de Supabase");
 });
 
 test("TDSI-917: no deja editar un cajero a un usuario que ya existe", async () => {
@@ -172,7 +172,7 @@ test("TDSI-917: valida correo y nombre al editar un cajero", async () => {
   cuentasCreadas.push(cajero.cajero_id);
 
   await assert.rejects(
-    () => editarUsuario(cajero.cajero_id, { usuario: "no-es-correo", nombre: "X" }),
+    () => editarUsuario(cajero.cajero_id, { usuario: "usuario con espacios", nombre: "X" }),
     (e) => e.status === 400
   );
   await assert.rejects(
@@ -260,8 +260,10 @@ test("TDSI-918: una cuenta de Supabase sin perfil en caja.cajeros (p.ej. un Admi
   cuentasCreadas.push(cajero.cajero_id);
   await query(`DELETE FROM caja.cajeros WHERE cajero_id = $1`, [cajero.cajero_id]);
 
-  const login = await autenticarCajero({ email: usuario, password: "clave123" });
-  assert.equal(login.email, usuario);
+  // sin perfil ya no hay usuario que resolver: se entra con el correo de la cuenta (asi entran las cuentas anteriores)
+  const correoCuenta = `${usuario}@cuentas.vortrix.app`;
+  const login = await autenticarCajero({ email: correoCuenta, password: "clave123" });
+  assert.equal(login.email, correoCuenta);
 });
 
 test("TDSI-918: cambia el estado de un supervisor desde la misma ruta", async () => {

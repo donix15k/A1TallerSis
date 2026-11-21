@@ -14,19 +14,19 @@ export function listarUsuarios(token) {
 }
 
 // TDSI-47/171: registra un cajero nuevo (usuario = correo de login, contrasena >= 6 caracteres).
-export function crearCajero({ usuario, password, nombre }, token) {
+export function crearCajero({ usuario, password, nombre, correo }, token) {
   return apiFetch('/api/usuarios/cajeros', {
     method: 'POST',
-    body: JSON.stringify({ usuario, password, nombre }),
+    body: JSON.stringify({ usuario, password, nombre, correo }),
     headers: headerAutorizacion(token),
   })
 }
 
 // TDSI-47/917: cambia nombre y usuario de un cajero o un supervisor (el id alcanza para distinguirlos).
-export function editarUsuario(id, { usuario, nombre, telefono, documento }, token) {
+export function editarUsuario(id, { usuario, nombre, telefono, documento, correo }, token) {
   return apiFetch(`/api/usuarios/${encodeURIComponent(id)}`, {
     method: 'PUT',
-    body: JSON.stringify({ usuario, nombre, telefono, documento }),
+    body: JSON.stringify({ usuario, nombre, telefono, documento, correo }),
     headers: headerAutorizacion(token),
   })
 }
@@ -50,10 +50,10 @@ export function cambiarEstadoUsuario(id, activo, token) {
 }
 
 // "Usuarios y accesos": crea un administrador (correo, contraseña de 8+ caracteres, nombre y datos personales opcionales).
-export function crearAdministrador({ usuario, password, nombre, telefono, documento }, token) {
+export function crearAdministrador({ usuario, password, nombre, telefono, documento, correo }, token) {
   return apiFetch('/api/usuarios/administradores', {
     method: 'POST',
-    body: JSON.stringify({ usuario, password, nombre, telefono, documento }),
+    body: JSON.stringify({ usuario, password, nombre, telefono, documento, correo }),
     headers: headerAutorizacion(token),
   })
 }
@@ -81,10 +81,10 @@ export function obtenerPerfil(token) {
   return apiFetch('/api/administradores/perfil', { headers: headerAutorizacion(token) })
 }
 
-export function actualizarPerfil({ nombre, telefono, documento }, token) {
+export function actualizarPerfil({ nombre, telefono, documento, correo }, token) {
   return apiFetch('/api/administradores/perfil', {
     method: 'PUT',
-    body: JSON.stringify({ nombre, telefono, documento }),
+    body: JSON.stringify({ nombre, telefono, documento, correo }),
     headers: headerAutorizacion(token),
   })
 }

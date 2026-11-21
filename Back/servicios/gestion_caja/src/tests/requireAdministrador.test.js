@@ -15,7 +15,7 @@ const { query } = require("../config/db");
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PREFIJO = `tdsi919-${Date.now()}`;
-const emailDePrueba = (n) => `${PREFIJO}-${n}@test.com`;
+const emailDePrueba = (n) => `${PREFIJO}-${n}`; // usuario (nombre unico)
 const cuentasCreadas = [];
 
 let base, servidor;

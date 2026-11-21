@@ -42,7 +42,9 @@ const ROLES = {
 }
 const FILTROS = [{ valor: '', etiqueta: 'Todos' }, ...Object.entries(ROLES).map(([valor, r]) => ({ valor, etiqueta: r.plural }))]
 
-const FORM_INICIAL = { usuario: '', nombre: '', telefono: '', documento: '', secreto: '', confirmar: '' }
+const FORM_INICIAL = { usuario: '', nombre: '', correo: '', telefono: '', documento: '', secreto: '', confirmar: '' }
+const USUARIO_REGEX = /^[a-zA-Z0-9._-]{3,30}$/
+const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Valida la credencial de un rol; devuelve el texto del problema o null.
 function validarCredencial(rol, valor, confirmar) {
@@ -70,13 +72,14 @@ function Usuarios() {
   const [busqueda, setBusqueda] = useState('')
   const [mensaje, setMensaje] = useState(null)
 
+  const [mostrandoNuevo, setMostrandoNuevo] = useState(false)
   const [rolNuevo, setRolNuevo] = useState('Cajero')
   const [nuevo, setNuevo] = useState(FORM_INICIAL)
   const [creando, setCreando] = useState(false)
   const [errorNuevo, setErrorNuevo] = useState(null)
 
   const [editando, setEditando] = useState(null)
-  const [formEditar, setFormEditar] = useState({ usuario: '', nombre: '', telefono: '', documento: '' })
+  const [formEditar, setFormEditar] = useState({ usuario: '', nombre: '', correo: '', telefono: '', documento: '' })
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
   const [errorEditar, setErrorEditar] = useState(null)
 
@@ -126,12 +129,29 @@ function Usuarios() {
 
   const campo = (clave) => (e) => setNuevo((prev) => ({ ...prev, [clave]: e.target.value }))
 
+  function abrirNuevo(rol = rolNuevo) {
+    setRolNuevo(rol)
+    setNuevo(FORM_INICIAL)
+    setErrorNuevo(null)
+    setMensaje(null)
+    setMostrandoNuevo(true)
+  }
+
   async function confirmarNuevo(event) {
     event.preventDefault()
     const usuario = nuevo.usuario.trim()
     const nombre = nuevo.nombre.trim()
     if (!usuario || !nombre) {
-      setErrorNuevo(rolNuevo === 'Supervisor' ? 'Complete el usuario y el nombre.' : 'Complete el correo y el nombre.')
+      setErrorNuevo('Complete el usuario y el nombre.')
+      return
+    }
+    if (!USUARIO_REGEX.test(usuario)) {
+      setErrorNuevo('El usuario debe tener de 3 a 30 caracteres: letras, números, punto, guion o guion bajo (sin espacios ni @).')
+      return
+    }
+    const correo = nuevo.correo.trim()
+    if (correo && !CORREO_REGEX.test(correo)) {
+      setErrorNuevo('El correo no es válido.')
       return
     }
     const problema = validarCredencial(rolNuevo, nuevo.secreto, nuevo.confirmar)
@@ -142,14 +162,15 @@ function Usuarios() {
     setCreando(true)
     setErrorNuevo(null)
     try {
-      if (rolNuevo === 'Cajero') await crearCajero({ usuario, nombre, password: nuevo.secreto }, token)
+      if (rolNuevo === 'Cajero') await crearCajero({ usuario, nombre, password: nuevo.secreto, correo: correo || null }, token)
       else if (rolNuevo === 'Supervisor') await crearSupervisor({ usuario, nombre, pin: nuevo.secreto }, token)
       else
         await crearAdministrador(
-          { usuario, nombre, password: nuevo.secreto, telefono: nuevo.telefono.trim() || null, documento: nuevo.documento.trim() || null },
+          { usuario, nombre, password: nuevo.secreto, correo: correo || null, telefono: nuevo.telefono.trim() || null, documento: nuevo.documento.trim() || null },
           token
         )
       setNuevo(FORM_INICIAL)
+      setMostrandoNuevo(false)
       setMensaje({ ok: true, texto: `${rolNuevo} "${usuario}" creado correctamente.` })
       setRecargar((n) => n + 1)
     } catch (err) {
@@ -161,7 +182,7 @@ function Usuarios() {
 
   function abrirEditar(u) {
     setEditando(u)
-    setFormEditar({ usuario: u.usuario, nombre: u.nombre, telefono: u.telefono || '', documento: u.documento || '' })
+    setFormEditar({ usuario: u.usuario, nombre: u.nombre, correo: u.correo || '', telefono: u.telefono || '', documento: u.documento || '' })
     setErrorEditar(null)
     setMensaje(null)
   }
@@ -182,6 +203,7 @@ function Usuarios() {
           nombre: formEditar.nombre.trim(),
           telefono: formEditar.telefono.trim() || null,
           documento: formEditar.documento.trim() || null,
+          correo: editando.rol === 'Supervisor' ? undefined : formEditar.correo.trim() || null,
         },
         token
       )
@@ -257,6 +279,9 @@ function Usuarios() {
       <header className="usuarios-encabezado">
         <h1>Usuarios y accesos</h1>
         <p className="resumen-turno-actual">Cree cuentas de cajeros, supervisores y administradores y adminístrelas desde un solo lugar.</p>
+        <button type="button" className="btn usuarios-nuevo" onClick={() => abrirNuevo()}>
+          + Nuevo usuario
+        </button>
         <ul className="usuarios-resumen">
           {Object.entries(ROLES).map(([rol, r]) => (
             <li key={rol}>
@@ -267,9 +292,11 @@ function Usuarios() {
         </ul>
       </header>
 
-      <form className="usuarios-crear" onSubmit={confirmarNuevo}>
+      {mostrandoNuevo && (
+      <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Nuevo usuario">
+      <form className="modal-caja usuarios-modal" onSubmit={confirmarNuevo}>
         <div className="usuarios-crear-cabecera">
-          <h2>Crear cuenta</h2>
+          <h2>Nuevo usuario</h2>
           <div className="usuarios-segmentos" role="tablist" aria-label="Tipo de cuenta">
             {Object.keys(ROLES).map((rol) => (
               <button
@@ -289,18 +316,19 @@ function Usuarios() {
 
         <div className="usuarios-rejilla">
           <label className="campo">
-            {usaCorreo ? 'Correo (para iniciar sesión)' : 'Usuario'}
-            <input
-              type={usaCorreo ? 'email' : 'text'}
-              autoComplete="off"
-              value={nuevo.usuario}
-              onChange={campo('usuario')}
-            />
+            Usuario <span className="usuarios-sugerencia">Con este nombre inicia sesión; no se puede repetir.</span>
+            <input type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} value={nuevo.usuario} onChange={campo('usuario')} autoFocus />
           </label>
           <label className="campo">
             Nombre completo
             <input type="text" autoComplete="off" value={nuevo.nombre} onChange={campo('nombre')} />
           </label>
+          {usaCorreo && (
+            <label className="campo">
+              Correo (opcional) <span className="usuarios-sugerencia">Solo informativo.</span>
+              <input type="email" autoComplete="off" value={nuevo.correo} onChange={campo('correo')} />
+            </label>
+          )}
           {rolNuevo === 'Administrador' && (
             <>
               <label className="campo">
@@ -337,12 +365,17 @@ function Usuarios() {
 
         {errorNuevo && <p className="error">{errorNuevo}</p>}
 
-        <div className="usuarios-crear-pie">
+        <div className="pago-exito-acciones">
+          <button type="button" className="btn btn-secundario" onClick={() => setMostrandoNuevo(false)} disabled={creando}>
+            Cancelar
+          </button>
           <button type="submit" className="btn" disabled={creando}>
             {creando ? 'Creando...' : `Crear ${rolNuevo.toLowerCase()}`}
           </button>
         </div>
       </form>
+      </div>
+      )}
 
       <div className="usuarios-lista-cabecera">
         <h2>Cuentas existentes</h2>
@@ -380,6 +413,7 @@ function Usuarios() {
                 <tr>
                   <th>Usuario</th>
                   <th>Nombre</th>
+                  <th>Correo</th>
                   <th>Rol</th>
                   <th>Estado</th>
                   <th>Acciones</th>
@@ -393,6 +427,7 @@ function Usuarios() {
                       {u.nombre}
                       {esMio(u) && <span className="usuarios-yo">tú</span>}
                     </td>
+                    <td className="usuarios-correo">{u.correo || '—'}</td>
                     <td>
                       <span className={`usuarios-rol usuarios-rol--${u.rol.toLowerCase()}`}>{u.rol}</span>
                     </td>
@@ -442,6 +477,12 @@ function Usuarios() {
               Nombre
               <input type="text" value={formEditar.nombre} onChange={(e) => setFormEditar((p) => ({ ...p, nombre: e.target.value }))} />
             </label>
+            {editando.rol !== 'Supervisor' && (
+              <label className="campo">
+                Correo (solo informativo)
+                <input type="email" value={formEditar.correo} onChange={(e) => setFormEditar((p) => ({ ...p, correo: e.target.value }))} />
+              </label>
+            )}
             {editando.rol === 'Administrador' && (
               <>
                 <label className="campo">

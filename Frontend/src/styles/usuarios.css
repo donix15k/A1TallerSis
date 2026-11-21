@@ -191,3 +191,19 @@ a.navbar-cajero.active { background-color: rgba(255, 255, 255, 0.28); }
   .perfil-tarjeta { animation: none; }
   .usuarios-segmento, a.navbar-cajero { transition: none; }
 }
+
+/* ---------- Popup "Nuevo usuario" ---------- */
+.usuarios-encabezado { position: relative; }
+.usuarios-nuevo { position: absolute; top: 0; right: 0; }
+@media (max-width: 640px) {
+  .usuarios-nuevo { position: static; margin-top: 0.75rem; }
+}
+.modal-caja.usuarios-modal {
+  width: min(760px, 94vw);
+  max-width: none;
+  max-height: 92dvh;
+  overflow-y: auto;
+}
+.usuarios-modal .usuarios-crear-cabecera { margin-bottom: 0.25rem; }
+.usuarios-modal .pago-exito-acciones { margin-top: 1.1rem; }
+.usuarios-correo { color: #64748b; font-size: 0.88rem; }

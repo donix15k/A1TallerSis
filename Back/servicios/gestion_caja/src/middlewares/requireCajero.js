@@ -30,7 +30,9 @@ async function requireCajero(req, res, next) {
   try {
     const perfil = await cajerosRepo.buscarPorCajeroId(usuario.id);
     if (perfil && !perfil.activo) return respuesta(res, 403, "Esta cuenta esta desactivada. Contacte al Administrador.");
-    req.cajero = { cajero_id: usuario.id, email: usuario.email, nombre: perfil ? perfil.nombre : usuario.email };
+    // el turno se abrio con el USUARIO con el que inicio sesion (no con el correo interno de su cuenta de Supabase)
+    const identificador = perfil ? perfil.usuario : usuario.email;
+    req.cajero = { cajero_id: usuario.id, email: identificador, nombre: perfil ? perfil.nombre : usuario.email };
     next();
   } catch (e) {
     next(e);

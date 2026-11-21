@@ -32,7 +32,7 @@ const VENTAS = {
 };
 
 async function cuenta(letra, nombre) {
-  const usuario = `${PREFIJO}-${letra}@test.com`;
+  const usuario = `${PREFIJO}-${letra}`;
   const cajero = await crearCajero({ usuario, password: "clave123", nombre });
   cuentasCreadas.push(cajero.cajero_id);
   cuentas[letra] = { email: usuario, cajero_id: cajero.cajero_id };

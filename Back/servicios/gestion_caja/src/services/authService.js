@@ -1,8 +1,22 @@
 const { AppError } = require("../utils/AppError");
 const cajerosRepo = require("../data/cajerosRepo");
+const administradoresRepo = require("../data/administradoresRepo");
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+/**
+ * Quien inicia sesion escribe su USUARIO (nombre unico); la cuenta de Supabase Auth se identifica con otro correo interno (email_auth).
+ * Si lo escrito es el usuario de un cajero o administrador se usa el correo interno de su cuenta; si no (por ejemplo un correo de una
+ * cuenta anterior) se usa tal cual. Devuelve { email, usuario }: el correo para Supabase y el usuario con el que se muestra la cuenta.
+ */
+async function resolverCuenta(identificador) {
+  const id = String(identificador ?? "").trim();
+  if (!id) return { email: id, usuario: id };
+  const fila = (await cajerosRepo.buscarPorUsuario(id)) || (await administradoresRepo.buscarPorUsuario(id));
+  if (fila) return { email: fila.email_auth || fila.usuario, usuario: fila.usuario };
+  return { email: id.toLowerCase(), usuario: id };
+}
 
 /**
  * TDSI-83: autentica al cajero contra Supabase Auth con email y password.
@@ -15,13 +29,14 @@ async function autenticarCajero({ email, password }) {
     throw new AppError("Los campos email y password son obligatorios.", 400);
   }
 
+  const cuenta = await resolverCuenta(email);
   const respuesta = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email: cuenta.email, password }),
   });
 
   const datos = await respuesta.json();
@@ -37,7 +52,8 @@ async function autenticarCajero({ email, password }) {
 
   return {
     cajero_id: datos.user.id,
-    email: datos.user.email,
+    email: cuenta.usuario, // el usuario con el que se muestra la cuenta (para las cuentas anteriores es el mismo correo)
+    usuario: cuenta.usuario,
     access_token: datos.access_token,
     // para renovar la sesion sin pedir la contrasena otra vez (el access_token de Supabase dura 1 hora)
     refresh_token: datos.refresh_token,
@@ -70,14 +86,15 @@ async function renovarSesion({ refresh_token }) {
   return { access_token: datos.access_token, refresh_token: datos.refresh_token, expires_in: datos.expires_in };
 }
 /** TDSI-183: verifica la contraseña del cajero para desbloquear la pantalla. */
-async function verificarContrasena(email, password) {
+async function verificarContrasena(identificador, password) {
+  const cuenta = await resolverCuenta(identificador);
   const respuesta = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email: cuenta.email, password }),
   });
 
   if (!respuesta.ok) {
@@ -86,4 +103,4 @@ async function verificarContrasena(email, password) {
   return true;
 }
 
-module.exports = { autenticarCajero, verificarContrasena, renovarSesion };
+module.exports = { resolverCuenta, autenticarCajero, verificarContrasena, renovarSesion };

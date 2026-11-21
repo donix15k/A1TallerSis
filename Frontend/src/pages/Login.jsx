@@ -26,9 +26,6 @@ function validarCampos({ email, password, caja_id }, modo) {
       ? 'Complete el usuario, la contraseña y la caja.'
       : 'Complete el usuario y la contraseña.'
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return 'Ingrese un correo válido.'
-  }
   if (password.length < 4) {
     return 'La contraseña debe tener al menos 4 caracteres.'
   }
@@ -191,11 +188,13 @@ function Login() {
               </p>
 
               <label className="campo">
-                Usuario (correo)
+                Usuario
                 <input
                   ref={emailRef}
-                  type="email"
+                  type="text"
                   autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   value={datos.email}
                   onChange={(e) => actualizarCampo('email', e.target.value)}
                 />

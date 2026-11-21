@@ -1,16 +1,17 @@
 const { query } = require("../config/db");
 
-/** TDSI-47/171: perfil de un cajero, ligado a su cuenta de Supabase Auth (cajero_id). */
-async function crear({ cajero_id, usuario, nombre }) {
+/** TDSI-47/171: perfil de un cajero, ligado a su cuenta de Supabase Auth (cajero_id). "usuario" es su nombre de usuario unico; "correo" es solo informativo y "email_auth" es el correo interno de su cuenta de Supabase. */
+async function crear({ cajero_id, usuario, nombre, correo = null, email_auth }) {
   const { rows } = await query(
-    `INSERT INTO caja.cajeros (cajero_id, usuario, nombre) VALUES ($1, $2, $3) RETURNING *`,
-    [cajero_id, usuario, nombre]
+    `INSERT INTO caja.cajeros (cajero_id, usuario, nombre, correo, email_auth) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [cajero_id, usuario, nombre, correo, email_auth ?? usuario]
   );
   return rows[0];
 }
 
+/** El usuario es unico sin distinguir mayusculas. */
 async function buscarPorUsuario(usuario) {
-  const { rows } = await query(`SELECT * FROM caja.cajeros WHERE usuario = $1`, [usuario]);
+  const { rows } = await query(`SELECT * FROM caja.cajeros WHERE lower(usuario) = lower($1)`, [usuario]);
   return rows[0] || null;
 }
 
@@ -25,11 +26,11 @@ async function buscarPorCajeroId(cajero_id) {
   return rows[0] || null;
 }
 
-/** TDSI-47/917: "Editar" -- cambia nombre y usuario (el usuario tambien es UNIQUE aqui). */
-async function actualizar(cajero_id, { usuario, nombre }) {
+/** TDSI-47/917: "Editar" -- cambia nombre, usuario y correo informativo. */
+async function actualizar(cajero_id, { usuario, nombre, correo = null }) {
   const { rows } = await query(
-    `UPDATE caja.cajeros SET usuario = $2, nombre = $3 WHERE cajero_id = $1 RETURNING *`,
-    [cajero_id, usuario, nombre]
+    `UPDATE caja.cajeros SET usuario = $2, nombre = $3, correo = $4 WHERE cajero_id = $1 RETURNING *`,
+    [cajero_id, usuario, nombre, correo]
   );
   return rows[0] || null;
 }

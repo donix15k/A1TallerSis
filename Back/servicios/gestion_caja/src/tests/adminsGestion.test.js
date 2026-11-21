@@ -19,7 +19,7 @@ const { autenticarAdministrador } = require("../services/administradorAuthServic
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PREFIJO = `tdsi-adm-${Date.now()}`;
-const correo = (n) => `${PREFIJO}-${n}@test.com`;
+const correo = (n) => `${PREFIJO}-${n}`; // nombre de usuario (unico)
 const cuentas = [];
 let a, b, cajero, servidor, base, facturacion, llamadasFacturacion;
 
@@ -88,7 +88,7 @@ test("crear un administrador: queda con su correo y datos personales, aparece en
 test("crear un administrador: correo invalido, contrasena de menos de 8, sin nombre, telefono o documento raros y correo repetido son rechazados", async () => {
   const ok = { usuario: correo("x"), password: "Clave1234", nombre: "X" };
   const casos = [
-    [{ ...ok, usuario: "no-es-correo" }, 400], [{ ...ok, password: "1234567" }, 400], [{ ...ok, password: "" }, 400], [{ ...ok, nombre: "  " }, 400],
+    [{ ...ok, usuario: "no es valido" }, 400], [{ ...ok, password: "1234567" }, 400], [{ ...ok, password: "" }, 400], [{ ...ok, nombre: "  " }, 400],
     [{ ...ok, telefono: "abc" }, 400], [{ ...ok, documento: "12" }, 400], [{ ...ok, usuario: correo("a") }, 409], [{ ...ok, usuario: correo("a").toUpperCase() }, 409], [{ ...ok, usuario: correo("c") }, 409],
   ];
   for (const [datos, status] of casos) await assert.rejects(servicio.crearAdministrador(datos), (e) => e.status === status, JSON.stringify(datos));
@@ -140,9 +140,10 @@ test("restablecer la contrasena de un administrador (8+ caracteres) y la de un c
 test("supervisores: se crean y se les restablece el PIN a traves de Facturacion (dueno de ese registro); un PIN invalido es 400", async () => {
   const s = await servicio.crearSupervisor({ usuario: "sup.prueba", nombre: "Sup Prueba", pin: "4321" });
   assert.equal(s.nombre, "Sup Prueba");
-  assert.deepEqual(llamadasFacturacion[0], { metodo: "POST", url: "/api/supervisores", cuerpo: { usuario: "sup.prueba", nombre: "Sup Prueba", pin: "4321" } });
+  const escrituras = llamadasFacturacion.filter((l) => l.metodo !== "GET"); // las lecturas (GET) son la comprobacion de usuario libre
+  assert.deepEqual(escrituras[0], { metodo: "POST", url: "/api/supervisores", cuerpo: { usuario: "sup.prueba", nombre: "Sup Prueba", pin: "4321" } });
   await servicio.restablecerCredencial("77", { pin: "9876" }); // un id que no es de administrador ni de cajero: es un supervisor
-  assert.deepEqual(llamadasFacturacion[1], { metodo: "PUT", url: "/api/supervisores/77/pin", cuerpo: { pin: "9876" } });
+  assert.deepEqual(llamadasFacturacion.filter((l) => l.metodo !== "GET")[1], { metodo: "PUT", url: "/api/supervisores/77/pin", cuerpo: { pin: "9876" } });
   await assert.rejects(servicio.restablecerCredencial("77", { pin: "12" }), (e) => e.status === 400 && /PIN/.test(e.message));
   await assert.rejects(servicio.crearSupervisor({ usuario: "x", nombre: "x", pin: "abc" }), (e) => e.status === 400);
 });

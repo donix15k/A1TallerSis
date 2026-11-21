@@ -38,7 +38,7 @@ test.after(async () => {
 });
 
 async function cuenta(n, { admin }) {
-  const usuario = `${PREFIJO}-${n}@test.com`;
+  const usuario = `${PREFIJO}-${n}`;
   const cajero = await crearCajero({ usuario, password: "clave123", nombre: `Prueba ${n}` });
   cuentasCreadas.push(cajero.cajero_id);
   if (admin) await query(`INSERT INTO caja.administradores (cajero_id, nombre, activo) VALUES ($1, $2, true)`, [cajero.cajero_id, "Admin verificar"]);

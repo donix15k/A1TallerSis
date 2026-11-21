@@ -386,3 +386,13 @@ ALTER TABLE caja.administradores
     ADD COLUMN IF NOT EXISTS telefono  VARCHAR(30),
     ADD COLUMN IF NOT EXISTS documento VARCHAR(20);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_administradores_usuario ON caja.administradores (lower(usuario)) WHERE usuario IS NOT NULL;
+
+-- ==========================================================================
+-- El "usuario" con el que se inicia sesion pasa a ser un nombre unico (no el correo). El correo queda solo como dato informativo (correo)
+-- y la cuenta de Supabase Auth se identifica con email_auth (para las cuentas anteriores es el mismo correo que ya usaban). IDEMPOTENTE.
+-- ==========================================================================
+ALTER TABLE caja.cajeros        ADD COLUMN IF NOT EXISTS correo VARCHAR(255), ADD COLUMN IF NOT EXISTS email_auth VARCHAR(255);
+ALTER TABLE caja.administradores ADD COLUMN IF NOT EXISTS correo VARCHAR(255), ADD COLUMN IF NOT EXISTS email_auth VARCHAR(255);
+UPDATE caja.cajeros SET email_auth = usuario, correo = usuario WHERE email_auth IS NULL;
+UPDATE caja.administradores SET email_auth = usuario, correo = usuario WHERE email_auth IS NULL AND usuario IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_cajeros_usuario_lower ON caja.cajeros (lower(usuario));

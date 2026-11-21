@@ -16,7 +16,7 @@ function PerfilAdministrador() {
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState(null)
 
-  const [datos, setDatos] = useState({ nombre: '', telefono: '', documento: '' })
+  const [datos, setDatos] = useState({ nombre: '', correo: '', telefono: '', documento: '' })
   const [guardando, setGuardando] = useState(false)
   const [msgDatos, setMsgDatos] = useState(null)
 
@@ -32,7 +32,7 @@ function PerfilAdministrador() {
         if (!vigente) return
         const p = r.data
         setPerfil(p)
-        setDatos({ nombre: p.nombre || '', telefono: p.telefono || '', documento: p.documento || '' })
+        setDatos({ nombre: p.nombre || '', correo: p.correo || '', telefono: p.telefono || '', documento: p.documento || '' })
       })
       .catch((err) => vigente && setErrorCarga(err.mensaje || err.message))
       .finally(() => vigente && setCargando(false))
@@ -51,7 +51,7 @@ function PerfilAdministrador() {
     setMsgDatos(null)
     try {
       const r = await actualizarPerfil(
-        { nombre: datos.nombre.trim(), telefono: datos.telefono.trim() || null, documento: datos.documento.trim() || null },
+        { nombre: datos.nombre.trim(), correo: datos.correo.trim() || null, telefono: datos.telefono.trim() || null, documento: datos.documento.trim() || null },
         token
       )
       setPerfil(r.data)
@@ -103,17 +103,21 @@ function PerfilAdministrador() {
         <span className="perfil-avatar" aria-hidden="true">{inicial}</span>
         <div>
           <h1>Mi perfil</h1>
-          <span className="perfil-correo">{perfil?.usuario || 'Administrador'} · Administrador</span>
+          <span className="perfil-correo">@{perfil?.usuario || 'administrador'} · Administrador</span>
         </div>
       </div>
 
       <form className="perfil-tarjeta" onSubmit={guardarDatos}>
         <h2>Datos personales</h2>
-        <p className="usuarios-ayuda">El correo es con el que inicia sesión y no se cambia desde aquí.</p>
+        <p className="usuarios-ayuda">Su usuario es con el que inicia sesión y no se cambia desde aquí; el correo es solo informativo.</p>
         <div className="usuarios-rejilla">
           <label className="campo">
-            Correo
+            Usuario
             <input type="text" value={perfil?.usuario || ''} readOnly />
+          </label>
+          <label className="campo">
+            Correo (informativo)
+            <input type="email" value={datos.correo} onChange={(e) => setDatos((p) => ({ ...p, correo: e.target.value }))} />
           </label>
           <label className="campo">
             Nombre completo
