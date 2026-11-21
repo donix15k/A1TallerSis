@@ -136,18 +136,18 @@ async function responderContabilidad({ referencia, resultado, motivo, numero_asi
 
 // ============================================================================ Marketplace (E)
 const CATALOGO = [
-  { sku: "ARR-001", descripcion: "Arroz grano de oro 1 kg", precio: 10.5, categoria: "Abarrotes" },
-  { sku: "ACE-002", descripcion: "Aceite vegetal 900 ml", precio: 15, categoria: "Abarrotes" },
-  { sku: "AZU-003", descripcion: "Azúcar blanca 1 kg", precio: 7.5, categoria: "Abarrotes" },
-  { sku: "FID-004", descripcion: "Fideo spaghetti 500 g", precio: 6.5, categoria: "Abarrotes" },
-  { sku: "LEC-005", descripcion: "Leche entera 1 L", precio: 7, categoria: "Lácteos" },
-  { sku: "QUE-006", descripcion: "Queso fresco 500 g", precio: 28, categoria: "Lácteos" },
-  { sku: "HUE-007", descripcion: "Huevos de campo (maple de 30)", precio: 32, categoria: "Frescos" },
-  { sku: "PAN-008", descripcion: "Pan de molde 400 g", precio: 14.5, categoria: "Panadería" },
-  { sku: "ATU-009", descripcion: "Atún en lata 170 g", precio: 12, categoria: "Conservas" },
-  { sku: "CAF-010", descripcion: "Café molido 250 g", precio: 24, categoria: "Bebidas" },
-  { sku: "JUG-011", descripcion: "Jugo de naranja 1 L", precio: 13, categoria: "Bebidas" },
-  { sku: "DET-012", descripcion: "Detergente en polvo 1 kg", precio: 22.5, categoria: "Limpieza" },
+  { sku: "QUI-001", descripcion: "Quinua real orgánica 500 g", precio: 28, categoria: "Granos y tubérculos" },
+  { sku: "CHU-002", descripcion: "Chuño blanco (tunta) 1 kg", precio: 22, categoria: "Granos y tubérculos" },
+  { sku: "ARR-003", descripcion: "Arroz benianito 1 kg", precio: 10.5, categoria: "Granos y tubérculos" },
+  { sku: "MAI-004", descripcion: "Mote de maíz pelado 1 kg", precio: 12, categoria: "Granos y tubérculos" },
+  { sku: "CAF-005", descripcion: "Café de Yungas molido 250 g", precio: 38, categoria: "Bebidas" },
+  { sku: "API-008", descripcion: "Api morado en polvo 400 g", precio: 15, categoria: "Bebidas" },
+  { sku: "QUE-006", descripcion: "Queso chaqueño 500 g", precio: 45, categoria: "Lácteos y carnes" },
+  { sku: "CHA-007", descripcion: "Charque de llama 250 g", precio: 55, categoria: "Lácteos y carnes" },
+  { sku: "SAL-009", descripcion: "Salteñas de pollo (bolsa de 6)", precio: 30, categoria: "Panadería" },
+  { sku: "PAN-010", descripcion: "Pan de batalla (bolsa de 10)", precio: 10, categoria: "Panadería" },
+  { sku: "MIE-011", descripcion: "Miel de abeja de Tarija 500 g", precio: 35, categoria: "Dulces" },
+  { sku: "CHO-012", descripcion: "Chocolate de cacao beniano 100 g", precio: 18, categoria: "Dulces" },
 ];
 const METODOS = ["Efectivo", "Tarjeta", "QR"];
 const MAX_UNIDADES = 50;

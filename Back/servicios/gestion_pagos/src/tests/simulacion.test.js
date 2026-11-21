@@ -191,28 +191,28 @@ test("Marketplace: el catalogo tiene productos con precio", () => {
 test("Marketplace manda una venta: UN mensaje a A1, el total lo calcula el servidor y el job de ventas la reconoce como suya", async () => {
   let leido = 0;
   const r = await simulacion.enviarVentaMarketplace({
-    items: [{ sku: "ARR-001", cantidad: 2 }, { sku: "LEC-005", cantidad: 3 }, { sku: "DET-012", cantidad: 1 }],
+    items: [{ sku: "ARR-003", cantidad: 2 }, { sku: "API-008", cantidad: 3 }, { sku: "MIE-011", cantidad: 1 }],
     nit: "1234567890", razon_social: "Cliente Simulado", email: "cliente@correo.com", metodo_pago: "QR", enviado_por: MARCA, alPublicar: () => { leido += 1; },
   });
   assert.equal(publicados.length, 1);
   const { topico, json } = publicados[0];
   assert.equal(topico, A1);
-  assert.equal(json.total, 64.5); // 2 x 10,50 + 3 x 7,00 + 22,50
+  assert.equal(json.total, 101); // 2 x 10,50 + 3 x 15,00 + 35,00
   assert.deepEqual([json.sistema_origen, json.nit, json.tipoDocumento, json.metodoPago, json.items.length], ["MARKETPLACE_Y_VENTAS", "1234567890", "NIT", "QR", 3]);
-  assert.deepEqual(json.items[0], { sku: "ARR-001", descripcion: "Arroz grano de oro 1 kg", cantidad: 2, precioUnitario: 10.5 });
+  assert.deepEqual(json.items[0], { sku: "ARR-003", descripcion: "Arroz benianito 1 kg", cantidad: 2, precioUnitario: 10.5 });
   assert.match(json.ordenId, /^MKT-SIM-[0-9A-Z]+$/);
-  assert.deepEqual([r.orden_id, r.total, r.items, leido], [json.ordenId, 64.5, 3, 1]);
+  assert.deepEqual([r.orden_id, r.total, r.items, leido], [json.ordenId, 101, 3, 1]);
   assert.equal(esVentaMarketplace(JSON.stringify(json)), true);
   // el total que manda es la suma exacta de sus items: lo que valida recibirVenta
   assert.equal(Math.round(json.items.reduce((a, it) => a + it.cantidad * it.precioUnitario, 0) * 100), Math.round(json.total * 100));
 });
 
 test("Marketplace: sin productos, producto falso, repetido, cantidad mala, NIT o correo invalido: 400 y no se publica nada", async () => {
-  const ok = { items: [{ sku: "ARR-001", cantidad: 1 }], nit: "1234567890", razon_social: "Cliente" };
+  const ok = { items: [{ sku: "ARR-003", cantidad: 1 }], nit: "1234567890", razon_social: "Cliente" };
   const casos = [
     { ...ok, items: [] }, { ...ok, items: undefined }, { ...ok, items: [{ sku: "XXX-999", cantidad: 1 }] },
-    { ...ok, items: [{ sku: "ARR-001", cantidad: 1 }, { sku: "ARR-001", cantidad: 2 }] },
-    { ...ok, items: [{ sku: "ARR-001", cantidad: 0 }] }, { ...ok, items: [{ sku: "ARR-001", cantidad: 1.5 }] }, { ...ok, items: [{ sku: "ARR-001", cantidad: 51 }] },
+    { ...ok, items: [{ sku: "ARR-003", cantidad: 1 }, { sku: "ARR-003", cantidad: 2 }] },
+    { ...ok, items: [{ sku: "ARR-003", cantidad: 0 }] }, { ...ok, items: [{ sku: "ARR-003", cantidad: 1.5 }] }, { ...ok, items: [{ sku: "ARR-003", cantidad: 51 }] },
     { ...ok, nit: "12" }, { ...ok, nit: "" }, { ...ok, razon_social: "  " }, { ...ok, email: "no-es-correo" }, { ...ok, metodo_pago: "Cheque" },
   ];
   for (const c of casos) await assert.rejects(simulacion.enviarVentaMarketplace(c), (e) => e.status === 400, JSON.stringify(c).slice(0, 80));

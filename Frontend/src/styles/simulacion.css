@@ -428,7 +428,11 @@ textarea.sim-entrada { height: auto; min-height: 84px; padding: 11px 14px; resiz
 }
 @media (hover: hover) and (pointer: fine) { .sim-producto:hover { transform: translateY(-3px); box-shadow: var(--sim-sombra); } }
 .sim-producto--elegido { border-color: var(--sim); box-shadow: 0 0 0 3px var(--sim-brillo), var(--sim-sombra); background: linear-gradient(180deg, var(--sim-claro), #fff 70%); }
-.sim-producto .sim-icono { width: 40px; height: 40px; border-radius: 12px; }
+.sim-producto { padding: 0 0 14px; overflow: hidden; }
+.sim-producto > :not(.sim-producto-img) { margin: 0 14px; }
+.sim-producto-img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; transition: transform 380ms var(--sim-ease); }
+@media (hover: hover) and (pointer: fine) { .sim-producto:hover .sim-producto-img { transform: scale(1.06); } }
+.sim-producto { gap: 10px; }
 .sim-producto h3 { margin: 0; font-size: 0.93rem; line-height: 1.25; color: #06152f; }
 .sim-producto small { color: #64748b; }
 .sim-precio { font-weight: 800; color: #06152f; font-family: var(--font-display, inherit); font-size: 1.05rem; }

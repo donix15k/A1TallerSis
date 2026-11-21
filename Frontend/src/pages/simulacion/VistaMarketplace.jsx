@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MarcoSimulacion from '../../components/simulacion/MarcoSimulacion.jsx'
 import Icono from '../../components/ui/Icono.jsx'
+import ImagenProducto from '../../components/simulacion/ImagenProducto.jsx'
 import { useToast } from '../../components/ui/Toasts.jsx'
 import { enviarVentaMarketplace, listarProductosMarketplace, listarVentasMarketplace } from '../../api/simulacion.js'
 import usePolling from '../../hooks/usePolling.js'
@@ -113,7 +114,7 @@ function Contenido({ token }) {
                   const n = cantidades[p.sku] ?? 0
                   return (
                     <article key={p.sku} className={`sim-producto${n > 0 ? ' sim-producto--elegido' : ''}`}>
-                      <span className="sim-icono"><Icono nombre="caja" tam={20} /></span>
+                      <ImagenProducto sku={p.sku} descripcion={p.descripcion} />
                       <div>
                         <h3>{p.descripcion}</h3>
                         <small>{p.sku} · {p.categoria}</small>
