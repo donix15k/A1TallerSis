@@ -542,6 +542,31 @@ async function historialPorDocumento(tipo_documento, numero) {
   }));
 }
 
+/** Todos los clientes con compras, del ultimo atendido al mas antiguo (para la lista de "Clientes"). */
+async function listarClientes(limite = 500) {
+  const { rows } = await query(
+    `SELECT tipo_documento, nit,
+            MAX(razon_social) AS razon_social,
+            COUNT(DISTINCT id_transaccion) FILTER (WHERE estado = 'Registrado') AS cantidad_compras,
+            COALESCE(SUM(monto) FILTER (WHERE estado = 'Registrado'), 0) AS total_gastado,
+            MAX(fecha) AS ultima_visita
+       FROM pagos.transacciones
+      WHERE nit IS NOT NULL AND tipo_documento IS NOT NULL
+      GROUP BY tipo_documento, nit
+      ORDER BY MAX(fecha) DESC
+      LIMIT $1`,
+    [limite]
+  );
+  return rows.map((r) => ({
+    tipo_documento: r.tipo_documento,
+    numero: r.nit,
+    razon_social: r.razon_social,
+    cantidadCompras: Number(r.cantidad_compras),
+    totalGastado: num(r.total_gastado),
+    ultimaVisita: r.ultima_visita,
+  }));
+}
+
 /**
  * TDSI-328: totales de todas las ventas del sistema (todas las cajas), para el
  * tablero del administrador -- cuanto se ha ganado en total desde el inicio.
@@ -778,6 +803,7 @@ module.exports = {
   rankingCajeros,
   rankingClientes,
   historialPorDocumento,
+  listarClientes,
   totalesGenerales,
   contarTransacciones,
   listarHistorial,

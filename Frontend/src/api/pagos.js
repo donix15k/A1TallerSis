@@ -164,3 +164,7 @@ export function obtenerResumenFactura(id_transaccion, cajero) {
     GESTION_PAGOS_API_BASE_URL,
   )
 }
+// Lista de todos los clientes con compras, del último atendido al más antiguo (pantalla "Clientes" del administrador).
+export function listarClientes() {
+  return apiFetch('/api/pagos/clientes', {}, GESTION_PAGOS_API_BASE_URL)
+}

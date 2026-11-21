@@ -1,34 +1,51 @@
-import { useState } from 'react'
-import { historialCliente } from '../api/pagos.js'
+import { useEffect, useMemo, useState } from 'react'
+import { historialCliente, listarClientes } from '../api/pagos.js'
 import BotonVerFactura from '../components/BotonVerFactura.jsx'
+import Cargando from '../components/Cargando.jsx'
+import TablaPaginada from '../components/TablaPaginada.jsx'
 
 const TIPOS_DOCUMENTO = [
+  { id: '', etiqueta: 'Todos' },
   { id: 'NIT', etiqueta: 'NIT' },
   { id: 'CI', etiqueta: 'CI' },
 ]
 
-// TDSI-327: el administrador busca cualquier cliente por NIT o CI y ve cuantas
-// veces vino y que ha facturado cada vez.
+// TDSI-327: el administrador ve todos los clientes (el último atendido primero), filtra por
+// NIT/CI, nombre o número, y al elegir uno ve cuántas veces vino y qué ha facturado cada vez.
 function Clientes() {
-  const [tipoDocumento, setTipoDocumento] = useState('NIT')
-  const [numero, setNumero] = useState('')
+  const [clientes, setClientes] = useState([])
+  const [cargandoLista, setCargandoLista] = useState(true)
+  const [errorLista, setErrorLista] = useState(null)
+  const [tipoDocumento, setTipoDocumento] = useState('')
+  const [texto, setTexto] = useState('')
+
   const [cliente, setCliente] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
   const [buscado, setBuscado] = useState(false)
 
-  async function buscar(event) {
-    event.preventDefault()
-    if (!numero.trim()) {
-      setError('Ingrese el número de NIT o CI a buscar.')
-      return
-    }
+  useEffect(() => {
+    listarClientes()
+      .then((r) => setClientes(r.data))
+      .catch((err) => setErrorLista(err.message))
+      .finally(() => setCargandoLista(false))
+  }, [])
 
+  const visibles = useMemo(() => {
+    const q = texto.trim().toLowerCase()
+    return clientes.filter(
+      (c) =>
+        (!tipoDocumento || c.tipo_documento === tipoDocumento) &&
+        (!q || `${c.razon_social || ''} ${c.numero}`.toLowerCase().includes(q))
+    )
+  }, [clientes, tipoDocumento, texto])
+
+  async function verHistorial(c) {
     setCargando(true)
     setError(null)
     setBuscado(true)
     try {
-      const respuesta = await historialCliente(tipoDocumento, numero.trim())
+      const respuesta = await historialCliente(c.tipo_documento, c.numero)
       setCliente(respuesta.data)
     } catch (err) {
       setCliente(null)
@@ -40,10 +57,10 @@ function Clientes() {
 
   return (
     <section>
-      <h1>Buscar cliente</h1>
-      <p>Busque un cliente por NIT o CI para ver cuántas veces vino y lo que ha facturado.</p>
+      <h1>Clientes</h1>
+      <p>Todos los clientes, del último atendido al más antiguo. Use el filtro para encontrar uno por nombre, NIT o CI.</p>
 
-      <form onSubmit={buscar} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <div className="tipo-venta-opciones">
           {TIPOS_DOCUMENTO.map((tipo) => (
             <button
@@ -58,22 +75,20 @@ function Clientes() {
         </div>
 
         <label className="campo" style={{ marginBottom: 0 }}>
-          Número de {tipoDocumento}
+          Filtrar
           <input
-            type="text"
-            inputMode="numeric"
-            maxLength={tipoDocumento === 'NIT' ? 10 : 8}
-            value={numero}
-            onChange={(e) => setNumero(e.target.value.replace(/\D/g, ''))}
+            type="search"
+            placeholder="Nombre o número de documento"
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
           />
         </label>
+      </div>
 
-        <button type="submit" className="btn" disabled={cargando}>
-          {cargando ? 'Buscando...' : 'Buscar'}
-        </button>
-      </form>
-
+      {cargandoLista && <Cargando />}
+      {errorLista && <p className="error">{errorLista}</p>}
       {error && <p className="error">{error}</p>}
+      {cargando && <Cargando />}
 
       {buscado && !cargando && !error && cliente && (
         <div className="cliente-resumen">
@@ -131,6 +146,48 @@ function Clientes() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!cargandoLista && !errorLista && (
+        <div className="cliente-resumen" style={{ marginTop: '1.5rem' }}>
+          <h2>Todos los clientes ({visibles.length})</h2>
+          {visibles.length === 0 ? (
+            <p className="orden-mensaje orden-mensaje-pendiente cajas-mensaje">No hay clientes que coincidan con el filtro.</p>
+          ) : (
+            <TablaPaginada items={visibles} nombre="clientes">
+              {(filas) => (
+                <table className="tabla-facturas">
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Documento</th>
+                      <th>Veces que vino</th>
+                      <th>Total gastado (Bs.)</th>
+                      <th>Última visita</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filas.map((c) => (
+                      <tr key={`${c.tipo_documento}-${c.numero}`}>
+                        <td>{c.razon_social || '-'}</td>
+                        <td>{c.tipo_documento}: {c.numero}</td>
+                        <td>{c.cantidadCompras}</td>
+                        <td>{c.totalGastado.toFixed(2)}</td>
+                        <td>{new Date(c.ultimaVisita).toLocaleString()}</td>
+                        <td>
+                          <button type="button" className="btn btn-secundario" onClick={() => verHistorial(c)}>
+                            Ver historial
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </TablaPaginada>
+          )}
         </div>
       )}
     </section>

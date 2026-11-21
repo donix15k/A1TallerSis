@@ -10,6 +10,7 @@ const {
   reporteTurno,
   anuladasTurno,
   historialCliente,
+  listarClientes,
   totalesGenerales,
   listarCajeros,
 } = require("../services/ventasCajeroService");
@@ -109,6 +110,11 @@ router.get("/anuladas-turno", wrap(async (req, res) => {
 router.get("/cajeros", wrap(async (req, res) => {
   const r = await listarCajeros();
   res.json({ ok: true, data: r });
+}));
+
+// Lista de todos los clientes (el ultimo atendido primero), para la pantalla "Clientes" del administrador.
+router.get("/clientes", wrap(async (req, res) => {
+  res.json({ ok: true, data: await listarClientes() });
 }));
 
 // TDSI-327: historial de compras de un cliente (NIT o CI), para el panel de administrador.

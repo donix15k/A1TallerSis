@@ -174,6 +174,11 @@ async function historialCliente(tipo_documento, numero) {
   };
 }
 
+/** Lista de todos los clientes, del ultimo atendido al mas antiguo. */
+async function listarClientes() {
+  return repo.listarClientes();
+}
+
 /**
  * TDSI-328: total ganado por el negocio desde el inicio (todas las cajas), para
  * el tablero del administrador. "desde"/"hasta" opcionales (por defecto, todo el historico).
@@ -257,6 +262,7 @@ module.exports = {
   reporteTurno,
   anuladasTurno,
   historialCliente,
+  listarClientes,
   totalesGenerales,
   listarCajeros,
 };
