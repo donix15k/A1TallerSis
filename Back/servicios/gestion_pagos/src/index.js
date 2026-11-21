@@ -55,6 +55,7 @@ app.use("/api/cobros", cobroQrRoutes); // TDSI-39/531
 app.use("/api/facturas", calculoFacturaRoutes); // TDSI-40/537
 app.use("/api", productosVendidosRoutes); // TDSI-54/702
 app.use("/api/pagos", ventaOnlineRoutes); // TDSI-51/685
+app.use("/api/simulacion", require("./middlewares/requireAdministrador").requireAdministrador, require("./routes/simulacionRoutes")); // simulacion de los otros grupos (solo administrador)
 app.use("/api/libro-ventas", libroVentasRoutes); // TDSI-50/748/749
 app.use("/api/pagos", pubsubVerificacionRoutes); // TDSI-958
 app.use("/api/kpis", require("./routes/kpiRoutes")); // TDSI-136/138: Panel de KPIs (solo administrador)

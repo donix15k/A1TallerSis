@@ -4,6 +4,21 @@ const ventasOnlineRepo = require("../data/ventasOnlineRepo");
 const cfg = require("../config/marketplace");
 
 let enCurso = false;
+
+/**
+ * Una venta del Marketplace: JSON con "ordenId" o con sistema_origen del Marketplace. Cualquier otra cosa (resultado_documento de Contabilidad,
+ * acuse de Compras, texto libre) NO es de este job.
+ */
+function esVentaMarketplace(texto) {
+  let r;
+  try {
+    r = JSON.parse(texto);
+  } catch {
+    return false;
+  }
+  if (!r || typeof r !== "object" || Array.isArray(r)) return false;
+  return r.ordenId !== undefined || /^MARKETPLACE/.test(String(r.sistema_origen || ""));
+}
 let ultimoError = null;
 
 /**
@@ -24,7 +39,14 @@ async function procesarVentas() {
     const suscripcion = subscriber.nombreSuscripcion(cfg.VENTAS_SUBSCRIPTION);
     const mensajes = await subscriber.leer(50, suscripcion);
     const confirmar = [];
+    const liberar = [];
     for (const m of mensajes) {
+      // La suscripcion es COMPARTIDA con las respuestas de Contabilidad, los acuses de Compras, etc.: aqui solo se toma (y se confirma) lo que es
+      // una venta del Marketplace; lo demas se libera sin confirmar para que lo lea su dueno.
+      if (!esVentaMarketplace(m.texto)) {
+        liberar.push(m.ackId);
+        continue;
+      }
       confirmar.push(m.ackId);
       try {
         const json = JSON.parse(m.texto);
@@ -44,6 +66,7 @@ async function procesarVentas() {
       }
     }
     await subscriber.confirmar(confirmar, suscripcion);
+    await subscriber.liberar(liberar, suscripcion);
     ultimoError = null;
   } catch (e) {
     if (e.message !== ultimoError) console.error("[marketplace] No se pudieron leer las ventas:", e.message);
@@ -68,4 +91,4 @@ function iniciar() {
   console.log(`[marketplace] Leyendo ventas de ${suscripcion} cada ${cfg.VENTAS_INTERVALO_SEG} s`);
 }
 
-module.exports = { iniciar, procesarVentas };
+module.exports = { iniciar, procesarVentas, esVentaMarketplace };
