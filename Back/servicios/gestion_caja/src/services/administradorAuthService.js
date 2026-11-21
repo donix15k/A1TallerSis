@@ -20,6 +20,8 @@ async function autenticarAdministrador({ email, password }) {
     email: usuario.email,
     nombre: administrador.nombre || usuario.email,
     access_token: usuario.access_token,
+    refresh_token: usuario.refresh_token,
+    expires_in: usuario.expires_in,
   };
 }
 

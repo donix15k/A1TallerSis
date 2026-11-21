@@ -147,6 +147,9 @@ function Login() {
           cajaNombre: respuesta.data.caja.nombre,
           // TDSI-219: "Mi turno" pide sus datos con el token del propio cajero (solo ve su turno)
           access_token: respuesta.data.cajero.access_token,
+          // para renovar la sesión sin volver a pedir la contraseña
+          refresh_token: respuesta.data.cajero.refresh_token,
+          expires_in: respuesta.data.cajero.expires_in,
         })
         // Al llegar a Inicio, el TurnoModal avisa si la caja esta activa o
         // inactiva, y exige abrir el turno con un supervisor si hace falta.

@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const { autenticarCajero } = require("../services/authService");
+const { autenticarCajero, renovarSesion } = require("../services/authService");
 const { validarCajaDisponible } = require("../services/cajaService");
 const { registrarInicioSesion, cerrarSesionesInactivas, desbloquear } = require("../services/sesionCajeroService");
 const { verificarCajaLibreParaCajero } = require("../services/turnosService");
@@ -25,6 +25,11 @@ router.post("/login", wrap(async (req, res) => {
 router.post("/login-administrador", wrap(async (req, res) => {
   const administrador = await autenticarAdministrador(req.body);
   res.json({ ok: true, mensaje: "Login exitoso", data: { administrador } });
+}));
+
+// Renueva la sesion (cajero o administrador) con el refresh_token que devolvio el login: asi no se vence cada hora.
+router.post("/refrescar", wrap(async (req, res) => {
+  res.json({ ok: true, data: await renovarSesion(req.body || {}) });
 }));
 
 // Fuerza el cierre de sesiones inactivas ahora mismo (util para pruebas manuales)

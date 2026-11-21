@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import useRenovarSesion from '../hooks/useRenovarSesion.js'
 
 const AdminAuthContext = createContext(null)
 const STORAGE_KEY = 'tallersis_sesion_administrador'
@@ -29,12 +30,16 @@ export function AdminAuthProvider({ children }) {
   }, [administrador])
 
   function iniciarSesion(datosAdministrador) {
-    setAdministrador(datosAdministrador)
+    // vence_en: cuándo caduca el access_token (Supabase lo emite por 1 hora); sirve para renovarlo antes
+    setAdministrador({ ...datosAdministrador, vence_en: Date.now() + (datosAdministrador.expires_in ?? 3600) * 1000 })
   }
 
   function cerrarSesion() {
     setAdministrador(null)
   }
+
+  // renueva el token solo, antes de que venza
+  useRenovarSesion(administrador, (nuevo) => setAdministrador((a) => (a ? { ...a, ...nuevo } : a)), cerrarSesion)
 
   return (
     <AdminAuthContext.Provider value={{ administrador, iniciarSesion, cerrarSesion }}>

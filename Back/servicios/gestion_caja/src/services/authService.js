@@ -39,7 +39,35 @@ async function autenticarCajero({ email, password }) {
     cajero_id: datos.user.id,
     email: datos.user.email,
     access_token: datos.access_token,
+    // para renovar la sesion sin pedir la contrasena otra vez (el access_token de Supabase dura 1 hora)
+    refresh_token: datos.refresh_token,
+    expires_in: datos.expires_in,
   };
+}
+
+/**
+ * Renueva la sesion con el refresh_token de Supabase Auth: devuelve un access_token nuevo (y un refresh_token nuevo: Supabase rota el
+ * anterior). Un refresh_token invalido o ya usado es 401 y hay que volver a iniciar sesion.
+ */
+async function renovarSesion({ refresh_token }) {
+  if (!refresh_token || typeof refresh_token !== "string") {
+    throw new AppError("El campo refresh_token es obligatorio.", 400);
+  }
+  let respuesta;
+  try {
+    respuesta = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token }),
+    });
+  } catch {
+    throw new AppError("No se pudo conectar con el servicio de autenticacion para renovar la sesion.", 503);
+  }
+  const datos = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) {
+    throw new AppError("La sesion ya no se puede renovar: vuelva a iniciar sesion.", 401, datos.error_description || datos.msg || null);
+  }
+  return { access_token: datos.access_token, refresh_token: datos.refresh_token, expires_in: datos.expires_in };
 }
 /** TDSI-183: verifica la contraseña del cajero para desbloquear la pantalla. */
 async function verificarContrasena(email, password) {
@@ -58,4 +86,4 @@ async function verificarContrasena(email, password) {
   return true;
 }
 
-module.exports = { autenticarCajero, verificarContrasena };
+module.exports = { autenticarCajero, verificarContrasena, renovarSesion };

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import useRenovarSesion from '../hooks/useRenovarSesion.js'
 
 const AuthContext = createContext(null)
 const STORAGE_KEY = 'tallersis_sesion_cajero'
@@ -29,12 +30,16 @@ export function AuthProvider({ children }) {
   }, [cajero])
 
   function iniciarSesion(datosCajero) {
-    setCajero(datosCajero)
+    // vence_en: cuándo caduca el access_token (Supabase lo emite por 1 hora); sirve para renovarlo antes
+    setCajero({ ...datosCajero, vence_en: Date.now() + (datosCajero.expires_in ?? 3600) * 1000 })
   }
 
   function cerrarSesion() {
     setCajero(null)
   }
+
+  // renueva el token solo, antes de que venza (Mi turno y el resto lo usan)
+  useRenovarSesion(cajero, (nuevo) => setCajero((c) => (c ? { ...c, ...nuevo } : c)), cerrarSesion)
 
   return (
     <AuthContext.Provider value={{ cajero, iniciarSesion, cerrarSesion }}>
