@@ -344,3 +344,36 @@
     animation: none;
   }
 }
+
+/* Recientes: la ficha de estado nunca se sale de la tarjeta (el codigo y el estado se acomodan en dos filas si no caben). */
+.dev-layout {
+  grid-template-columns: 216px minmax(0, 1fr);
+}
+.dev-reciente {
+  min-width: 0;
+  overflow: hidden;
+}
+.dev-reciente-fila {
+  flex-wrap: wrap;
+  row-gap: 3px;
+}
+.dev-reciente-fila .vxp-codigo {
+  font-size: 0.86rem;
+}
+.dev-reciente-fila .vxp-badge {
+  flex: none;
+  max-width: 100%;
+  gap: 0.3rem;
+  font-size: 0.58rem;
+  padding: 0.06rem 0.38rem;
+}
+.dev-reciente-fila .vxp-badge::before {
+  width: 5px;
+  height: 5px;
+  box-shadow: none;
+}
+.dev-reciente-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
