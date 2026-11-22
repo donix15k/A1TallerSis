@@ -572,3 +572,22 @@ textarea.sim-entrada { height: auto; min-height: 84px; padding: 11px 14px; resiz
 @media (prefers-reduced-motion: reduce) {
   .sim *, .simc * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+
+/* ---------- Detalle de un documento de la bandeja de Contabilidad ---------- */
+.sim-fila--clic { cursor: pointer; }
+.sim-fila--clic:focus-visible { outline: 2px solid var(--sim); outline-offset: 2px; }
+.sim-modal--ancho { width: min(760px, 96vw); max-height: 92dvh; display: flex; flex-direction: column; }
+.sim-modal--ancho .sim-modal-cuerpo { overflow-y: auto; display: grid; gap: 14px; }
+.sim-det-tipo { margin-left: 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sim); }
+.sim-det-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 18px; margin: 0; }
+.sim-det-rejilla dt { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; }
+.sim-det-rejilla dd { margin: 2px 0 0; font-weight: 650; color: #06152f; overflow-wrap: anywhere; }
+.sim-det-mono { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.82rem; }
+.sim-det-tabla { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.sim-det-tabla th { padding: 8px 10px; text-align: left; font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; background: #f5f7fb; border-bottom: 1px solid #e5e9f1; }
+.sim-det-tabla td { padding: 8px 10px; border-bottom: 1px solid #eef1f6; }
+.sim-det-tabla .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sim-det-tabla tfoot td { font-weight: 800; border-bottom: 0; background: #f9fafc; }
+.sim-det-nota { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fff7e0; color: #7a5a00; font-size: 0.86rem; }
+.sim-det-json summary { cursor: pointer; font-weight: 700; color: var(--sim); }
+.sim-det-json pre { margin: 8px 0 0; padding: 12px; max-height: 220px; overflow: auto; border-radius: 10px; background: #0b1220; color: #d6e4ff; font-size: 0.78rem; }

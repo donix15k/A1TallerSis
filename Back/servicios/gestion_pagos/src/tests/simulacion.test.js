@@ -382,3 +382,39 @@ test("por HTTP: todo es solo del administrador (401 sin token) y con token publi
   const productos = await (await fetch(`${base}/marketplace/productos`, { headers: cab })).json();
   assert.ok(productos.data.length >= 10);
 });
+
+// ---------------------------------------------------------------- Un solo mensaje por documento y detalle de la bandeja
+test("Contabilidad responde UNA sola vez por documento: dos clics a la vez publican un solo mensaje y los siguientes son 409", async () => {
+  const ref = `F-${String(Date.now()).slice(-7)}`;
+  const r = await Promise.allSettled([
+    simulacion.responderContabilidad({ referencia: ref, resultado: "aceptado", enviado_por: MARCA }),
+    simulacion.responderContabilidad({ referencia: ref, resultado: "aceptado", enviado_por: MARCA }),
+    simulacion.responderContabilidad({ referencia: ref, resultado: "rechazado", motivo: "No coincide el monto", enviado_por: MARCA }),
+  ]);
+  assert.equal(r.filter((x) => x.status === "fulfilled").length, 1);
+  assert.deepEqual(r.filter((x) => x.status === "rejected").map((x) => x.reason.status), [409, 409]);
+  assert.equal(publicados.filter((p) => p.json.referencia_externa === ref).length, 1, "un solo mensaje hacia A1");
+
+  // otro intento un instante despues (A1 todavia lo procesa): tampoco se publica nada mas
+  await assert.rejects(simulacion.responderContabilidad({ referencia: ref, resultado: "aceptado", enviado_por: MARCA }), (e) => e.status === 409 && /hace instantes/.test(e.message));
+  assert.equal(publicados.filter((p) => p.json.referencia_externa === ref).length, 1);
+
+  // y si no salio (Pub/Sub fallo) se puede volver a intentar: el candado no queda pegado
+  const otra = `F-${String(Date.now() + 1).slice(-7)}`;
+  publisher.usarClienteDePrueba(publicadorFalso("PERMISSION_DENIED"));
+  await assert.rejects(simulacion.responderContabilidad({ referencia: otra, resultado: "aceptado", enviado_por: MARCA }), (e) => e.status === 502);
+  publisher.usarClienteDePrueba(publicadorFalso());
+  const ok = await simulacion.responderContabilidad({ referencia: otra, resultado: "aceptado", enviado_por: MARCA });
+  assert.equal(ok.ok, true);
+});
+
+test("el detalle de un documento de la bandeja trae lo que A1 envio; 404 si Contabilidad no lo tiene", async () => {
+  const reunirMensajes = async () => ({
+    mensajes: [{ grupo: "D", referencia: "DIF-7", tipo: "DIFERENCIA_CAJA", estado: "Enviado", fecha: "2026-11-22T10:00:00Z", origen: "gestion_caja", message_id: "m-9", intentos: 1, detalle: { turno_id: 3, monto: 12.5 }, datos: { tipo_operacion: "diferencia_caja", monto: 12.5 } }],
+  });
+  const d = await simulacion.detalleDocumentoContabilidad({ referencia: "DIF-7", reunirMensajes });
+  assert.deepEqual([d.referencia, d.tipo_nombre, d.servicio_origen, d.message_id, d.factura], ["DIF-7", "Diferencia de caja", "gestion_caja", "m-9", null]);
+  assert.equal(d.extra.monto, 12.5);
+  await assert.rejects(simulacion.detalleDocumentoContabilidad({ referencia: "DIF-99", reunirMensajes }), (e) => e.status === 404);
+  await assert.rejects(simulacion.detalleDocumentoContabilidad({ referencia: "", reunirMensajes }), (e) => e.status === 400);
+});

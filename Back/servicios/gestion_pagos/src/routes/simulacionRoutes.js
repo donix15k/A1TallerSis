@@ -19,6 +19,9 @@ router.get("/vistas/:vista", wrap(async (req, res) => {
 router.get("/contabilidad/documentos", wrap(async (req, res) => {
   res.json({ ok: true, data: await simulacion.documentosContabilidad({ reunirMensajes, token: req.tokenAdministrador }) });
 }));
+router.get("/contabilidad/detalle", wrap(async (req, res) => {
+  res.json({ ok: true, data: await simulacion.detalleDocumentoContabilidad({ referencia: req.query.referencia, reunirMensajes, token: req.tokenAdministrador }) });
+}));
 router.post("/contabilidad/responder", wrap(async (req, res) => {
   const data = await simulacion.responderContabilidad({ ...req.body, enviado_por: quien(req) });
   res.status(201).json({ ok: true, mensaje: "Respuesta publicada en Pub/Sub", data });

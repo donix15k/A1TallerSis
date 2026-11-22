@@ -14,6 +14,7 @@ export const obtenerContextoVista = (vista, token) => llamar(`/vistas/${vista}`,
 
 // ---- Contabilidad
 export const listarDocumentosContabilidad = (token) => llamar('/contabilidad/documentos', conToken(token))
+export const detalleDocumentoContabilidad = (referencia, token) => llamar(`/contabilidad/detalle?referencia=${encodeURIComponent(referencia)}`, conToken(token))
 export const responderContabilidad = (cuerpo, token) => llamar('/contabilidad/responder', post(token, cuerpo))
 
 // ---- Marketplace

@@ -104,6 +104,10 @@ async function documentosContabilidad({ reunirMensajes, token } = {}) {
  * Contabilidad responde un documento nuestro (resultado_documento): "aceptado" con su N de asiento, o "rechazado" con su motivo.
  * Mismo mensaje que leen facturacion (F-/ANU-F-), devoluciones (NC-) y gestion_caja (DIF-): cada uno toma solo el suyo.
  */
+// Referencias que se estan respondiendo AHORA (un doble clic o dos pestañas a la vez no pueden publicar dos mensajes del mismo documento).
+const respondiendo = new Set();
+const VENTANA_DUPLICADO_SEG = 20;
+
 async function responderContabilidad({ referencia, resultado, motivo, numero_asiento, enviado_por } = {}) {
   const ref = String(referencia || "").trim();
   if (!REFERENCIA_CONTABLE.test(ref)) {
@@ -127,12 +131,80 @@ async function responderContabilidad({ referencia, resultado, motivo, numero_asi
     motivo: r === "rechazado" ? texto : null,
     fecha_documento: fechaDocumentoHoy(),
   };
-  const enviado = await publicarComoGrupo("contabilidad", payload, {
-    resumen: r === "aceptado" ? `${ref} aceptado (asiento ${asiento})` : `${ref} rechazado: ${texto}`,
-    atributos: { tipo: "RESULTADO_DOCUMENTO", referencia_externa: ref },
-    enviado_por,
-  });
-  return { ...enviado, referencia: ref, resultado: estado, numero_asiento: asiento };
+  // UN solo mensaje por documento: si ya se esta enviando, o se envio hace unos segundos (A1 todavia lo procesa), no se publica otro.
+  if (respondiendo.has(ref)) throw new AppError(`La respuesta de ${ref} ya se está enviando.`, 409, { referencia: ref });
+  respondiendo.add(ref);
+  try {
+    const { rows } = await query(
+      `SELECT 1 FROM pagos.pubsub_verificaciones
+        WHERE direccion = 'ENVIADO' AND tipo = 'RESULTADO_DOCUMENTO' AND referencia = $1 AND ok AND creado_en > now() - make_interval(secs => $2)
+        LIMIT 1`,
+      [ref, VENTANA_DUPLICADO_SEG]
+    );
+    if (rows.length) throw new AppError(`Ya enviaste una respuesta para ${ref} hace instantes: A1 todavía la está procesando.`, 409, { referencia: ref });
+
+    const enviado = await publicarComoGrupo("contabilidad", payload, {
+      resumen: r === "aceptado" ? `${ref} aceptado (asiento ${asiento})` : `${ref} rechazado: ${texto}`,
+      atributos: { tipo: "RESULTADO_DOCUMENTO", referencia_externa: ref },
+      enviado_por,
+    });
+    return { ...enviado, referencia: ref, resultado: estado, numero_asiento: asiento };
+  } finally {
+    respondiendo.delete(ref);
+  }
+}
+
+/**
+ * Detalle de un documento de la bandeja de Contabilidad: lo que A1 le envio, para saber que se esta aceptando o rechazando.
+ * Facturas y anulaciones traen ademas la factura completa (cliente, NIT, productos, metodo de pago); notas de credito, diferencias y lotes,
+ * los datos del mensaje enviado. 404 si Contabilidad no tiene ese documento.
+ */
+async function detalleDocumentoContabilidad({ referencia, reunirMensajes, token } = {}) {
+  const ref = String(referencia || "").trim();
+  if (!ref) throw new AppError("Indique la referencia del documento.", 400);
+  const { mensajes } = await reunirMensajes({ token });
+  const m = mensajes.find((x) => x.grupo === "D" && x.referencia === ref);
+  if (!m) throw new AppError(`Contabilidad no tiene el documento ${ref}.`, 404, { referencia: ref });
+
+  const detalle = {
+    referencia: ref,
+    tipo: m.tipo,
+    tipo_nombre: NOMBRE_TIPO[m.tipo] || m.tipo,
+    estado: m.estado,
+    enviado_en: m.fecha,
+    message_id: m.message_id ?? null,
+    intentos: m.intentos ?? null,
+    servicio_origen: m.origen,
+    resultado: m.detalle?.resultado ?? null,
+    numero_asiento: m.detalle?.numero_asiento ?? null,
+    motivo: m.detalle?.motivo ?? m.detalle?.motivo_rechazo ?? null,
+    datos: m.datos ?? null,
+    extra: m.detalle ?? null,
+    factura: null,
+  };
+
+  const numeroFactura = /^(?:ANU-)?(F-\d+)$/.exec(ref)?.[1];
+  if (numeroFactura) {
+    try {
+      const r = await fetch(`${process.env.FACTURACION_URL || "http://localhost:4002"}/api/facturas/${encodeURIComponent(numeroFactura)}`, { signal: AbortSignal.timeout(5000) });
+      const f = r.ok ? (await r.json()).data : null;
+      if (f) {
+        detalle.factura = {
+          numero: f.numero,
+          fecha: f.fecha,
+          estado: f.estado,
+          cliente_nombre: f.cliente_nombre ?? null,
+          cliente_nit: f.cliente_nit ?? null,
+          total: Number(f.total) || 0,
+          items: (f.items ?? []).map((it) => ({ descripcion: it.descripcion, cantidad: Number(it.cantidad), precio_unitario: Number(it.precio_unitario), subtotal: Number(it.subtotal) })),
+          metodos_pago: (f.metodosPago ?? []).map((p) => ({ metodo: p.metodo, monto: Number(p.monto) })),
+        };
+      }
+    } catch {
+      // sin Facturacion se muestra el resto del detalle
+    }
+  }
+  return detalle;
 }
 
 // ============================================================================ Marketplace (E)
@@ -314,7 +386,7 @@ async function ordenesPendientesCompras() {
 }
 
 module.exports = {
-  VISTAS, contexto, documentosContabilidad, responderContabilidad, REFERENCIA_CONTABLE,
+  VISTAS, contexto, documentosContabilidad, detalleDocumentoContabilidad, responderContabilidad, REFERENCIA_CONTABLE,
   listarProductosMarketplace, enviarVentaMarketplace, ventasMarketplaceRecientes, CATALOGO,
   reportesCompras, acusarCompras, listarProveedores, enviarOrdenCompras, ordenesPendientesCompras,
 };
