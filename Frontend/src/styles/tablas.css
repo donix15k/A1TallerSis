@@ -66,3 +66,18 @@ table {
 .vxp-tabla .vxp-stepper {
   min-width: 0;
 }
+
+/* Sin barra horizontal en las tablas de las tarjetas: se ajustan al ancho disponible. */
+.vxp-tabla-envoltura,
+.dev-tabla {
+  overflow: visible;
+}
+.vxp-tabla td .vxp-fila {
+  flex-wrap: wrap !important;
+}
+.dev-accion {
+  white-space: normal;
+}
+.dev-accion .vxp-btn {
+  white-space: nowrap;
+}

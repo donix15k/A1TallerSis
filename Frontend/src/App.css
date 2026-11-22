@@ -148,10 +148,11 @@
   background-color: #fee2e2;
 }
 
+/* Ancho completo de pantalla (con un tope para monitores enormes): las tablas se ven enteras, sin barra para deslizar. */
 .container {
-  max-width: 960px;
+  max-width: 1760px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.75rem 2rem;
 }
 
 /* Panel de administracion: las tablas con muchas columnas (Ventas online,
@@ -159,7 +160,7 @@
    horizontal porque el .container de 960px las apretaba de mas -- con mas
    ancho entran enteras y solo queda el scroll vertical normal de la pagina. */
 .container-ancho {
-  max-width: 1600px;
+  max-width: 1760px;
 }
 
 .error {
