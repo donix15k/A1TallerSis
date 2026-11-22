@@ -90,11 +90,16 @@ async function documentosContabilidad({ reunirMensajes, token } = {}) {
       resultado: m.detalle?.resultado ?? null,
       numero_asiento: m.detalle?.numero_asiento ?? null,
       motivo: m.detalle?.motivo ?? m.detalle?.motivo_rechazo ?? null,
+      intentos: m.intentos ?? null,
+      error: m.error ?? null,
       puede_responder: m.estado === "Enviado" && TIPOS_RESPONDIBLES.has(m.tipo) && REFERENCIA_CONTABLE.test(String(m.referencia || "")),
     }));
   return {
     pendientes: docs.filter((d) => d.puede_responder),
-    respondidos: docs.filter((d) => d.estado === "Respondido").slice(0, 15),
+    // hasta 200: la vista cruza lo que acaba de responder con lo que A1 ya registro; con solo 15 los mas viejos se quedaban "procesando" para siempre
+    respondidos: docs.filter((d) => d.estado === "Respondido").slice(0, 200),
+    // documentos que A1 todavia NO logro entregar a Contabilidad (reintentando o con error): no tienen nada que ver con las respuestas de esta vista
+    sin_enviar_lista: docs.filter((d) => d.estado === "Pendiente" || d.estado === "Error").map((d) => ({ referencia: d.referencia, tipo_nombre: d.tipo_nombre, estado: d.estado, intentos: d.intentos, error: d.error, fecha: d.fecha })),
     sin_enviar: docs.filter((d) => d.estado === "Pendiente" || d.estado === "Error").length,
     fuentes,
   };

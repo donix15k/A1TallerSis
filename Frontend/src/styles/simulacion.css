@@ -591,3 +591,7 @@ textarea.sim-entrada { height: auto; min-height: 84px; padding: 11px 14px; resiz
 .sim-det-nota { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fff7e0; color: #7a5a00; font-size: 0.86rem; }
 .sim-det-json summary { cursor: pointer; font-weight: 700; color: var(--sim); }
 .sim-det-json pre { margin: 8px 0 0; padding: 12px; max-height: 220px; overflow: auto; border-radius: 10px; background: #0b1220; color: #d6e4ff; font-size: 0.78rem; }
+
+.sim-metrica--boton { font: inherit; text-align: left; cursor: pointer; border: 0; }
+.sim-metrica--boton:disabled { cursor: default; }
+@media (hover: hover) and (pointer: fine) { .sim-metrica--boton:not(:disabled):hover { transform: translateY(-2px); } }

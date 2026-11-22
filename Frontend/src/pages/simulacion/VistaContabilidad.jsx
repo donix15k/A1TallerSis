@@ -131,6 +131,7 @@ function Contenido({ token }) {
   const [enviados, setEnviados] = useState(() => new Map()) // referencia -> { resultado, motivo, asiento, tipo_nombre, ts, publicando }: lo que YA se respondio; nunca vuelve a la bandeja
   const [rechazando, setRechazando] = useState(null)
   const [detalle, setDetalle] = useState(null)
+  const [verSinSalir, setVerSinSalir] = useState(false)
   const enVuelo = useRef(new Set()) // candado inmediato: una referencia no se responde dos veces aunque se haga clic de nuevo
   const montado = useRef(true)
 
@@ -212,8 +213,31 @@ function Contenido({ token }) {
       <div className="sim-metricas sim-entra">
         <div className="sim-metrica" style={{ '--c': '#d4a017' }}><small>Por revisar</small><strong>{datos ? numero(pendientes.length) : '—'}</strong><span>asientos esperando respuesta</span></div>
         <div className="sim-metrica" style={{ '--c': '#12805c' }}><small>Resueltos</small><strong>{datos ? numero(resueltos.length) : '—'}</strong><span>respondidos a A1</span></div>
-        <div className="sim-metrica" style={{ '--c': '#7a8699' }}><small>Aún sin salir</small><strong>{datos ? numero(datos.sin_enviar) : '—'}</strong><span>en cola o con error en A1</span></div>
+        <button
+          type="button"
+          className="sim-metrica sim-metrica--boton"
+          style={{ '--c': '#7a8699' }}
+          disabled={!datos || datos.sin_enviar === 0}
+          aria-expanded={verSinSalir}
+          onClick={() => setVerSinSalir((v) => !v)}
+          title="Documentos que Pagos y Facturación todavía NO logró entregar a Contabilidad (reintentando o con error). No son respuestas de esta pantalla."
+        >
+          <small>Aún sin salir de A1</small>
+          <strong>{datos ? numero(datos.sin_enviar) : '—'}</strong>
+          <span>{datos?.sin_enviar ? (verSinSalir ? 'ocultar la lista' : 'documentos que A1 no logró entregar · ver cuáles') : 'A1 entregó todo a Contabilidad'}</span>
+        </button>
       </div>
+
+      {verSinSalir && datos?.sin_enviar_lista?.length > 0 && (
+        <div className="sim-aviso sim-aviso--warn" style={{ display: 'grid', gap: 6 }}>
+          <b>Estos documentos todavía no salieron de Pagos y Facturación hacia Contabilidad:</b>
+          {datos.sin_enviar_lista.map((d) => (
+            <span key={d.referencia}>
+              <strong>{d.referencia}</strong> · {d.tipo_nombre} · {d.estado === 'Error' ? 'con error' : 'en cola, se reintenta solo'}{d.intentos ? ` · ${d.intentos} intento(s)` : ''}{d.error ? ` · ${d.error}` : ''}
+            </span>
+          ))}
+        </div>
+      )}
 
       {error && <div className="sim-aviso sim-aviso--bad" role="alert">No se pudo consultar a Pagos y Facturación: {error}</div>}
       {datos?.fuentes?.some((f) => !f.ok) && (
