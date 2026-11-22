@@ -184,7 +184,12 @@ async function anulacionAutorizada(facturaId) {
   return rows[0] || null;
 }
 
+/** Cambia el mensaje que se va a (re)enviar, por ejemplo para agregarle la justificacion del reenvio de un asiento rechazado. */
+async function actualizarPayload(id, payload) {
+  await query(`UPDATE facturacion.factura_envios_contabilidad SET payload = $2 WHERE id = $1`, [id, JSON.stringify(payload)]);
+}
+
 module.exports = {
   obtener, obtenerPorFactura, crear, marcarEnviado, registrarFallo, posponer, tomarPendientes,
-  prepararReenvio, listar, datosFactura, anulacionAutorizada, registrarResultado,
+  prepararReenvio, actualizarPayload, listar, datosFactura, anulacionAutorizada, registrarResultado,
 };

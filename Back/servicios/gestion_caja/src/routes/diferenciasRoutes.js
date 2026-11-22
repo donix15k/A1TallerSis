@@ -34,6 +34,7 @@ router.post("/diferencias/:id/reenviar-contabilidad", wrap(async (req, res) => {
   const data = await reenviarContabilidad(req.params.id, {
     grupoOrigen: cuerpo.grupo_origen,
     enviadoPor: cuerpo.enviado_por,
+    justificacion: cuerpo.justificacion,
   });
   res.json({ ok: true, mensaje: "Reenviado a Contabilidad", data });
 }));

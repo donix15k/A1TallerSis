@@ -60,14 +60,26 @@ async function listarDiferencias({ estado } = {}) {
  * destino sigue siendo siempre Contabilidad, eso nunca cambia. No se toca el payload
  * guardado en caja.diferencias_envios_contabilidad, solo lo que efectivamente se publica.
  */
-async function reenviarContabilidad(id, { grupoOrigen, enviadoPor } = {}) {
+async function reenviarContabilidad(id, { grupoOrigen, enviadoPor, justificacion } = {}) {
   const envio = await diferenciasEnviosRepo.obtenerPorDiferencia(id);
   if (!envio) throw new AppError("Esta diferencia todavía no tiene un envío a Contabilidad (resuélvela primero).", 404, { id });
   if (!["Pendiente", "Rechazado"].includes(envio.estado)) {
     throw new AppError(`Solo se pueden reenviar envíos con estado Pendiente o Rechazado (este está ${envio.estado}).`, 409, { id, estado: envio.estado });
   }
 
-  const resultado = await publicarDiferencia(envio.payload, { grupoOrigen, enviadoPor });
+  // Una diferencia RECHAZADA por Contabilidad se reenvia con una justificacion: asi sabe que se corrigio.
+  let payload = envio.payload;
+  if (envio.estado === "Rechazado") {
+    const texto = String(justificacion ?? "").trim();
+    if (texto.length < 10 || texto.length > 400) throw new AppError("Cuéntale a Contabilidad cómo se resolvió el rechazo (entre 10 y 400 caracteres).", 400, { id });
+    payload = {
+      ...payload,
+      reenvio: { numero: (payload?.reenvio?.numero || 0) + 1, justificacion: texto, motivo_rechazo_anterior: envio.motivo_rechazo ?? null, reenviado_en: new Date().toISOString() },
+    };
+    await diferenciasEnviosRepo.actualizarPayload(id, payload);
+  }
+
+  const resultado = await publicarDiferencia(payload, { grupoOrigen, enviadoPor });
   const actualizado = resultado.ok
     ? await diferenciasEnviosRepo.marcarEnviado(id, resultado.messageId)
     : await diferenciasEnviosRepo.marcarError(id, resultado.error);

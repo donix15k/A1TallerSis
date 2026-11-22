@@ -26,10 +26,11 @@ function mensaje({ origen, id, grupo, tipo, referencia, fecha, estado, message_i
   return { origen, id: String(id), grupo, tipo, referencia: referencia ?? null, fecha: fecha ?? null, estado, message_id: message_id || null, intentos, error: error || null, puede_reenviar: estado === "Error" || String(detalle?.resultado ?? "").toLowerCase() === "rechazado", detalle, datos };
 }
 
-async function http(url, { metodo = "GET", token = null } = {}) {
+async function http(url, { metodo = "GET", token = null, cuerpo = null } = {}) {
   let r;
   try {
-    r = await fetch(url, { method: metodo, headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(timeoutMs()) });
+    const headers = { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(cuerpo ? { "Content-Type": "application/json" } : {}) };
+    r = await fetch(url, { method: metodo, headers, body: cuerpo ? JSON.stringify(cuerpo) : undefined, signal: AbortSignal.timeout(timeoutMs()) });
   } catch (e) {
     const lenta = e.name === "TimeoutError" || e.name === "AbortError";
     throw new AppError(lenta ? "no respondió a tiempo" : "no se pudo conectar", 503, { causa: e.message });
@@ -63,8 +64,8 @@ const FUENTES = [
         })
       );
     },
-    async reenviar(id) {
-      exigir(await http(`${urlFacturacion()}/api/facturas/envios-contabilidad/${encodeURIComponent(id)}/reenviar`, { metodo: "POST" }), "Facturación");
+    async reenviar(id, { justificacion } = {}) {
+      exigir(await http(`${urlFacturacion()}/api/facturas/envios-contabilidad/${encodeURIComponent(id)}/reenviar`, { metodo: "POST", cuerpo: { justificacion } }), "Facturación");
     },
   },
   {
@@ -82,8 +83,8 @@ const FUENTES = [
           })
         );
     },
-    async reenviar(id) {
-      exigir(await http(`${urlCaja()}/api/caja/diferencias/${encodeURIComponent(id)}/reenviar-contabilidad`, { metodo: "POST" }), "Gestión de Caja");
+    async reenviar(id, { justificacion } = {}) {
+      exigir(await http(`${urlCaja()}/api/caja/diferencias/${encodeURIComponent(id)}/reenviar-contabilidad`, { metodo: "POST", cuerpo: { justificacion } }), "Gestión de Caja");
     },
   },
   {
@@ -110,8 +111,8 @@ const FUENTES = [
       const c = exigir(await http(`${urlDevoluciones()}/api/integraciones/mensajes`, { token }), "Devoluciones");
       return (c.data || []).map((m) => mensaje({ ...m, origen: "devoluciones" }));
     },
-    async reenviar(id, { token }) {
-      exigir(await http(`${urlDevoluciones()}/api/integraciones/mensajes/${encodeURIComponent(id)}/reenviar`, { metodo: "POST", token }), "Devoluciones");
+    async reenviar(id, { token, justificacion }) {
+      exigir(await http(`${urlDevoluciones()}/api/integraciones/mensajes/${encodeURIComponent(id)}/reenviar`, { metodo: "POST", token, cuerpo: { justificacion } }), "Devoluciones");
     },
   },
   {

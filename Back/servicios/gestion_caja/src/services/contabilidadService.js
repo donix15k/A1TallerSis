@@ -79,7 +79,8 @@ async function publicarDiferencia(mensaje, { grupoOrigen, enviadoPor } = {}) {
     tipo: "DIFERENCIA_CAJA",
     tipo_operacion: mensajeAEnviar.tipo_operacion,
     referencia_externa: mensajeAEnviar.referencia_externa,
-    idempotency_key: mensajeAEnviar.referencia_externa,
+    // un reenvio con justificacion es un mensaje NUEVO para Contabilidad: su clave cambia en cada reenvio (r1, r2...)
+    idempotency_key: `${mensajeAEnviar.referencia_externa}${mensajeAEnviar.reenvio ? `-r${mensajeAEnviar.reenvio.numero}` : ""}`,
     origen: "gestion_caja",
     grupo,
   });

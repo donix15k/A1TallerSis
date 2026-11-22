@@ -26,7 +26,7 @@ router.get("/envios-contabilidad", wrap(async (req, res) => {
   res.json({ ok: true, data: await contabilidad.listarEnvios(req.query) });
 }));
 router.post("/envios-contabilidad/:id/reenviar", wrap(async (req, res) => {
-  const envio = await contabilidad.reenviarEnvio(req.params.id);
+  const envio = await contabilidad.reenviarEnvio(req.params.id, { justificacion: req.body?.justificacion });
   const status = envio.estado === "Enviado" ? 200 : envio.estado === "Pendiente" ? 202 : 502;
   res.status(status).json({ ok: status !== 502, data: envio });
 }));

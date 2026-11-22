@@ -211,9 +211,22 @@ test("un asiento RECHAZADO por Contabilidad se puede reenviar: vuelve a salir, b
   const repo = require("../data/enviosContabilidadRepo");
   await repo.registrarResultado({ facturaNumero: f.numero, tipo: "venta", resultado: "rechazado", numeroAsiento: null, motivo: "Cuenta contable inexistente", messageId: "resp-1" });
 
-  const reenviado = await contabilidad.reenviarEnvio(envio.id);
+  // sin justificacion NO se reenvia (Contabilidad tiene que saber que se corrigio) y no se publica nada
+  await assert.rejects(contabilidad.reenviarEnvio(envio.id), { status: 400 });
+  await assert.rejects(contabilidad.reenviarEnvio(envio.id, { justificacion: "corregido" }), { status: 400 }); // muy corta
+  assert.equal(falso.publicados.length, 1);
+  assert.equal((await repo.obtener(envio.id)).resultado, "rechazado"); // sigue rechazado
+
+  const reenviado = await contabilidad.reenviarEnvio(envio.id, { justificacion: "Se creó la cuenta contable 4.1.01 y se corrigió el asiento." });
   assert.equal(reenviado.estado, "Enviado");
   assert.equal(falso.publicados.length, 2); // salio otra vez
+  // el mensaje nuevo lleva la justificacion, el motivo del rechazo anterior y una clave distinta (es un mensaje nuevo para Contabilidad)
+  const nuevo = falso.publicados[1];
+  assert.equal(nuevo.json.reenvio.justificacion, "Se creó la cuenta contable 4.1.01 y se corrigió el asiento.");
+  assert.deepEqual([nuevo.json.reenvio.numero, nuevo.json.reenvio.motivo_rechazo_anterior], [1, "Cuenta contable inexistente"]);
+  assert.match(nuevo.attributes.idempotency_key, /-r1$/);
+  assert.notEqual(nuevo.attributes.idempotency_key, falso.publicados[0].attributes.idempotency_key);
+  assert.equal(falso.publicados[0].json.reenvio, undefined);
   const despues = await repo.obtener(envio.id);
   assert.deepEqual([despues.resultado, despues.resultado_motivo, despues.numero_asiento], [null, null, null]);
   await assert.rejects(contabilidad.reenviarEnvio(envio.id), { status: 409 }); // ya no esta rechazado: nada que reenviar

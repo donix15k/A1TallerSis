@@ -88,16 +88,16 @@ async function listarMensajes({ limite = 500 } = {}) {
  * intentos y un intento inmediato con la MISMA idempotency_key (el otro grupo no recibe duplicados). 404 si no existe,
  * 409 si no esta en Error. Devuelve el envio ya en el formato comun.
  */
-async function reenviarMensaje(idComun) {
+async function reenviarMensaje(idComun, { justificacion } = {}) {
   const m = /^(contabilidad|compras|marketplace)-(\d{1,18})$/.exec(String(idComun || ""));
   if (!m) throw new AppError("El id del mensaje no es válido (ejemplo: contabilidad-12).", 400, { id: idComun });
   const [, fuente, id] = m;
   const repo = { contabilidad: contabilidadRepo, compras: comprasRepo, marketplace: marketplaceRepo }[fuente];
   const intentar = { contabilidad: contabilidad.intentarEnvio, compras: compras.intentarEnvio, marketplace: marketplace.intentarEnvio }[fuente];
 
-  const actual = await repo.obtener(id);
+  const actual = await repo.obtener(id, { conPayload: true });
   if (!actual) throw new AppError(`No existe el mensaje ${idComun}.`, 404, { id: idComun });
-  const envio = await repo.prepararReenvio(id);
+  const envio = fuente === "contabilidad" ? await contabilidad.prepararReenvioConJustificacion(actual, justificacion) : await repo.prepararReenvio(id);
   if (!envio) throw new AppError(`Solo se pueden reenviar los envíos con estado Error o rechazados por Contabilidad (este está ${actual.estado}).`, 409, { id: idComun, estado: actual.estado });
   await intentar(envio);
   return (await listarMensajes()).find((x) => x.id === idComun);

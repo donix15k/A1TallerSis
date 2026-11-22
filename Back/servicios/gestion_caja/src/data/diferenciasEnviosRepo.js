@@ -16,12 +16,17 @@ async function crearPendiente(diferenciaId, payload) {
   return rows[0] || null;
 }
 
+/** Cambia el mensaje que se va a (re)enviar (justificacion del reenvio de una diferencia rechazada). */
+async function actualizarPayload(diferenciaId, payload) {
+  await query(`UPDATE caja.diferencias_envios_contabilidad SET payload = $2 WHERE diferencia_id = $1`, [diferenciaId, JSON.stringify(payload)]);
+}
+
 /** TDSI-698: Pub/Sub confirmo que guardo el mensaje. */
 async function marcarEnviado(diferenciaId, pubsubMessageId) {
   const { rows } = await query(
     `UPDATE caja.diferencias_envios_contabilidad
         SET estado = 'Enviado', intentos = intentos + 1, pubsub_message_id = $2,
-            enviado_en = now(), ultimo_error = NULL
+            enviado_en = now(), ultimo_error = NULL, motivo_rechazo = NULL, respondido_en = NULL
       WHERE diferencia_id = $1
       RETURNING *`,
     [diferenciaId, pubsubMessageId]
@@ -62,4 +67,4 @@ async function registrarResultado(diferenciaId, { estado, motivo }) {
   return rows[0] || null;
 }
 
-module.exports = { crearPendiente, marcarEnviado, marcarError, obtenerPorDiferencia, registrarResultado };
+module.exports = { crearPendiente, actualizarPayload, marcarEnviado, marcarError, obtenerPorDiferencia, registrarResultado };

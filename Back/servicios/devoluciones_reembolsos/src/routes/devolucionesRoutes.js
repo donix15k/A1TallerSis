@@ -104,7 +104,7 @@ router.get("/:codigo/historial", requireAdministrador, wrap(async (req, res) => 
 
 // TDSI-95: reenvia a Contabilidad la nota de credito cuyo envio quedo en Error (solo el administrador).
 router.post("/:codigo/contabilidad/reenviar", requireAdministrador, wrap(async (req, res) => {
-  const envio = await contabilidadService.reenviarNota(req.params.codigo);
+  const envio = await contabilidadService.reenviarNota(req.params.codigo, { justificacion: req.body?.justificacion });
   const { estado, numero_asiento, motivo } = estadoVisible(envio);
   res.json({ ok: true, mensaje: envio.estado === "Enviado" ? "Nota de crédito reenviada a Contabilidad" : `El reenvío quedó ${estado}`, data: { ...envio, contabilidad: { estado, numero_asiento, motivo } } });
 }));

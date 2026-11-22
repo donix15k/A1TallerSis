@@ -21,7 +21,8 @@ async function intentarEnvio(envio) {
     tipo: "NOTA_CREDITO",
     tipo_operacion: payload.tipo_operacion,
     referencia_externa: payload.referencia_externa,
-    idempotency_key: claveIdempotencia(payload.referencia_externa),
+    // un reenvio con justificacion es un mensaje NUEVO para Contabilidad: su clave cambia en cada reenvio (r1, r2...)
+    idempotency_key: `${claveIdempotencia(payload.referencia_externa)}${payload.reenvio ? `-r${payload.reenvio.numero}` : ""}`,
     origen: "devoluciones",
     grupo: cfg.GRUPO_ORIGEN,
   });
@@ -70,17 +71,35 @@ async function enviarNotaSegura(codigo) {
  * TDSI-95: "Reenviar a Contabilidad" una nota cuyo envio quedo en Error: la misma fila con un nuevo ciclo de intentos y un
  * intento inmediato (si sale, queda Enviado con un NUEVO messageId). Solo se reenvian los envios en Error.
  */
-async function reenviarNota(codigo) {
-  const actual = await repo.obtenerPorDevolucionCodigo(codigo);
+/**
+ * Prepara el reenvio de un envio de nota de credito (por id de envio). Si Contabilidad la RECHAZO se exige una justificacion y se agrega al
+ * mensaje (reenvio: { numero, justificacion, motivo_rechazo_anterior, reenviado_en }). Devuelve el envio listo para publicar, o null si no se puede.
+ */
+async function prepararReenvioConJustificacion(actual, justificacion) {
+  const rechazado = actual.estado === "Enviado" && String(actual.resultado || "").toLowerCase() === "rechazado";
+  const texto = rechazado ? String(justificacion ?? "").trim() : null;
+  if (rechazado && (texto.length < 10 || texto.length > 400)) throw new AppError("Cuéntale a Contabilidad cómo se resolvió el rechazo (entre 10 y 400 caracteres).", 400, { codigo: actual.devolucion_codigo });
+  const envio = await repo.prepararReenvio(actual.id);
+  if (!envio || !rechazado) return envio;
+  const payload = {
+    ...(actual.payload || {}),
+    reenvio: { numero: (actual.payload?.reenvio?.numero || 0) + 1, justificacion: texto, motivo_rechazo_anterior: actual.resultado_motivo ?? null, reenviado_en: new Date().toISOString() },
+  };
+  await repo.actualizarPayload(envio.id, payload);
+  return { ...envio, payload };
+}
+
+async function reenviarNota(codigo, { justificacion } = {}) {
+  const actual = await repo.obtenerPorDevolucionCodigo(codigo, { conPayload: true });
   if (!actual) {
     const devolucion = await devolucionService.obtenerDevolucion(codigo); // 404 si la devolucion no existe
     throw new AppError(`La devolución ${devolucion.codigo} no tiene un envío a Contabilidad (solo las PROCESADAS con nota de crédito).`, 404, { codigo: devolucion.codigo });
   }
-  const envio = await repo.prepararReenvio(actual.id);
+  const envio = await prepararReenvioConJustificacion(actual, justificacion);
   if (!envio) {
     throw new AppError(`Solo se pueden reenviar los envíos con estado Error o rechazados por Contabilidad (este está ${actual.estado}).`, 409, { codigo: actual.devolucion_codigo, estado: actual.estado });
   }
   return intentarEnvio(envio);
 }
 
-module.exports = { enviarNota, enviarNotaSegura, intentarEnvio, reenviarNota };
+module.exports = { enviarNota, enviarNotaSegura, intentarEnvio, reenviarNota, prepararReenvioConJustificacion };

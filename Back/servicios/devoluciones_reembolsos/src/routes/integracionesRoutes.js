@@ -20,7 +20,7 @@ router.get("/mensajes", requireAdministrador, wrap(async (req, res) => {
 
 // TDSI-129: reenvia un envio en Error (id "contabilidad-12", "compras-7", "marketplace-3").
 router.post("/mensajes/:id/reenviar", requireAdministrador, wrap(async (req, res) => {
-  const data = await integraciones.reenviarMensaje(req.params.id);
+  const data = await integraciones.reenviarMensaje(req.params.id, { justificacion: req.body?.justificacion });
   res.json({ ok: true, mensaje: data.estado === "Error" ? "El reenvío volvió a fallar" : "Mensaje reenviado", data });
 }));
 

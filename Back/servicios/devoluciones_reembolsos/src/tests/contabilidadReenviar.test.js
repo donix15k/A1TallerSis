@@ -29,8 +29,12 @@ async function procesada({ fallaPubsub = null } = {}) {
   entorno.pubsub.falla = null;
   return cuerpo.data.codigo;
 }
-const reenviar = (codigo, token = entorno.TOKEN_ADMIN) =>
-  fetch(`${entorno.base}/api/devoluciones/${codigo}/contabilidad/reenviar`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+const reenviar = (codigo, token = entorno.TOKEN_ADMIN, cuerpo = null) =>
+  fetch(`${entorno.base}/api/devoluciones/${codigo}/contabilidad/reenviar`, {
+    method: "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(cuerpo ? { "Content-Type": "application/json" } : {}) },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+  });
 const envioDe = (codigo) => repo.obtenerPorDevolucionCodigo(codigo);
 
 test("un envio en Error vuelve a Enviado con un NUEVO messageId al reenviarlo", async () => {
@@ -90,11 +94,20 @@ test("una nota RECHAZADA por Contabilidad tambien se reenvia: sale otra vez y se
   assert.equal((await envioDe(codigo)).resultado, "rechazado");
 
   const publicadosAntes = entorno.pubsub.publicados.length;
-  const r = await reenviar(codigo);
+  // sin justificacion no se reenvia y no se publica nada
+  assert.equal((await reenviar(codigo)).status, 400);
+  assert.equal((await reenviar(codigo, entorno.TOKEN_ADMIN, { justificacion: "corregido" })).status, 400);
+  assert.equal(entorno.pubsub.publicados.length, publicadosAntes);
+
+  const r = await reenviar(codigo, entorno.TOKEN_ADMIN, { justificacion: "Se corrigió el monto de la nota: era Bs 117,50 y no Bs 120." });
   assert.equal(r.status, 200);
   const e = await envioDe(codigo);
   assert.deepEqual([e.id, e.estado, e.resultado, e.resultado_motivo], [antes.id, "Enviado", null, null]);
   assert.equal(entorno.pubsub.publicados.length, publicadosAntes + 1);
+  const nuevo = entorno.pubsub.publicados.at(-1);
+  assert.equal(nuevo.json.reenvio.justificacion, "Se corrigió el monto de la nota: era Bs 117,50 y no Bs 120.");
+  assert.deepEqual([nuevo.json.reenvio.numero, nuevo.json.reenvio.motivo_rechazo_anterior], [1, "Monto no coincide"]);
+  assert.match(nuevo.attributes.idempotency_key, /-r1$/);
 });
 
 test("solo el administrador puede reenviar: sin token 401, cajero 403", async () => {

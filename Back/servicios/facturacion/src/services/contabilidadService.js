@@ -79,7 +79,8 @@ async function intentarEnvio(envio) {
     tipo_operacion: payload.tipo_operacion,
     factura_id: envio.factura_id,
     referencia_externa: payload.referencia_externa,
-    idempotency_key: `factura-${envio.factura_id}-${envio.tipo}`,
+    // un reenvio con justificacion es un mensaje NUEVO para Contabilidad: su clave cambia en cada reenvio (r1, r2...)
+    idempotency_key: `factura-${envio.factura_id}-${envio.tipo}${payload.reenvio ? `-r${payload.reenvio.numero}` : ""}`,
     origen: "facturacion",
     grupo: cfg.GRUPO_ORIGEN,
   });
@@ -144,15 +145,28 @@ async function listarEnvios({ estado, tipo, limite } = {}) {
 }
 
 /** "Reenviar" un envio en Error o rechazado por Contabilidad: nuevo ciclo de intentos y un intento inmediato. */
-async function reenviarEnvio(id) {
+async function reenviarEnvio(id, { justificacion } = {}) {
   const limpio = String(id ?? "").trim();
   if (!/^\d{1,18}$/.test(limpio) || Number(limpio) === 0) throw err("El id del envio debe ser un numero entero positivo.");
+  // Un asiento RECHAZADO se reenvia con una justificacion: Contabilidad tiene que saber que se corrigio. Se valida antes de tocar nada.
+  const previo = await repo.obtener(limpio, { conPayload: true });
+  const rechazado = Boolean(previo) && previo.estado === "Enviado" && String(previo.resultado || "").toLowerCase() === "rechazado";
+  const texto = rechazado ? String(justificacion ?? "").trim() : null;
+  if (rechazado && (texto.length < 10 || texto.length > 400)) throw err("Cuéntale a Contabilidad cómo se resolvió el rechazo (entre 10 y 400 caracteres).", 400, { id: limpio });
   const envio = await repo.prepararReenvio(limpio);
   if (!envio) {
     const actual = await repo.obtener(limpio);
     if (!actual) throw err(`El envio ${id} no existe.`, 404);
     const motivo = actual.estado === "Enviado" ? (actual.resultado ? `Contabilidad ya lo respondio como '${actual.resultado}'` : "esta esperando la respuesta de Contabilidad") : `esta en estado ${actual.estado}`;
     throw err(`Solo se pueden reenviar los envios con estado Error o rechazados por Contabilidad (este ${motivo}).`, 409, { envio: actual });
+  }
+  if (rechazado) {
+    const payload = {
+      ...(previo.payload || {}),
+      reenvio: { numero: (previo.payload?.reenvio?.numero || 0) + 1, justificacion: texto, motivo_rechazo_anterior: previo.resultado_motivo ?? null, reenviado_en: new Date().toISOString() },
+    };
+    await repo.actualizarPayload(envio.id, payload);
+    return intentarEnvio({ ...envio, payload });
   }
   return intentarEnvio(envio);
 }

@@ -131,13 +131,13 @@ async function resumen({ token = null, periodo } = {}) {
  * el otro grupo no recibe duplicados. Errores del dueno se propagan con su estado: 404 no existe, 409 no esta en Error.
  * Devuelve el mensaje ya actualizado (formato comun) para refrescar la fila.
  */
-async function reenviarMensaje({ origen, id, token = null }) {
+async function reenviarMensaje({ origen, id, token = null, justificacion = null }) {
   const fuente = fuentes().find((f) => f.origen === String(origen));
   if (!fuente) throw new AppError(`El origen "${origen}" no existe. Use: ${fuentes().map((f) => f.origen).join(", ")}.`, 400, { origen });
   const idLimpio = String(id ?? "").trim();
   if (!/^[A-Za-z0-9_-]{1,40}$/.test(idLimpio)) throw new AppError("El id del mensaje no es válido.", 400, { id });
 
-  await fuente.reenviar(idLimpio, { token }); // el dueno valida (404 / 409) y publica con la misma idempotency_key
+  await fuente.reenviar(idLimpio, { token, justificacion }); // el dueno valida (404 / 409) y publica con la misma idempotency_key
   const actualizado = (await fuente.listar({ token })).find((m) => m.id === idLimpio);
   return actualizado || { origen: fuente.origen, id: idLimpio, reenviado: true };
 }

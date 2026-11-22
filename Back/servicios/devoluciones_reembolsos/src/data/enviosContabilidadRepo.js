@@ -134,4 +134,9 @@ function estadoVisible({ estado, resultado, numero_asiento, resultado_motivo }) 
   return { estado: visible, numero_asiento: numero_asiento ?? null, motivo: resultado_motivo ?? null };
 }
 
-module.exports = { estadoVisible, obtener, obtenerPorNota, obtenerPorDevolucionCodigo, crear, marcarEnviado, registrarFallo, tomarPendientes, prepararReenvio, registrarResultado };
+/** Cambia el mensaje que se va a (re)enviar (justificacion del reenvio de una nota rechazada). */
+async function actualizarPayload(id, payload) {
+  await query(`UPDATE devoluciones.envios_contabilidad_nc SET payload = $2 WHERE id = $1`, [id, JSON.stringify(payload)]);
+}
+
+module.exports = { estadoVisible, obtener, obtenerPorNota, obtenerPorDevolucionCodigo, crear, marcarEnviado, registrarFallo, tomarPendientes, prepararReenvio, actualizarPayload, registrarResultado };
