@@ -1,0 +1,68 @@
+/* =====================================================================================
+   Tablas completas: ninguna tabla debe obligar a deslizar de izquierda a derecha.
+   Se carga al final: las celdas se ajustan (el texto baja de linea) en vez de ensanchar la tabla, y los contenedores
+   solo conservan su barra horizontal como ultimo recurso (en pantallas muy angostas).
+   ===================================================================================== */
+table {
+  max-width: 100%;
+}
+
+.vxp-tabla,
+.tabla-facturas,
+.vx-tabla-tarjeta table,
+.cierre-envios-tabla-contenedor table,
+.rt-tabla-contenedor table,
+.ho-tabla-contenedor table,
+.mp-tabla-contenedor table,
+.arqueo-tabla-contenedor table,
+.resumen-factura-tabla-contenedor table,
+.sim-tabla-scroll table {
+  width: 100%;
+  table-layout: auto;
+}
+
+/* El texto baja de linea (los montos y codigos siguen en una sola linea mediante .num y .vxp-codigo). */
+.vxp-tabla th,
+.vxp-tabla td,
+.tabla-facturas th,
+.tabla-facturas td,
+.vx-tabla-tarjeta th,
+.vx-tabla-tarjeta td,
+.vx-tabla-tarjeta--nowrap th,
+.vx-tabla-tarjeta--nowrap td,
+.cierre-envios-tabla-contenedor th,
+.cierre-envios-tabla-contenedor td,
+.rt-tabla-contenedor th,
+.rt-tabla-contenedor td,
+.ho-tabla-contenedor th,
+.ho-tabla-contenedor td,
+.mp-tabla-contenedor th,
+.mp-tabla-contenedor td,
+.sim-tabla-scroll th,
+.sim-tabla-scroll td {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.vxp-tabla .num,
+.vxp-codigo {
+  white-space: nowrap;
+}
+
+/* Celdas un poco mas compactas para que entren todas las columnas. */
+.vxp-tabla th,
+.vxp-tabla td {
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+}
+.vxp-tabla th {
+  letter-spacing: 0.04em;
+}
+
+/* Controles dentro de las celdas: se apilan en vez de ensanchar la fila. */
+.vxp-tabla .vxp-segmentos {
+  flex-wrap: wrap !important;
+}
+.vxp-tabla .vxp-stepper {
+  min-width: 0;
+}

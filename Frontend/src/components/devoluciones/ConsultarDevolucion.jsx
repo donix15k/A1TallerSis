@@ -3,9 +3,9 @@ import { obtenerDevolucion } from '../../api/devoluciones.js'
 import Boton from '../ui/Boton.jsx'
 import Icono from '../ui/Icono.jsx'
 import { Aviso, Esqueleto, Vacio } from '../ui/Aviso.jsx'
-import DetalleDevolucion, { ESTADO_BADGE } from './DetalleDevolucion.jsx'
+import DetalleDevolucion from './DetalleDevolucion.jsx'
 import ModalReembolso from './ModalReembolso.jsx'
-import { bs } from '../../utils/formato.js'
+import ListaRecientes from './ListaRecientes.jsx'
 
 const CLAVE_RECIENTES = 'tallersis_devoluciones_recientes'
 
@@ -40,14 +40,14 @@ function normalizarCodigo(valor) {
  * Las aprobadas en esta sesion aparecen como accesos rapidos.
  *   seccionesDetalle(devolucion, recargar): secciones extra del detalle (nota de credito, Compras, Marketplace).
  */
-function ConsultarDevolucion({ cajero, codigoInicial, permitirVale, seccionesDetalle, renderResultadoReembolso }) {
+function ConsultarDevolucion({ cajero, codigoInicial, permitirVale, seccionesDetalle, renderResultadoReembolso, versionListado = 0 }) {
   const [codigo, setCodigo] = useState(codigoInicial ?? '')
   const [devolucion, setDevolucion] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
   const [noExiste, setNoExiste] = useState(null)
   const [reembolsando, setReembolsando] = useState(false)
-  const [recientes, setRecientes] = useState(leerRecientes)
+  const [versionLista, setVersionLista] = useState(0) // recarga el panel lateral al consultar o reembolsar
 
   const consultar = useCallback(async (valor) => {
     const cod = normalizarCodigo(valor)
@@ -60,7 +60,7 @@ function ConsultarDevolucion({ cajero, codigoInicial, permitirVale, seccionesDet
       const r = await obtenerDevolucion(cod)
       setDevolucion(r.data)
       recordarDevolucion(r.data)
-      setRecientes(leerRecientes())
+      setVersionLista((v) => v + 1)
     } catch (err) {
       setDevolucion(null)
       if (err.status === 404) setNoExiste(cod)
@@ -75,7 +75,9 @@ function ConsultarDevolucion({ cajero, codigoInicial, permitirVale, seccionesDet
   }, [codigoInicial, consultar])
 
   return (
-    <>
+    <div className="dev-layout">
+      <ListaRecientes seleccionado={devolucion?.codigo ?? normalizarCodigo(codigo)} onElegir={consultar} version={versionLista + versionListado} />
+      <div>
       <div className="vxp-card">
         <h2 className="vxp-card-titulo">
           Consultar devolución
@@ -104,28 +106,6 @@ function ConsultarDevolucion({ cajero, codigoInicial, permitirVale, seccionesDet
           </Boton>
         </form>
 
-        {recientes.length > 0 && (
-          <div className="vxp-fila" style={{ marginTop: '0.9rem' }}>
-            <span className="vxp-texto-suave" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-              Recientes:
-            </span>
-            {recientes.map((r) => (
-              <button
-                key={r.codigo}
-                type="button"
-                className="vxp-segmento"
-                style={{ background: '#f3f6fb', border: '1px solid #e1e7f0' }}
-                onClick={() => consultar(r.codigo)}
-                title={`${r.factura_numero} · ${bs(r.monto_total)}`}
-              >
-                <span className="vxp-codigo">{r.codigo}</span>
-                <span className={`vxp-badge vxp-badge--${ESTADO_BADGE[r.estado] ?? 'neutro'}`} style={{ fontSize: '0.64rem', padding: '0.1rem 0.45rem' }}>
-                  {r.estado}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {cargando && (
@@ -166,7 +146,8 @@ function ConsultarDevolucion({ cajero, codigoInicial, permitirVale, seccionesDet
           onCerrar={() => setReembolsando(false)}
         />
       )}
-    </>
+      </div>
+    </div>
   )
 }
 

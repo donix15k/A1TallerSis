@@ -129,4 +129,50 @@ async function expirarVencidos() {
   return valesRepo.marcarExpirados();
 }
 
-module.exports = { consultarVale, usarVale, revertirUso, expirarVencidos, normalizarCodigo, estadoVigente, FORMATO_CODIGO };
+/**
+ * Vista "Cupones generados": cada vale con el cliente (nombre y NIT/CI de la factura), la fecha y hora de emision, su monto, saldo y estado vigente.
+ * q busca por codigo del vale, devolucion, factura o NIT. El nombre del cliente se pide a Facturacion; si no responde el cupon se lista igual sin nombre.
+ */
+async function listarCupones({ q, pagina, por_pagina } = {}) {
+  const porPagina = Math.min(50, Math.max(1, Number.parseInt(por_pagina, 10) || 10));
+  const n = Math.max(1, Number.parseInt(pagina, 10) || 1);
+  const busqueda = String(q ?? "").trim().slice(0, 100) || null;
+  const r = await valesRepo.listar({ q: busqueda, limite: porPagina, offset: (n - 1) * porPagina });
+
+  let nombres = new Map();
+  const numeros = [...new Set(r.filas.map((v) => v.factura_numero).filter(Boolean))];
+  if (numeros.length) {
+    try {
+      const facturas = await require("./facturacionProxy").listarFacturas({ numeros, porPagina: Math.min(100, numeros.length) });
+      nombres = new Map(facturas.facturas.map((f) => [f.numero, f]));
+    } catch {
+      // sin Facturacion el cupon se muestra igual, solo sin el nombre del cliente
+    }
+  }
+  const ahora = new Date();
+  return {
+    total: r.total,
+    pagina: n,
+    por_pagina: porPagina,
+    total_paginas: Math.max(1, Math.ceil(r.total / porPagina)),
+    filas: r.filas.map((v) => {
+      const estado = estadoVigente(v, ahora);
+      const f = nombres.get(v.factura_numero);
+      return {
+        codigo: v.codigo,
+        estado,
+        monto: v.monto,
+        saldo_disponible: estado === "ACTIVO" ? v.saldo_disponible : 0,
+        emitido_en: v.emitido_en,
+        vence_en: v.expira_en,
+        devolucion_codigo: v.devolucion_codigo,
+        factura_numero: v.factura_numero,
+        cliente_nombre: f?.cliente_nombre ?? null,
+        cliente_nit: v.cliente_nit ?? f?.cliente_nit ?? null,
+        cajero: v.cajero,
+      };
+    }),
+  };
+}
+
+module.exports = { listarCupones, consultarVale, usarVale, revertirUso, expirarVencidos, normalizarCodigo, estadoVigente, FORMATO_CODIGO };

@@ -140,3 +140,23 @@ export function descargarBlob(blob, nombre) {
 export function obtenerDevolucion(codigo) {
   return llamar(`/api/devoluciones/${encodeURIComponent(codigo)}`)
 }
+
+// "Nueva devolución": las facturas (la más reciente primero) con su código, si siguen dentro del plazo de 7 días y si se pueden devolver.
+// q busca por número, cliente o NIT/CI; responde { total, pagina, por_pagina, total_paginas, data }.
+export function listarFacturasParaDevolucion({ q = '', pagina = 1, porPagina = 10 } = {}) {
+  const params = new URLSearchParams({ pagina: String(pagina), por_pagina: String(porPagina) })
+  if (q) params.set('q', q)
+  return llamar(`/api/devoluciones/facturas?${params}`)
+}
+
+// Las devoluciones más recientes primero, paginadas: lista lateral de "Consultar y reembolsar".
+export function listarDevolucionesRecientes({ pagina = 1, porPagina = 10 } = {}) {
+  return llamar(`/api/devoluciones/recientes?pagina=${pagina}&por_pagina=${porPagina}`)
+}
+
+// Cupones generados (vales de compra): cada uno con su cliente, fecha y hora, monto y estado.
+export function listarCupones({ q = '', pagina = 1, porPagina = 10 } = {}) {
+  const params = new URLSearchParams({ pagina: String(pagina), por_pagina: String(porPagina) })
+  if (q) params.set('q', q)
+  return llamar(`/api/vales?${params}`)
+}

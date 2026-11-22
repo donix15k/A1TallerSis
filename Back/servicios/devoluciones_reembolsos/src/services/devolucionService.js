@@ -505,7 +505,56 @@ async function listarParaExportar({ estado, desde, hasta, cajero, origen } = {},
   });
 }
 
+const enteroPositivo = (valor, defecto, maximo) => {
+  const n = Number.parseInt(valor, 10);
+  return Number.isInteger(n) && n >= 1 ? Math.min(n, maximo) : defecto;
+};
+
+/**
+ * Pantalla "Nueva devolucion" del cajero: las facturas (la mas reciente primero), con q para buscar por numero, cliente o NIT/CI, paginadas,
+ * y para cada una si todavia esta dentro del plazo (7 dias) y si se puede devolver (vigente y no anulada).
+ */
+async function listarFacturasParaDevolucion({ q, pagina, por_pagina } = {}) {
+  const porPagina = enteroPositivo(por_pagina, 10, 50);
+  const busqueda = String(q ?? "").trim().slice(0, 100);
+  const r = await facturacionProxy.listarFacturas({ q: busqueda || undefined, pagina: enteroPositivo(pagina, 1, 1_000_000), porPagina });
+  const ahora = new Date();
+  return {
+    total: r.total,
+    pagina: r.pagina,
+    por_pagina: r.por_pagina,
+    total_paginas: r.total_paginas,
+    filas: r.facturas.map((f) => {
+      const plazo = estaDentroDePlazo(f.fecha, ahora);
+      const anulada = f.estado === "Anulada";
+      return {
+        ...f,
+        dentro_de_plazo: plazo.dentro_de_plazo,
+        dias_transcurridos: plazo.dias_transcurridos,
+        dias_restantes: Math.max(0, plazo.dias_limite - plazo.dias_transcurridos),
+        devolvible: plazo.dentro_de_plazo && !anulada,
+      };
+    }),
+  };
+}
+
+/** Las devoluciones mas recientes primero, paginadas (10 por pagina): el panel lateral de "Consultar y reembolsar". */
+async function listarRecientes({ pagina, por_pagina } = {}) {
+  const porPagina = enteroPositivo(por_pagina, 10, 50);
+  const n = enteroPositivo(pagina, 1, 1_000_000);
+  const r = await devolucionesRepo.listarDevoluciones({ limite: porPagina, offset: (n - 1) * porPagina });
+  return {
+    total: r.total,
+    pagina: n,
+    por_pagina: porPagina,
+    total_paginas: Math.max(1, Math.ceil(r.total / porPagina)),
+    filas: r.filas.map((d) => ({ codigo: d.codigo, estado: d.estado, tipo: d.tipo, factura_numero: d.factura_numero, monto_total: d.monto_total, fecha_solicitud: d.fecha_solicitud })),
+  };
+}
+
 module.exports = {
+  listarFacturasParaDevolucion,
+  listarRecientes,
   listarParaExportar,
   obtenerHistorial,
   validarCajero,

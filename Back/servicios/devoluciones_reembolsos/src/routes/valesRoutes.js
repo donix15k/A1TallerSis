@@ -4,6 +4,12 @@ const valeService = require("../services/valeService");
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 
+// Cupones generados: cada vale con su cliente, fecha y hora de emision, monto y estado (?q=&pagina=&por_pagina=).
+router.get("/", wrap(async (req, res) => {
+  const r = await valeService.listarCupones(req.query);
+  res.json({ ok: true, total: r.total, pagina: r.pagina, por_pagina: r.por_pagina, total_paginas: r.total_paginas, data: r.filas });
+}));
+
 // TDSI-69: saldo disponible, estado (ACTIVO, USADO, EXPIRADO) y fecha de vencimiento de un vale.
 router.get("/:codigo", wrap(async (req, res) => {
   res.json({ ok: true, data: await valeService.consultarVale(req.params.codigo) });

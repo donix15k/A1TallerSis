@@ -116,4 +116,38 @@ async function validarSupervisor(usuario, pin) {
   throw new AppError("Facturación devolvió una respuesta inesperada al validar al supervisor.", 502, { status: respuesta.status });
 }
 
-module.exports = { obtenerFactura, validarSupervisor };
+/**
+ * Listado paginado de facturas de Facturacion (GET /api/facturas/paginadas): { total, pagina, por_pagina, total_paginas, facturas }.
+ * q busca por numero, cliente o NIT/CI; numeros trae justo esas facturas. Facturacion caida -> 503.
+ */
+async function listarFacturas({ q, pagina = 1, porPagina = 10, numeros } = {}) {
+  const params = new URLSearchParams({ pagina: String(pagina), por_pagina: String(porPagina) });
+  if (q) params.set("q", q);
+  if (numeros?.length) params.set("numeros", numeros.join(","));
+  let respuesta;
+  try {
+    respuesta = await fetch(`${urlFacturacion()}/api/facturas/paginadas?${params}`, { signal: AbortSignal.timeout(timeoutMs()) });
+  } catch (e) {
+    throw new AppError("No se pudo conectar con Facturación. Intente de nuevo.", 503, { causa: e.message });
+  }
+  const cuerpo = await respuesta.json().catch(() => null);
+  if (!respuesta.ok || !Array.isArray(cuerpo?.data)) {
+    throw new AppError(cuerpo?.mensaje || "Facturación devolvió una respuesta inesperada.", 502, { status: respuesta.status });
+  }
+  return {
+    total: cuerpo.total,
+    pagina: cuerpo.pagina,
+    por_pagina: cuerpo.por_pagina,
+    total_paginas: cuerpo.total_paginas,
+    facturas: cuerpo.data.map((f) => ({
+      numero: f.numero,
+      fecha: f.fecha,
+      cliente_nombre: f.cliente_nombre ?? null,
+      cliente_nit: f.cliente_nit ?? null,
+      estado: f.estado,
+      total: aNumero(f.total),
+    })),
+  };
+}
+
+module.exports = { obtenerFactura, validarSupervisor, listarFacturas };

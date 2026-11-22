@@ -1,0 +1,221 @@
+/* Cupon "VALE DE CONSUMO" (naranja, con el logo): se usa en pantalla y, tal cual, en la impresion (se importa tambien como texto). */
+.cupon {
+  --cupon-naranja: #f97316;
+  --cupon-naranja-oscuro: #c2410c;
+  --cupon-amarillo: #fde047;
+  --cupon-tinta: #3b1303;
+  position: relative;
+  box-sizing: border-box;
+  width: 600px;
+  height: 232px;
+  display: grid;
+  grid-template-columns: 1fr 138px;
+  overflow: hidden;
+  border-radius: 14px;
+  color: #fff;
+  font-family: 'Montserrat', 'Inter', 'Segoe UI', Arial, sans-serif;
+  background:
+    radial-gradient(160px 160px at 8% 118%, rgba(253, 224, 71, 0.55), transparent 70%),
+    radial-gradient(220px 220px at 62% -35%, rgba(255, 255, 255, 0.28), transparent 70%),
+    linear-gradient(115deg, #fb923c 0%, #f97316 45%, #ea580c 100%);
+  box-shadow: 0 18px 40px -18px rgba(154, 52, 18, 0.75), inset 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+
+/* Troquel: dos muescas a los lados y una linea punteada antes de la talonera. */
+.cupon::before,
+.cupon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: var(--cupon-fondo, #f3f5fa);
+}
+.cupon::before {
+  left: -13px;
+}
+.cupon::after {
+  right: -13px;
+}
+
+.cupon-cuerpo {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px 20px 14px 26px;
+  min-width: 0;
+}
+
+.cupon-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cupon-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 8px;
+  border-radius: 10px;
+  background: #06152f;
+  box-shadow: 0 6px 14px -8px rgba(6, 21, 47, 0.9);
+}
+.cupon-logo img:first-child {
+  height: 22px;
+  width: auto;
+}
+.cupon-logo img:last-child {
+  height: 15px;
+  width: auto;
+}
+
+.cupon-titulo {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-align: right;
+  text-shadow: 0 2px 0 rgba(154, 52, 18, 0.45);
+}
+.cupon-titulo small {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--cupon-amarillo);
+  text-shadow: none;
+}
+
+.cupon-fila {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1.5px dashed rgba(255, 255, 255, 0.55);
+  font-size: 0.74rem;
+}
+.cupon-fila dt {
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cupon-amarillo);
+  font-size: 0.62rem;
+}
+.cupon-fila dd {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+.cupon-fila--doble {
+  grid-template-columns: 112px 1fr auto auto;
+}
+.cupon-fila--doble .cupon-etq {
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--cupon-amarillo);
+  font-size: 0.62rem;
+}
+
+.cupon-pie {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.92);
+}
+.cupon-pie strong {
+  color: #fff;
+}
+
+/* Talonera derecha: el monto grande, el codigo y la firma. */
+.cupon-talon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 14px 14px;
+  border-left: 3px dotted rgba(255, 255, 255, 0.7);
+  background: rgba(154, 52, 18, 0.2);
+  text-align: center;
+}
+.cupon-monto {
+  display: grid;
+  place-items: center;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: var(--cupon-amarillo);
+  color: var(--cupon-tinta);
+  box-shadow: 0 8px 18px -8px rgba(80, 30, 0, 0.8), inset 0 0 0 4px rgba(255, 255, 255, 0.6), inset 0 0 0 6px rgba(234, 88, 12, 0.65);
+  line-height: 1;
+}
+.cupon-monto strong {
+  display: block;
+  font-size: 1.85rem;
+  font-weight: 900;
+}
+.cupon-monto span {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+.cupon-codigo {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--cupon-naranja-oscuro);
+}
+.cupon-firma {
+  width: 100%;
+  padding-top: 3px;
+  border-top: 1.5px solid #fff;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Motivos decorativos: rayas diagonales y puntos suaves. */
+.cupon-deco {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0 10px, transparent 10px 24px);
+}
+.cupon-deco::after {
+  content: '';
+  position: absolute;
+  right: 150px;
+  bottom: -46px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 14px solid rgba(253, 224, 71, 0.2);
+}
+
+.cupon--anulado {
+  filter: grayscale(0.85);
+  opacity: 0.8;
+}

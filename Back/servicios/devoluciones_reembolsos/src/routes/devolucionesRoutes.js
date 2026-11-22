@@ -28,6 +28,18 @@ router.get("/factura/:numero", wrap(async (req, res) => {
   res.json({ ok: true, data });
 }));
 
+// "Nueva devolucion": las facturas con su codigo, si siguen dentro del plazo de 7 dias y si se pueden devolver (?q=&pagina=&por_pagina=).
+router.get("/facturas", wrap(async (req, res) => {
+  const r = await devolucionService.listarFacturasParaDevolucion(req.query);
+  res.json({ ok: true, total: r.total, pagina: r.pagina, por_pagina: r.por_pagina, total_paginas: r.total_paginas, data: r.filas });
+}));
+
+// Las devoluciones mas recientes primero, 10 por pagina (?pagina=): lista lateral del cajero.
+router.get("/recientes", wrap(async (req, res) => {
+  const r = await devolucionService.listarRecientes(req.query);
+  res.json({ ok: true, total: r.total, pagina: r.pagina, por_pagina: r.por_pagina, total_paginas: r.total_paginas, data: r.filas });
+}));
+
 // TDSI-21/22: valida los productos y cantidades contra la factura, calcula el monto (TOTAL o PARCIAL),
 // genera el codigo DEV-0001 y guarda la devolucion en estado PENDIENTE.
 router.post("/", wrap(async (req, res) => {

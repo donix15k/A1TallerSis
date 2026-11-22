@@ -10,6 +10,8 @@ import './index.css'
 import './styles/vortrix.css'
 import './styles/premium.css'
 import './styles/simulacion.css'
+import './styles/devoluciones.css'
+import './styles/tablas.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

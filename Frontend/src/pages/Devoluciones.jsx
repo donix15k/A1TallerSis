@@ -14,6 +14,8 @@ import ConsultarDevolucion, { recordarDevolucion } from '../components/devolucio
 import SeccionNotaCredito from '../components/devoluciones/SeccionNotaCredito.jsx'
 import SeccionAvisos from '../components/devoluciones/SeccionAvisos.jsx'
 import { EtiquetaMarketplace, FiltroOrigen } from '../components/devoluciones/Origen.jsx'
+import ListadoFacturas from '../components/devoluciones/ListadoFacturas.jsx'
+import CuponesGenerados from '../components/devoluciones/CuponesGenerados.jsx'
 
 // Secciones extra del detalle de una devolucion, segun su estado.
 function seccionesDetalle(devolucion) {
@@ -90,11 +92,8 @@ function Devoluciones() {
   async function buscar(e, numeroForzado) {
     e?.preventDefault()
     const normalizado = normalizarNumeroFactura(numeroForzado ?? numero)
-    if (!FORMATO_FACTURA.test(normalizado)) {
-      setErrorFormato('Escriba el número con el formato F-NNNNNN (por ejemplo F-000123).')
-      inputRef.current?.focus()
-      return
-    }
+    // Si no es un numero de factura completo, lo escrito solo filtra el listado de facturas (no es un error).
+    if (!FORMATO_FACTURA.test(normalizado)) return
     setNumero(normalizado)
     setErrorFormato(null)
     setErrorApi(null)
@@ -114,6 +113,15 @@ function Devoluciones() {
     } finally {
       setBuscando(false)
     }
+  }
+
+  /** Vuelve al listado de facturas (cierra la factura que se estaba trabajando). */
+  function volverAlListado() {
+    setConsulta(null)
+    setNoEncontrada(null)
+    setErrorApi(null)
+    setSeleccion({})
+    setNumero('')
   }
 
   function alternar(item) {
@@ -245,6 +253,7 @@ function Devoluciones() {
             { id: 'nueva', etiqueta: 'Nueva devolución', icono: 'mas' },
             { id: 'pendientes', etiqueta: 'Pendientes', icono: 'bandeja', cuenta: pendientes },
             { id: 'consultar', etiqueta: 'Consultar y reembolsar', icono: 'dinero' },
+            { id: 'cupones', etiqueta: 'Cupones', icono: 'factura' },
           ].map((p) => (
             <button
               key={p.id}
@@ -278,7 +287,9 @@ function Devoluciones() {
         />
       </div>
 
-      {pestana === 'consultar' && <ConsultarDevolucion cajero={cajero} codigoInicial={codigoConsulta} seccionesDetalle={seccionesDetalle} permitirVale />}
+      {pestana === 'consultar' && <ConsultarDevolucion cajero={cajero} codigoInicial={codigoConsulta} seccionesDetalle={seccionesDetalle} permitirVale versionListado={versionBandeja} />}
+
+      {pestana === 'cupones' && <CuponesGenerados />}
 
       <div hidden={pestana !== 'nueva'}>
       <div className="vxp-card">
@@ -286,6 +297,13 @@ function Devoluciones() {
           Buscar factura
           <small>Plazo de devolución: 7 días calendario desde la compra</small>
         </h2>
+        {(consulta || buscando || noEncontrada || errorApi) && (
+          <p style={{ margin: '0 0 0.75rem' }}>
+            <Boton variante="claro" tam="sm" icono="devolucion" onClick={volverAlListado}>
+              Volver al listado de facturas
+            </Boton>
+          </p>
+        )}
         <form className="vxp-buscador" onSubmit={buscar} noValidate>
           <div className="vxp-buscador-campo">
             <Icono nombre="buscar" tam={19} />
@@ -296,12 +314,11 @@ function Devoluciones() {
                 setNumero(e.target.value.toUpperCase())
                 if (errorFormato) setErrorFormato(null)
               }}
-              onBlur={() => numero && setNumero(normalizarNumeroFactura(numero))}
-              placeholder="Número de factura, ej. F-000123"
-              aria-label="Número de factura"
+              placeholder="Buscar por número de factura, cliente o NIT/CI"
+              aria-label="Buscar factura"
               aria-invalid={Boolean(errorFormato)}
               className={errorFormato ? 'vxp-input--error' : undefined}
-              maxLength={12}
+              maxLength={60}
               autoComplete="off"
               autoFocus
             />
@@ -312,6 +329,10 @@ function Devoluciones() {
         </form>
         {errorFormato && <p className="vxp-campo-error" style={{ margin: '0.5rem 0 0' }}>{errorFormato}</p>}
       </div>
+
+      {!consulta && !buscando && !noEncontrada && !errorApi && (
+        <ListadoFacturas q={numero.trim()} version={versionBandeja} onElegir={(n) => buscar(null, n)} />
+      )}
 
       {buscando && (
         <div className="vxp-card">

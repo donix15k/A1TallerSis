@@ -58,6 +58,21 @@ async function iniciarEntorno() {
       });
       return;
     }
+    // Listado paginado (GET /api/facturas/paginadas?q=&pagina=&por_pagina=&numeros=): lo que tiene este Facturacion de mentira
+    if (req.method === "GET" && req.url.startsWith("/api/facturas/paginadas")) {
+      const u = new URL(req.url, "http://x");
+      const q = (u.searchParams.get("q") || "").toLowerCase();
+      const numeros = (u.searchParams.get("numeros") || "").split(",").filter(Boolean);
+      const porPagina = Number(u.searchParams.get("por_pagina")) || 10;
+      const pagina = Number(u.searchParams.get("pagina")) || 1;
+      const todas = [...facturas.values()]
+        .filter((f) => (!q || [f.numero, f.cliente_nombre, f.cliente_nit].some((x) => String(x).toLowerCase().includes(q))) && (!numeros.length || numeros.includes(f.numero)))
+        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      return res.end(JSON.stringify({
+        ok: true, total: todas.length, pagina, por_pagina: porPagina, total_paginas: Math.max(1, Math.ceil(todas.length / porPagina)),
+        data: todas.slice((pagina - 1) * porPagina, pagina * porPagina).map(({ numero, cliente_nombre, cliente_nit, total, estado, fecha }) => ({ numero, cliente_nombre, cliente_nit, total, estado, fecha })),
+      }));
+    }
     const numero = decodeURIComponent(req.url.split("/").pop());
     if (!facturas.has(numero)) {
       res.statusCode = 404;

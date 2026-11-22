@@ -84,6 +84,35 @@ async function listarFacturas() {
   return rows;
 }
 
+/**
+ * Facturas paginadas, de la mas reciente a la mas antigua. q busca (sin distinguir mayusculas) en el numero, el nombre y el NIT/CI del cliente;
+ * numeros (lista) trae justo esas facturas. Devuelve { total, filas }.
+ */
+async function listarFacturasPaginadas({ q = null, numeros = null, limite = 10, offset = 0 } = {}) {
+  const condiciones = [];
+  const parametros = [];
+  if (q) {
+    parametros.push(`%${String(q).replace(/[\\%_]/g, "\\$&")}%`);
+    const i = parametros.length;
+    condiciones.push(`(f.numero ILIKE $${i} ESCAPE '\\' OR f.cliente_nombre ILIKE $${i} ESCAPE '\\' OR f.cliente_nit ILIKE $${i} ESCAPE '\\')`);
+  }
+  if (numeros && numeros.length) {
+    parametros.push(numeros);
+    condiciones.push(`f.numero = ANY($${parametros.length})`);
+  }
+  const filtro = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
+  const { rows: conteo } = await query(`SELECT count(*)::int AS total FROM facturacion.facturas f ${filtro}`, parametros);
+  const { rows } = await query(
+    `SELECT f.numero, f.cliente_nombre, f.cliente_nit, f.total, f.estado, f.fecha
+       FROM facturacion.facturas f
+       ${filtro}
+      ORDER BY f.fecha DESC, f.id DESC
+      LIMIT ${Number(limite)} OFFSET ${Number(offset)}`,
+    parametros
+  );
+  return { total: conteo[0].total, filas: rows };
+}
+
 async function marcarImpresa(numero, impresaEn) {
   await query(
     `UPDATE facturacion.facturas
@@ -123,6 +152,7 @@ module.exports = {
   crearFactura,
   obtenerFacturaCompleta,
   listarFacturas,
+  listarFacturasPaginadas,
   marcarImpresa,
   incrementarVecesImpresa,
   registrarImpresion,

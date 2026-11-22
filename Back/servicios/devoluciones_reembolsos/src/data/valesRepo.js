@@ -117,4 +117,26 @@ async function marcarExpirados() {
   return rowCount;
 }
 
-module.exports = { emitirVale, obtenerPorCodigo, bloquearPorCodigo, usoActivo, descontar, reintegrar, marcarExpirados, formatear, codigoAleatorio, DIAS_VIGENCIA };
+/** Todos los vales (cupones) emitidos, el mas reciente primero, con su devolucion, factura, NIT y cajero. q busca por codigo, devolucion, factura o NIT. */
+async function listar({ q = null, limite = 10, offset = 0 } = {}) {
+  const parametros = [];
+  let filtro = "";
+  if (q) {
+    parametros.push(`%${String(q).replace(/[\\%_]/g, "\\$&")}%`);
+    filtro = `WHERE (v.codigo ILIKE $1 ESCAPE '\\' OR d.codigo ILIKE $1 ESCAPE '\\' OR d.factura_numero ILIKE $1 ESCAPE '\\' OR d.cliente_nit ILIKE $1 ESCAPE '\\')`;
+  }
+  const { rows: conteo } = await query(`SELECT count(*)::int AS total FROM devoluciones.vales_compra v JOIN devoluciones.devoluciones d ON d.id = v.devolucion_id ${filtro}`, parametros);
+  const { rows } = await query(
+    `SELECT v.id, v.codigo, v.monto, v.saldo_disponible, v.estado, v.emitido_en, v.expira_en,
+            d.codigo AS devolucion_codigo, d.factura_numero, d.cliente_nit, d.creado_por
+       FROM devoluciones.vales_compra v
+       JOIN devoluciones.devoluciones d ON d.id = v.devolucion_id
+       ${filtro}
+      ORDER BY v.emitido_en DESC, v.id DESC
+      LIMIT ${Number(limite)} OFFSET ${Number(offset)}`,
+    parametros
+  );
+  return { total: conteo[0].total, filas: rows.map((r) => ({ ...formatear(r), devolucion_codigo: r.devolucion_codigo, factura_numero: r.factura_numero, cliente_nit: r.cliente_nit, cajero: r.creado_por })) };
+}
+
+module.exports = { listar, emitirVale, obtenerPorCodigo, bloquearPorCodigo, usoActivo, descontar, reintegrar, marcarExpirados, formatear, codigoAleatorio, DIAS_VIGENCIA };

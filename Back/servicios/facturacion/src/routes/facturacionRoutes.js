@@ -29,6 +29,16 @@ router.post("/envios-contabilidad/:id/reenviar", wrap(async (req, res) => {
   res.status(status).json({ ok: status !== 502, data: envio });
 }));
 
+// Listado paginado y con busqueda (numero, cliente, NIT/CI) para las pantallas con muchas facturas: ?q=&pagina=&por_pagina=&numeros=F-1,F-2
+router.get("/paginadas", wrap(async (req, res) => {
+  const porPagina = Math.min(100, Math.max(1, Number.parseInt(req.query.por_pagina, 10) || 10));
+  const pagina = Math.max(1, Number.parseInt(req.query.pagina, 10) || 1);
+  const numeros = String(req.query.numeros || "").split(",").map((n) => n.trim()).filter(Boolean).slice(0, 200);
+  const q = String(req.query.q || "").trim().slice(0, 100) || null;
+  const r = await facturasRepo.listarFacturasPaginadas({ q, numeros, limite: porPagina, offset: (pagina - 1) * porPagina });
+  res.json({ ok: true, total: r.total, pagina, por_pagina: porPagina, total_paginas: Math.max(1, Math.ceil(r.total / porPagina)), data: r.filas });
+}));
+
 router.get("/impresora", wrap((req, res) => res.json({ ok: true, data: impresion.estadoImpresora() })));
 router.patch("/impresora", wrap((req, res) => res.json({ ok: true, data: impresion.conmutarImpresora(req.body.conectada) })));
 
