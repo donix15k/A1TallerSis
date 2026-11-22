@@ -1,4 +1,5 @@
 const repo = require("../data/enviosContabilidadRepo");
+const { registrarEnvio } = require("../utils/pubsubLog");
 const { publicar } = require("../clients/pubsubPublisher");
 const cfg = require("../config/contabilidad");
 
@@ -82,6 +83,7 @@ async function intentarEnvio(envio) {
     origen: "facturacion",
     grupo: cfg.GRUPO_ORIGEN,
   });
+  await registrarEnvio({ servicio: "facturacion", tipo: TIPOS[envio.tipo], referencia: payload.referencia_externa, topico: cfg.PUBSUB_TOPIC, origen: cfg.GRUPO_ORIGEN, payload, ok: r.ok, messageId: r.messageId, error: r.error });
   if (r.ok) return repo.marcarEnviado(envio.id, r.messageId);
   return repo.registrarFallo(envio.id, r, cfg.MAX_INTENTOS, cfg.BACKOFF_BASE_SEG);
 }

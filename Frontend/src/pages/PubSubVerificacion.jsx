@@ -26,6 +26,7 @@ function PubSubVerificacion() {
   const [topicoPersonalizado, setTopicoPersonalizado] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [filtroDireccion, setFiltroDireccion] = useState('') // '' | ENVIADO | RECIBIDO
   const [error, setError] = useState(null)
   const [ultimoResultado, setUltimoResultado] = useState(null)
 
@@ -183,7 +184,17 @@ function PubSubVerificacion() {
         </p>
       )}
 
-      <h2 style={{ marginTop: '2rem' }}>Historial de envíos</h2>
+      <h2 style={{ marginTop: '2rem' }}>Registro de mensajes (enviados y recibidos)</h2>
+      <p style={{ color: '#616e7c', marginTop: 0 }}>
+        Todo mensaje de Pub/Sub que sale de A1 o llega a A1, de cualquier integración, con su origen, destino, fecha y hora.
+      </p>
+      <div className="tipo-venta-opciones" style={{ marginBottom: '1rem' }}>
+        {[['', 'Todos'], ['ENVIADO', 'Enviados'], ['RECIBIDO', 'Recibidos']].map(([valor, etiqueta]) => (
+          <button key={valor} type="button" className={`tipo-venta-opcion${filtroDireccion === valor ? ' activa' : ''}`} onClick={() => setFiltroDireccion(valor)}>
+            {etiqueta}
+          </button>
+        ))}
+      </div>
 
       {cargandoLog && <Cargando />}
       {errorLog && <p className="error">Error: {errorLog}</p>}
@@ -192,10 +203,11 @@ function PubSubVerificacion() {
 
       {log.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {log.map((r) => {
+          {log.filter((r) => !filtroDireccion || (r.direccion || 'ENVIADO') === filtroDireccion).map((r) => {
             const expandido = expandidos.has(r.id)
             const nombreGrupo = grupos.find((g) => g.grupo === r.grupo)?.nombre
             const nombreOrigen = grupos.find((g) => g.grupo === r.grupo_origen)?.nombre
+            const recibido = r.direccion === 'RECIBIDO'
             return (
               <div key={r.id} style={{ padding: '1rem 1.25rem', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: '#fff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -205,16 +217,18 @@ function PubSubVerificacion() {
                     {nombreGrupo ? ` · ${nombreGrupo}` : ''}
                   </strong>
                   {r.ok ? (
-                    <span className="badge-estado badge-estado--emitida">Enviado</span>
+                    <span className="badge-estado badge-estado--emitida">{recibido ? 'Recibido' : 'Enviado'}</span>
                   ) : (
-                    <span className="badge-estado badge-comparacion--faltante">No llegó</span>
+                    <span className="badge-estado badge-comparacion--faltante">{recibido ? 'Con error' : 'No llegó'}</span>
                   )}
                 </div>
 
                 <p style={{ margin: '0.35rem 0', color: '#616e7c', fontSize: '0.85rem' }}>
                   {new Date(r.creado_en).toLocaleString()}
                   {r.ok ? ` · Message ID: ${r.message_id}` : ` · Error: ${r.error}`}
-                  {r.enviado_por ? ` · Enviado por: ${r.enviado_por}` : ''}
+                  {r.servicio ? ` · Servicio: ${r.servicio}` : ''}
+                  {r.tipo ? ` · ${r.tipo}${r.referencia ? ` ${r.referencia}` : ''}` : ''}
+                  {r.enviado_por && r.enviado_por !== r.servicio ? ` · Enviado por: ${r.enviado_por}` : ''}
                 </p>
                 <p style={{ margin: '0 0 0.5rem', color: '#616e7c', fontSize: '0.8rem', wordBreak: 'break-all' }}>
                   Tópico: {r.topico}

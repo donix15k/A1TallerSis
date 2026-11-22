@@ -154,7 +154,7 @@ function Contenido({ token }) {
             <button type="submit" className="sim-btn sim-btn--grande sim-btn--bloque" disabled={enviando || !form.monto}>
               <Icono nombre={enviando ? 'recargar' : 'enviar'} tam={19} className={enviando ? 'sim-giro' : undefined} /> {enviando ? 'Entregando…' : 'Entregar orden a Pagos a Proveedores'}
             </button>
-            <small style={{ color: '#64748b' }}>La orden se entrega por HTTP, como la recibe hoy Pagos a Proveedores; el administrador la ve como pendiente de pago.</small>
+            <small style={{ color: '#64748b' }}>La orden se publica por Pub/Sub en el tópico de A1; Pagos a Proveedores la lee de su suscripción y el administrador la ve como pendiente de pago.</small>
           </div>
         </form>
       </div>

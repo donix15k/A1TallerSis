@@ -82,6 +82,7 @@ async function publicarProductosVendidos(fecha, { grupoOrigen, enviadoPor } = {}
       grupo_origen: origen.grupo,
       topico: cfg.PUBSUB_TOPIC,
       mensaje: `productos_vendidos ${reporteId}`,
+      servicio: "gestion_pagos", tipo: "PRODUCTOS_VENDIDOS", referencia: reporteId,
       payload_enviado: mensaje,
       ok: resultado.ok,
       message_id: resultado.ok ? resultado.messageId : null,

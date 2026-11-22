@@ -1,4 +1,5 @@
 const subscriber = require("../clients/pubsubSubscriber");
+const { registrarRecepcion, parsear } = require("../utils/pubsubLog");
 const { procesarMensaje } = require("../services/respuestasContabilidadService");
 const cfg = require("../config/contabilidad");
 
@@ -23,6 +24,7 @@ async function procesarRespuestas() {
         const r = await procesarMensaje(m);
         (r.propio ? confirmar : liberar).push(m.ackId);
         if (r.propio) {
+          await registrarRecepcion({ servicio: "facturacion", tipo: "RESULTADO_DOCUMENTO", referencia: r.referencia, origen: "D", payload: parsear(m.texto), messageId: m.messageId, mensaje: `Contabilidad respondió ${r.referencia}: ${r.resultado}` });
           resultados.push(r);
           console.log(`[contabilidad] ${r.referencia} -> ${r.resultado}${r.envio.numero_asiento ? ` (asiento ${r.envio.numero_asiento})` : ""}`);
         }

@@ -264,24 +264,39 @@ test("Compras acusa un reporte nuestro: el mensaje lo reconoce el job de acuses;
   assert.equal(publicados.length, 1);
 });
 
-test("Compras manda una orden de pago a Pagos a Proveedores con el formato que ese servicio valida; los errores del servicio se respetan", async () => {
-  const r = await simulacion.enviarOrdenCompras({ proveedor_id: "andina", monto: 3450.5, concepto: "Compra de abarrotes", dias_vencimiento: 20 });
-  assert.equal(ordenesRecibidas.length, 1);
-  const o = ordenesRecibidas[0];
+test("Compras manda una orden de pago por Pub/Sub al topico de A1, con el sobre de siempre y el formato que Pagos a Proveedores lee y valida", async () => {
+  const leeProveedores = require(`${servicios}/pagos_proveedores/src/services/ordenesComprasPubSubService`).interpretar;
+  const r = await simulacion.enviarOrdenCompras({ proveedor_id: "andina", monto: 3450.5, concepto: "Compra de abarrotes", dias_vencimiento: 20, enviado_por: MARCA });
+  assert.equal(publicados.length, 1);
+  const { topico, json, attributes } = publicados[0];
+  assert.equal(topico, A1);
+  assert.deepEqual([json.sistema_origen, json.tipo_operacion, json.referencia_externa], ["GESTION_DE_COMPRAS_Y_PROVEEDORES", "orden_pago", r.numero]);
+  assert.match(json.fecha_documento, /^\d{4}-\d{2}-\d{2}$/);
+  assert.deepEqual([attributes.tipo, attributes.grupo, attributes.referencia_externa], ["ORDEN_PAGO", "C", r.numero]);
+  const o = json.datos;
   assert.match(o.numero, /^OP-SIM-/);
   assert.match(o.ordenCompraId, /^OC-SIM-/);
   assert.deepEqual([o.monto, o.concepto, o.proveedor.razonSocial, o.proveedor.banco], [3450.5, "Compra de abarrotes", "Distribuidora Andina S.R.L.", "Banco Unión"]);
   assert.ok(o.proveedor.nit && o.proveedor.cuentaBancaria);
   assert.match(o.fechaVencimiento, /^\d{4}-\d{2}-\d{2}$/);
-  assert.deepEqual([r.numero, r.monto], [o.numero, 3450.5]);
+  assert.deepEqual([r.numero, r.monto, r.ok], [o.numero, 3450.5, true]);
+  assert.ok(leeProveedores(JSON.stringify(json)), "Pagos a Proveedores reconoce el mensaje como una orden de pago");
+  // los otros servicios que comparten la suscripcion NO se lo llevan
+  assert.equal(leeFacturacion(JSON.stringify(json)), null);
+  assert.equal(esVentaMarketplace(JSON.stringify(json)), false);
+
+  // y queda en el registro unico de Pub/Sub: quien lo mando, hacia donde, cuando
+  const { rows } = await query(`SELECT direccion, servicio, tipo, referencia, grupo_origen, grupo, ok, message_id, creado_en FROM pagos.pubsub_verificaciones WHERE referencia = $1`, [r.numero]);
+  assert.equal(rows.length, 1);
+  assert.deepEqual([rows[0].direccion, rows[0].servicio, rows[0].tipo, rows[0].grupo_origen, rows[0].grupo, rows[0].ok], ["ENVIADO", "gestion_pagos", "ORDEN_PAGO", "C", "A1", true]);
+  assert.equal(rows[0].message_id, r.message_id);
+  assert.ok(rows[0].creado_en);
 
   for (const mala of [{ proveedor_id: "x", monto: 10 }, { proveedor_id: "sur", monto: 0 }, { proveedor_id: "sur", monto: -1 }, { proveedor_id: "sur", monto: 10.123 }, { proveedor_id: "sur", monto: "abc" }, { proveedor_id: "sur", monto: 10, dias_vencimiento: 0 }]) {
     await assert.rejects(simulacion.enviarOrdenCompras(mala), (e) => e.status === 400, JSON.stringify(mala));
   }
-  assert.equal(ordenesRecibidas.length, 1);
-  respuestaProveedores = { status: 409, cuerpo: { ok: false, mensaje: "Esta orden de compra ya fue recibida" } };
-  await assert.rejects(simulacion.enviarOrdenCompras({ proveedor_id: "sur", monto: 10 }), (e) => e.status === 409);
-  respuestaProveedores = { status: 500, cuerpo: { ok: false, mensaje: "boom" } };
+  assert.equal(publicados.length, 1); // las invalidas no publican nada
+  publisher.usarClienteDePrueba(publicadorFalso("PERMISSION_DENIED"));
   await assert.rejects(simulacion.enviarOrdenCompras({ proveedor_id: "sur", monto: 10 }), (e) => e.status === 502);
 });
 

@@ -1,4 +1,5 @@
 const subscriber = require("../clients/pubsubSubscriber");
+const { registrarRecepcion, parsear } = require("../utils/pubsubLog");
 const { procesarMensaje } = require("../services/acusesComprasService");
 const cfg = require("../config/compras");
 
@@ -24,6 +25,7 @@ async function procesarAcuses() {
         const r = await procesarMensaje(m);
         (r.propio ? confirmar : liberar).push(m.ackId);
         if (r.propio) {
+          await registrarRecepcion({ servicio: "gestion_pagos", tipo: "ACUSE_PRODUCTOS_VENDIDOS", referencia: r.reporteId, origen: "C", payload: parsear(m.texto), messageId: m.messageId, mensaje: `Compras acusó recibo del reporte ${r.reporteId}` });
           resultados.push(r);
           console.log(`[compras] ${r.reporteId} -> Recibido`);
         }

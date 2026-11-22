@@ -1,4 +1,5 @@
 const subscriber = require("../clients/pubsubSubscriber");
+const { registrarRecepcion, parsear } = require("../utils/pubsubLog");
 const { procesarMensaje } = require("../services/solicitudesMarketplaceService");
 const erroresRepo = require("../data/marketplaceErroresRepo");
 const cfg = require("../config/marketplace");
@@ -36,6 +37,7 @@ async function procesarSolicitudes() {
           continue;
         }
         confirmar.push(m.ackId);
+        await registrarRecepcion({ servicio: "devoluciones", tipo: "SOLICITUD_DEVOLUCION", referencia: r.solicitud.orden_id, origen: "E", payload: parsear(m.texto), messageId: m.messageId, mensaje: `Solicitud de devolución del Marketplace: orden ${r.solicitud.orden_id} -> ${r.resultado.codigo}` });
         resultados.push({ ...r.resultado, orden_id: r.solicitud.orden_id });
         console.log(`[marketplace] Solicitud de la orden ${r.solicitud.orden_id} -> ${r.resultado.duplicada ? "ya estaba registrada como" : "devolucion"} ${r.resultado.codigo}`);
       } catch (e) {
@@ -45,6 +47,7 @@ async function procesarSolicitudes() {
           continue;
         }
         await erroresRepo.registrar({ messageId: m.messageId, error: e.message, payload: m.texto });
+        await registrarRecepcion({ servicio: "devoluciones", tipo: "SOLICITUD_DEVOLUCION", origen: "E", payload: parsear(m.texto), messageId: m.messageId, ok: false, error: e.message, mensaje: "Solicitud de devolución inválida" });
         confirmar.push(m.ackId);
         console.error(`[marketplace] Solicitud ${m.messageId} invalida, se guardo el error:`, e.message);
       }

@@ -90,6 +90,7 @@ async function publicarDiferencia(mensaje, { grupoOrigen, enviadoPor } = {}) {
       grupo_origen: grupo,
       topico: cfg.PUBSUB_TOPIC,
       mensaje: `${mensajeAEnviar.tipo_operacion} ${mensajeAEnviar.referencia_externa}`,
+      servicio: "gestion_caja", tipo: "DIFERENCIA_CAJA", referencia: mensajeAEnviar.referencia_externa,
       payload_enviado: mensajeAEnviar,
       ok: resultado.ok,
       message_id: resultado.ok ? resultado.messageId : null,

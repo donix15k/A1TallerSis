@@ -2,6 +2,7 @@
 // (ucb-sis323-sub-e): DEVOLUCION_RESUELTA con la orden, aprobada/rechazada, el monto reembolsado y el N° de nota de credito
 // o el motivo del rechazo. Asincrono: se publica y no se espera.
 const repo = require("../data/enviosMarketplaceRepo");
+const { registrarEnvio } = require("../utils/pubsubLog");
 const notasCreditoRepo = require("../data/notasCreditoRepo");
 const { publicar } = require("../clients/pubsubPublisher");
 const cfg = require("../config/marketplace");
@@ -27,6 +28,7 @@ async function intentarEnvio(envio) {
     },
     { topico: cfg.PUBSUB_TOPIC, variable: "MARKETPLACE_PUBSUB_TOPIC" }
   );
+  await registrarEnvio({ servicio: "devoluciones", tipo: "DEVOLUCION_RESUELTA", referencia: payload.referencia_externa, topico: cfg.PUBSUB_TOPIC, origen: cfg.GRUPO_ORIGEN, payload, ok: r.ok, messageId: r.messageId, error: r.error });
   if (r.ok) return repo.marcarEnviado(envio.id, r.messageId);
   return repo.registrarFallo(envio.id, r, cfg.MAX_INTENTOS, cfg.BACKOFF_BASE_SEG);
 }

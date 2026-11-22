@@ -1,4 +1,5 @@
 const subscriber = require("../clients/pubsubSubscriber");
+const { registrarRecepcion, parsear } = require("../utils/pubsubLog");
 const { recibirVenta } = require("../services/ventaOnlineService");
 const ventasOnlineRepo = require("../data/ventasOnlineRepo");
 const cfg = require("../config/marketplace");
@@ -51,6 +52,7 @@ async function procesarVentas() {
       try {
         const json = JSON.parse(m.texto);
         const r = await recibirVenta(json);
+        await registrarRecepcion({ servicio: "gestion_pagos", tipo: "VENTA_ONLINE", referencia: r.ordenId, origen: "E", payload: json, messageId: m.messageId, mensaje: `Venta del Marketplace ${r.ordenId}${r.duplicada ? " (ya estaba registrada)" : r.numeroFactura ? ` -> factura ${r.numeroFactura}` : " (sin factura)"}` });
         resultados.push(r);
         // TDSI-957: el aviso al Marketplace ya no se publica solo -- el Administrador
         // lo revisa y lo manda a mano desde el panel, no aparece en este log.
@@ -62,6 +64,7 @@ async function procesarVentas() {
         console.log(`[marketplace] ${r.ordenId} -> ${estado}`);
       } catch (e) {
         await ventasOnlineRepo.registrarMensajeInvalido({ messageId: m.messageId, error: e.message, payload: m.texto });
+        await registrarRecepcion({ servicio: "gestion_pagos", tipo: "VENTA_ONLINE", origen: "E", payload: parsear(m.texto), messageId: m.messageId, ok: false, error: e.message, mensaje: "Venta del Marketplace inválida" });
         console.error(`[marketplace] Mensaje ${m.messageId} invalido, se guardo el error:`, e.message);
       }
     }

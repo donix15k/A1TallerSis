@@ -55,6 +55,7 @@ async function publicarComoGrupo(nombreVista, payload, { resumen, atributos = {}
     grupo_origen: v.grupo,
     topico: TOPICO_ENTRADA(),
     mensaje: `[Simulación ${v.grupo_info.nombre}] ${resumen}`.slice(0, 2000),
+    servicio: "gestion_pagos", tipo: atributos.tipo || `SIMULACION_${nombreVista.toUpperCase()}`, referencia: atributos.referencia_externa || null,
     payload_enviado: payload,
     ok: resultado.ok,
     message_id: resultado.ok ? resultado.messageId : null,
@@ -262,8 +263,8 @@ async function acusarCompras({ reporte_id, enviado_por, alPublicar } = {}) {
   return { ...enviado, reporte_id: id };
 }
 
-/** Compras manda una orden de pago aprobada a Pagos a Proveedores (hoy llega por HTTP, como en el flujo real). */
-async function enviarOrdenCompras({ proveedor_id, monto, concepto, dias_vencimiento } = {}) {
+/** Compras manda una orden de pago aprobada: se PUBLICA por Pub/Sub al topico de A1 y Pagos a Proveedores la lee de su suscripcion. */
+async function enviarOrdenCompras({ proveedor_id, monto, concepto, dias_vencimiento, enviado_por } = {}) {
   const proveedor = PROVEEDORES.find((p) => p.id === proveedor_id);
   if (!proveedor) throw new AppError(`El proveedor debe ser uno de: ${PROVEEDORES.map((p) => p.id).join(", ")}.`, 400, { proveedor_id });
   const m = Number(monto);
@@ -285,15 +286,19 @@ async function enviarOrdenCompras({ proveedor_id, monto, concepto, dias_vencimie
     fechaVencimiento: vence,
     concepto: texto,
   };
-  let r;
-  try {
-    r = await fetch(`${urlProveedores()}/api/proveedores/compras/ordenes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orden), signal: AbortSignal.timeout(8000) });
-  } catch {
-    throw new AppError("No se pudo conectar con Pagos a Proveedores para entregar la orden.", 502);
-  }
-  const cuerpo = await r.json().catch(() => null);
-  if (!r.ok) throw new AppError(cuerpo?.mensaje || `Pagos a Proveedores respondió HTTP ${r.status}`, r.status >= 400 && r.status < 500 ? r.status : 502, cuerpo?.detalle ?? null);
-  return { ok: true, numero: orden.numero, orden_compra_id: orden.ordenCompraId, proveedor: proveedor.razonSocial, monto: m, vence };
+  const payload = {
+    sistema_origen: VISTAS.compras.sistema_origen,
+    tipo_operacion: "orden_pago",
+    referencia_externa: orden.numero,
+    fecha_documento: fechaDocumentoHoy(),
+    datos: orden,
+  };
+  const enviado = await publicarComoGrupo("compras", payload, {
+    resumen: `Orden de pago ${orden.numero}: ${proveedor.razonSocial} por Bs ${m}`,
+    atributos: { tipo: "ORDEN_PAGO", tipo_operacion: "orden_pago", referencia_externa: orden.numero },
+    enviado_por,
+  });
+  return { ...enviado, numero: orden.numero, orden_compra_id: orden.ordenCompraId, proveedor: proveedor.razonSocial, monto: m, vence };
 }
 
 /** Las ordenes pendientes que ve Pagos a Proveedores (lo que Compras ya nos entrego). */

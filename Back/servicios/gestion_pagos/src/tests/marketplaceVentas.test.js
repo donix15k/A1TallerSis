@@ -34,7 +34,7 @@ const ventaMsg = (ordenId, extra = {}) =>
 
 // Suscripcion simulada: entrega los mensajes dados y registra que se confirmo.
 function suscripcionFalsa(textos) {
-  const falsa = { confirmados: [] };
+  const falsa = { confirmados: [], liberados: [] };
   falsa.pull = async () => [{
     receivedMessages: textos.map((t, i) => ({
       ackId: `ack-${i}`,
@@ -42,6 +42,7 @@ function suscripcionFalsa(textos) {
     })),
   }];
   falsa.acknowledge = async ({ ackIds }) => falsa.confirmados.push(...ackIds);
+  falsa.modifyAckDeadline = async ({ ackIds }) => falsa.liberados.push(...ackIds);
   falsa.close = async () => {};
   return falsa;
 }
@@ -306,7 +307,7 @@ test("TDSI-179: la misma orden que llega dos veces no se duplica", async () => {
   assert.equal(rows[0].n, 1);
 });
 
-test("TDSI-179: un mensaje mal formado no se registra como venta, se guarda el error, y se confirma igual", async () => {
+test("TDSI-179: una venta mal formada no se registra, se guarda el error y se confirma; lo que no es una venta (ni JSON) se libera sin confirmar para su dueño", async () => {
   const malo = JSON.stringify({ ordenId: `${PREFIJO}-malo`, items: [] }); // sin nit, sin items validos
   const noEsJson = "esto no es json";
   const falsa = suscripcionFalsa([malo, noEsJson]);
@@ -315,11 +316,12 @@ test("TDSI-179: un mensaje mal formado no se registra como venta, se guarda el e
   const resultados = await procesarVentas();
   assert.equal(resultados.length, 0); // ninguno se guardo como venta
 
-  assert.deepEqual(falsa.confirmados, ["ack-0", "ack-1"]); // pero ambos se confirman (topico propio, no se reintentan)
+  assert.deepEqual(falsa.confirmados, ["ack-0"]); // la venta invalida se confirma (no se va a poder procesar nunca)
+  assert.deepEqual(falsa.liberados, ["ack-1"]); // el texto suelto no es del Marketplace: la suscripcion es compartida y lo lee quien le toque
 
   const { rows } = await query(
     `SELECT message_id FROM pagos.marketplace_mensajes_error WHERE message_id LIKE $1 ORDER BY message_id`,
     [`${PREFIJO}%`]
   );
-  assert.deepEqual(rows.map((r) => r.message_id), [`${PREFIJO}-m0`, `${PREFIJO}-m1`]);
+  assert.deepEqual(rows.map((r) => r.message_id), [`${PREFIJO}-m0`]);
 });

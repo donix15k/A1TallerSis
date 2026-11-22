@@ -1,4 +1,5 @@
 const { AppError } = require("../utils/AppError");
+const { registrarEnvio } = require("../utils/pubsubLog");
 const enviosRepo = require("../data/enviosContabilidadRepo");
 const { enviarReporte } = require("../clients/contabilidadProxy");
 const { publicarReporte } = require("../clients/pubsubPublisher");
@@ -45,6 +46,9 @@ async function intentarEnvio(envio) {
         grupo: cfg.GRUPO_ORIGEN,
       })
     : await enviarReporte(payload, clave);
+  if (canal === "PUBSUB") {
+    await registrarEnvio({ servicio: "pagos_proveedores", tipo: payload.tipo || "LOTE_CIERRE", referencia: `LOTE-${payload.fecha}`, topico: cfg.PUBSUB_TOPIC, origen: cfg.GRUPO_ORIGEN, payload, ok: r.ok, messageId: r.messageId, error: r.error });
+  }
   if (r.ok) return enviosRepo.marcarEnviado(envio, { ...r, canal });
   return enviosRepo.registrarFallo(envio, r, cfg.CONTABILIDAD_MAX_INTENTOS, cfg.CONTABILIDAD_BACKOFF_BASE_SEG, canal);
 }

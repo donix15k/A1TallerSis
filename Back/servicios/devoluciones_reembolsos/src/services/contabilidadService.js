@@ -1,6 +1,7 @@
 // TDSI-92: envio de las notas de credito a Contabilidad (Grupo D) por Pub/Sub, de forma asincrona: se publica y no se
 // espera; Contabilidad responde despues en nuestra suscripcion (TDSI-94).
 const repo = require("../data/enviosContabilidadRepo");
+const { registrarEnvio } = require("../utils/pubsubLog");
 const notasCreditoRepo = require("../data/notasCreditoRepo");
 const { publicar } = require("../clients/pubsubPublisher");
 const cfg = require("../config/contabilidad");
@@ -24,6 +25,7 @@ async function intentarEnvio(envio) {
     origen: "devoluciones",
     grupo: cfg.GRUPO_ORIGEN,
   });
+  await registrarEnvio({ servicio: "devoluciones", tipo: "NOTA_CREDITO", referencia: payload.referencia_externa, topico: cfg.PUBSUB_TOPIC, origen: cfg.GRUPO_ORIGEN, payload, ok: r.ok, messageId: r.messageId, error: r.error });
   if (r.ok) return repo.marcarEnviado(envio.id, r.messageId);
   return repo.registrarFallo(envio.id, r, cfg.MAX_INTENTOS, cfg.BACKOFF_BASE_SEG);
 }

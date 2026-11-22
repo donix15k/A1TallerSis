@@ -44,6 +44,7 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`[PagosProveedores] Servidor corriendo en puerto ${PORT}`);
   require("./jobs/reintentoConfirmaciones").iniciar();
   require("./jobs/reintentoEnviosContabilidad").iniciar(); // TDSI-422
+  require("./jobs/ordenesCompras").iniciar(); // ordenes de pago de Compras por Pub/Sub
   const integ = require("./config/integraciones");
   console.log(`[contabilidad] Canal de envio: ${integ.PUBSUB_TOPIC ? `Pub/Sub (${integ.PUBSUB_TOPIC})` : "HTTP"}`); // TDSI-656
 });

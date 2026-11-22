@@ -77,6 +77,7 @@ async function enviarVerificacion({ grupo_origen, grupo, topico_personalizado, m
     grupo_origen: origen.grupo,
     topico: destino.topico,
     mensaje: texto,
+    servicio: "gestion_pagos", tipo: "VERIFICACION",
     payload_enviado: payload,
     ok: resultado.ok,
     message_id: resultado.ok ? resultado.messageId : null,

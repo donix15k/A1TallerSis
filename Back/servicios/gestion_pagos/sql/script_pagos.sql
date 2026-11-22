@@ -701,3 +701,14 @@ INSERT INTO pagos.kpi_objetivos (indicador, nombre, unidad, limite_verde, limite
 ON CONFLICT (indicador) DO NOTHING;
 
 ALTER TABLE pagos.kpi_objetivos ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================================================
+-- Registro unico de Pub/Sub: ademas de las pruebas manuales, cada mensaje que A1 ENVIA o RECIBE (por cualquier microservicio) queda aqui
+-- con su direccion, servicio, tipo, referencia, grupo origen y destino, topico, messageId, resultado y fecha. IDEMPOTENTE.
+-- ==========================================================================
+ALTER TABLE pagos.pubsub_verificaciones
+    ADD COLUMN IF NOT EXISTS direccion  VARCHAR(10) NOT NULL DEFAULT 'ENVIADO',
+    ADD COLUMN IF NOT EXISTS servicio   VARCHAR(40),
+    ADD COLUMN IF NOT EXISTS tipo       VARCHAR(60),
+    ADD COLUMN IF NOT EXISTS referencia VARCHAR(80);
+CREATE INDEX IF NOT EXISTS idx_pubsub_verificaciones_direccion ON pagos.pubsub_verificaciones (direccion, creado_en DESC);

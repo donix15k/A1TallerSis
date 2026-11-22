@@ -76,6 +76,10 @@ module.exports = {
   GOOGLE_CREDENTIALS: credencialesGoogle("GOOGLE_CREDENTIALS_JSON"),
   PUBSUB_TIMEOUT_MS: entero("PUBSUB_TIMEOUT_MS", 10000, 1000, 60000),
 
+  // Ordenes de pago que Compras nos manda por Pub/Sub: suscripcion de A1 (la misma que leen los demas servicios; cada uno toma solo lo suyo).
+  ORDENES_SUBSCRIPTION: String(process.env.ORDENES_COMPRAS_SUBSCRIPTION || "").trim() || null,
+  ORDENES_INTERVALO_SEG: entero("ORDENES_COMPRAS_INTERVALO_SEG", 30, 5, 3600),
+
   // TDSI-22: datos de la empresa que van en el reporte a Contabilidad
   EMPRESA: {
     nombre: process.env.EMPRESA_NOMBRE || "TallerSis",

@@ -54,7 +54,7 @@ router.get("/compras/ordenes", wrap(async (req, res) => {
   res.json({ ok: true, data: await simulacion.ordenesPendientesCompras() });
 }));
 router.post("/compras/ordenes", wrap(async (req, res) => {
-  const data = await simulacion.enviarOrdenCompras(req.body);
+  const data = await simulacion.enviarOrdenCompras({ ...req.body, enviado_por: quien(req) });
   res.status(201).json({ ok: true, mensaje: "Orden de pago entregada a Pagos a Proveedores", data });
 }));
 

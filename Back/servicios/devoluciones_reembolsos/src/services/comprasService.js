@@ -1,6 +1,7 @@
 // TDSI-104: aviso de productos devueltos a Compras (Grupo C) por Pub/Sub, de forma asincrona: se publica en
 // ucb-sis323-sub-c y no se espera; el acuse de Compras llega despues a nuestra suscripcion (TDSI-105).
 const repo = require("../data/enviosComprasRepo");
+const { registrarEnvio } = require("../utils/pubsubLog");
 const { publicar } = require("../clients/pubsubPublisher");
 const cfg = require("../config/compras");
 const { armarMensajeProductosDevueltos } = require("./comprasMensaje");
@@ -27,6 +28,7 @@ async function intentarEnvio(envio) {
     },
     { topico: cfg.PUBSUB_TOPIC, variable: "COMPRAS_PUBSUB_TOPIC" }
   );
+  await registrarEnvio({ servicio: "devoluciones", tipo: "PRODUCTOS_DEVUELTOS", referencia: payload.referencia_externa, topico: cfg.PUBSUB_TOPIC, origen: cfg.GRUPO_ORIGEN, payload, ok: r.ok, messageId: r.messageId, error: r.error });
   if (r.ok) return repo.marcarEnviado(envio.id, r.messageId);
   return repo.registrarFallo(envio.id, r, cfg.MAX_INTENTOS, cfg.BACKOFF_BASE_SEG);
 }
