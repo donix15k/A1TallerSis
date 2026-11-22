@@ -214,3 +214,27 @@ test("el aviso a Contabilidad sale por defecto desde el grupo A1 (somos el grupo
   await assert.rejects(() => reenviarContabilidad(id2, { grupoOrigen: "Z" }), /uno de: A, A1, A2, B/);
 });
 
+
+test("una diferencia RECHAZADA por Contabilidad se reenvia solo con una justificacion: sale un mensaje nuevo que la lleva", async () => {
+  const turno = await turnoCerrado();
+  const id = await diferenciaPendiente(turno);
+  publisher.usarClienteDePrueba(topicoQueCaptura());
+  await resolverDiferencia(id, { justificacion: "Faltó un billete de Bs 20" });
+  const { registrarResultado } = require("../data/diferenciasEnviosRepo");
+  await registrarResultado(id, { estado: "Rechazado", motivo: "Falta el comprobante del faltante" });
+  const antes = publicados.length;
+
+  await assert.rejects(() => reenviarContabilidad(id), (e) => e.status === 400);
+  await assert.rejects(() => reenviarContabilidad(id, { justificacion: "listo" }), (e) => e.status === 400);
+  assert.equal(publicados.length, antes, "sin justificacion no sale nada");
+
+  const r = await reenviarContabilidad(id, { justificacion: "Se adjuntó el comprobante firmado por el supervisor." });
+  assert.equal(r.publicado, true);
+  assert.equal(r.contabilidad.estado, "Enviado");
+  assert.equal(r.contabilidad.motivo_rechazo, null);
+  assert.equal(publicados.length, antes + 1);
+  const nuevo = publicados.at(-1);
+  assert.equal(nuevo.json.reenvio.justificacion, "Se adjuntó el comprobante firmado por el supervisor.");
+  assert.deepEqual([nuevo.json.reenvio.numero, nuevo.json.reenvio.motivo_rechazo_anterior], [1, "Falta el comprobante del faltante"]);
+  assert.match(nuevo.attributes.idempotency_key, /-r1$/);
+});

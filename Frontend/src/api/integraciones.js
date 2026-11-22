@@ -23,10 +23,11 @@ export function obtenerResumenIntegraciones(token, { periodo } = {}) {
 }
 
 // TDSI-129/132: reenvia un mensaje en Error a traves del microservicio dueno (misma idempotency_key).
-export function reenviarMensajeIntegracion({ origen, id }, token) {
+// Un asiento RECHAZADO por Contabilidad se reenvia con una `justificacion` (como se resolvio): viaja dentro del mensaje.
+export function reenviarMensajeIntegracion({ origen, id, justificacion }, token) {
   return apiFetch(
     `/api/integraciones/mensajes/${encodeURIComponent(origen)}/${encodeURIComponent(id)}/reenviar`,
-    { method: 'POST', ...conToken(token) },
+    { method: 'POST', body: JSON.stringify({ justificacion }), headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
     GESTION_PAGOS_API_BASE_URL,
   )
 }

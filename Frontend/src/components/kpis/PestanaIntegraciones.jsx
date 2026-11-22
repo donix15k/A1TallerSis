@@ -5,6 +5,7 @@ import Icono from '../ui/Icono.jsx'
 import { Aviso, Esqueleto, Vacio } from '../ui/Aviso.jsx'
 import { useToast } from '../ui/Toasts.jsx'
 import { PuntoSemaforo } from './TarjetaKPI.jsx'
+import ModalReenvioRechazado from './ModalReenvioRechazado.jsx'
 import { bs, hace, numero } from '../../utils/formato.js'
 
 /** Tarjeta de estado con el punto del semaforo arriba a la derecha. */
@@ -85,37 +86,28 @@ function TarjetasEstado({ tarjetas, cargando }) {
 }
 
 /**
- * TDSI-184: "Asientos rechazados (N)" con cada asiento y su motivo, y el boton negro "⟳ Reenviar" abajo a la derecha. Usa el
- * reenvio del Monitor de integraciones (TDSI-125): ubica cada asiento rechazado (y los envios en Error a Contabilidad) entre los
- * mensajes del monitor y los reenvia con su misma idempotency_key. Informa cuantos se reenviaron y cuales el dueño no acepto.
+ * "Asientos rechazados (N)": cada asiento con su motivo y SU propio boton "Reenviar". Al pulsarlo se abre una ventana para escribir como se resolvio
+ * el rechazo; ese texto viaja dentro del mensaje que recibe Contabilidad (sin justificacion no se reenvia). Se reenvia uno por uno.
+ * Ubica el asiento entre los mensajes del Monitor (TDSI-125) y usa el reenvio del servicio dueño.
  */
 function AsientosRechazados({ aceptacion, token, onReenviados }) {
+  const [abierto, setAbierto] = useState(null) // asiento que se esta justificando
   const [enviando, setEnviando] = useState(false)
   const toast = useToast()
 
-  async function reenviar() {
+  async function reenviar(texto) {
     setEnviando(true)
     try {
       const r = await listarMensajesIntegracion({ grupo: 'D', por_pagina: 100 }, token)
-      const referencias = new Set(aceptacion.rechazados_lista.map((a) => a.referencia))
-      const candidatos = r.data.filter((msj) => msj.estado === 'Error' || referencias.has(msj.referencia))
-      if (candidatos.length === 0) {
-        toast.info('Nada para reenviar', 'No se encontraron los asientos rechazados entre los mensajes del monitor.')
+      const msj = r.data.find((m) => m.referencia === abierto.referencia)
+      if (!msj) {
+        toast.aviso('No se encontró el asiento', `${abierto.referencia} no aparece entre los mensajes del Monitor de integraciones.`)
         return
       }
-      const resultados = await Promise.allSettled(candidatos.map((msj) => reenviarMensajeIntegracion(msj, token)))
-      const ok = resultados.filter((x) => x.status === 'fulfilled' && x.value.data?.estado !== 'Error').length
-      const fallidos = resultados.map((x, i) => ({ x, msj: candidatos[i] })).filter(({ x }) => x.status === 'rejected' || x.value.data?.estado === 'Error')
-      if (ok > 0) toast.ok(`${ok} ${ok === 1 ? 'asiento reenviado' : 'asientos reenviados'} a Contabilidad`)
-      if (fallidos.length > 0) {
-        toast.aviso(
-          `${fallidos.length} no se pudieron reenviar`,
-          fallidos
-            .slice(0, 3)
-            .map(({ x, msj }) => `${msj.referencia}: ${x.status === 'rejected' ? x.reason?.message : x.value.data?.error ?? 'volvió a fallar'}`)
-            .join(' · '),
-        )
-      }
+      const respuesta = await reenviarMensajeIntegracion({ origen: msj.origen, id: msj.id, justificacion: texto }, token)
+      if (respuesta.data?.estado === 'Error') toast.aviso('El reenvío volvió a fallar', respuesta.data.error ?? respuesta.mensaje)
+      else toast.ok(`${abierto.referencia} reenviado a Contabilidad`, 'Llevó tu justificación; Contabilidad responderá de nuevo.')
+      setAbierto(null)
       onReenviados?.()
     } catch (err) {
       toast.error('No se pudo reenviar', err.message)
@@ -131,22 +123,23 @@ function AsientosRechazados({ aceptacion, token, onReenviados }) {
       {lista.length === 0 ? (
         <Vacio icono="checkCirculo" titulo="Sin rechazos">Contabilidad no rechazó asientos en el periodo.</Vacio>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6, maxHeight: 420, overflowY: 'auto' }}>
           {lista.map((a) => (
-            <li key={`${a.tipo}-${a.id}`} className="vxp-dato" style={{ padding: '0.55rem 0.75rem', display: 'flex', gap: 8, alignItems: 'baseline' }}>
-              <span className="vxp-codigo" style={{ color: 'var(--kpi-rojo)', whiteSpace: 'nowrap' }}>
-                {/^F-/.test(a.referencia) ? `FAC-${a.referencia.replace(/^F-0*/, '')}` : a.referencia}
+            <li key={`${a.tipo}-${a.id}`} className="vxp-dato" style={{ padding: '0.55rem 0.75rem', display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', gap: 8, alignItems: 'baseline', minWidth: 0, flexWrap: 'wrap' }}>
+                <span className="vxp-codigo" style={{ color: 'var(--kpi-rojo)', whiteSpace: 'nowrap' }}>
+                  {/^F-/.test(a.referencia) ? `FAC-${a.referencia.replace(/^F-0*/, '')}` : a.referencia}
+                </span>
+                <span style={{ color: 'var(--vxp-texto-suave)', fontSize: '0.86rem' }}>· {a.motivo}</span>
               </span>
-              <span style={{ color: 'var(--vxp-texto-suave)', fontSize: '0.86rem' }}>· {a.motivo}</span>
+              <Boton variante="negro" tam="sm" icono="recargar" onClick={() => setAbierto(a)}>
+                Reenviar
+              </Boton>
             </li>
           ))}
         </ul>
       )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto', paddingTop: 12 }}>
-        <Boton variante="negro" icono="recargar" cargando={enviando} onClick={reenviar} disabled={lista.length === 0}>
-          Reenviar
-        </Boton>
-      </div>
+      {abierto && <ModalReenvioRechazado asiento={abierto} enviando={enviando} onCancelar={() => setAbierto(null)} onConfirmar={reenviar} />}
     </div>
   )
 }

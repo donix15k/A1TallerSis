@@ -5,6 +5,7 @@ import Boton from '../components/ui/Boton.jsx'
 import Icono from '../components/ui/Icono.jsx'
 import Drawer from '../components/ui/Drawer.jsx'
 import { Aviso, Esqueleto, Vacio } from '../components/ui/Aviso.jsx'
+import ModalReenvioRechazado from '../components/kpis/ModalReenvioRechazado.jsx'
 import { useToast } from '../components/ui/Toasts.jsx'
 import { fechaHora, hace } from '../utils/formato.js'
 
@@ -144,11 +145,21 @@ function MonitorIntegraciones() {
     setFiltros((f) => ({ ...f, [campo]: valor }))
   }
 
-  async function reenviar(m, e) {
+  const [justificando, setJustificando] = useState(null) // mensaje RECHAZADO por Contabilidad que se esta por reenviar
+
+  const esRechazado = (m) => String(m.detalle?.resultado ?? '').toLowerCase() === 'rechazado'
+
+  async function reenviar(m, e, justificacion) {
     e?.stopPropagation()
+    // lo que Contabilidad rechazo no se reenvia solo: primero se escribe como se resolvio
+    if (esRechazado(m) && justificacion === undefined) {
+      setJustificando(m)
+      return
+    }
     setReenviando(m.id + m.origen)
     try {
-      const r = await reenviarMensajeIntegracion(m, token)
+      const r = await reenviarMensajeIntegracion({ ...m, justificacion }, token)
+      setJustificando(null)
       if (r.data?.estado === 'Error') toast.error('El reenvío volvió a fallar', r.data.error ?? r.mensaje)
       else toast.ok('Mensaje reenviado', `${m.tipo} · ${m.referencia ?? m.id} · messageId ${r.data?.message_id ?? 'nuevo'}`)
       if (abierto && abierto.id === m.id && abierto.origen === m.origen && r.data?.estado) setAbierto(r.data)
@@ -161,6 +172,7 @@ function MonitorIntegraciones() {
   }
 
   const fuentesCaidas = mensajes.fuentes.filter((f) => !f.ok)
+  const confirmarJustificacion = (texto) => reenviar(justificando, undefined, texto)
   const grupos = resumen ? ORDEN_TARJETAS.map((g) => resumen.grupos.find((x) => x.grupo === g)).filter(Boolean) : []
 
   return (
@@ -383,6 +395,14 @@ function MonitorIntegraciones() {
           </div>
         )}
       </Drawer>
+      {justificando && (
+        <ModalReenvioRechazado
+          asiento={{ referencia: justificando.referencia ?? justificando.id, motivo: justificando.detalle?.motivo ?? justificando.detalle?.motivo_rechazo }}
+          enviando={reenviando === justificando.id + justificando.origen}
+          onCancelar={() => setJustificando(null)}
+          onConfirmar={confirmarJustificacion}
+        />
+      )}
     </section>
   )
 }
