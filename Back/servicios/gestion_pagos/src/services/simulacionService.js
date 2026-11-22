@@ -160,6 +160,29 @@ async function responderContabilidad({ referencia, resultado, motivo, numero_asi
 }
 
 /**
+ * Despues de publicar la respuesta de Contabilidad, le pide al servicio DUEÑO del documento que lea su suscripcion YA (facturas y anulaciones:
+ * Facturacion; notas de credito: Devoluciones; diferencias de caja: Gestion de Caja). Sin esto cada servicio la leia solo cada 30 s y, como la
+ * suscripcion es compartida, la respuesta podia tardar hasta un minuto en registrarse. Se reintenta 2 veces mas por si la primera lectura
+ * se llevo otros mensajes. Nunca falla: si no se puede despertar al servicio, su reloj de 30 s la procesa igual.
+ */
+function despertarLectorContabilidad(referencia, token) {
+  const ref = String(referencia || "");
+  const base = /^(?:ANU-)?F-/.test(ref)
+    ? `${process.env.FACTURACION_URL || "http://localhost:4002"}/api/facturas/respuestas-contabilidad/procesar`
+    : /^NC-/.test(ref)
+      ? `${process.env.DEVOLUCIONES_URL || "http://localhost:4007"}/api/integraciones/respuestas-contabilidad/procesar`
+      : /^DIF-/.test(ref)
+        ? `${process.env.GESTION_CAJA_URL || "http://localhost:4004"}/api/caja/diferencias/respuestas-contabilidad/procesar`
+        : null;
+  if (!base || !token) return;
+  for (const espera of [1500, 6000, 15000]) {
+    setTimeout(() => {
+      fetch(base, { method: "POST", headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => {});
+    }, espera).unref();
+  }
+}
+
+/**
  * Detalle de un documento de la bandeja de Contabilidad: lo que A1 le envio, para saber que se esta aceptando o rechazando.
  * Facturas y anulaciones traen ademas la factura completa (cliente, NIT, productos, metodo de pago); notas de credito, diferencias y lotes,
  * los datos del mensaje enviado. 404 si Contabilidad no tiene ese documento.
@@ -391,6 +414,7 @@ async function ordenesPendientesCompras() {
 }
 
 module.exports = {
+  despertarLectorContabilidad,
   VISTAS, contexto, documentosContabilidad, detalleDocumentoContabilidad, responderContabilidad, REFERENCIA_CONTABLE,
   listarProductosMarketplace, enviarVentaMarketplace, ventasMarketplaceRecientes, CATALOGO,
   reportesCompras, acusarCompras, listarProveedores, enviarOrdenCompras, ordenesPendientesCompras,

@@ -7,6 +7,12 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(nex
 
 // TDSI-126: los envios de Devoluciones a Contabilidad, Compras y Marketplace en el formato comun del Monitor de integraciones
 // (lo consulta Gestion de Pagos con el token del administrador).
+// Lee ahora mismo las respuestas de Contabilidad (notas de credito) de la suscripcion de A1, sin esperar el reloj de 30 s.
+router.post("/respuestas-contabilidad/procesar", requireAdministrador, wrap(async (req, res) => {
+  const r = await require("../jobs/respuestasContabilidad").procesarRespuestas();
+  res.json({ ok: true, procesadas: r.length });
+}));
+
 router.get("/mensajes", requireAdministrador, wrap(async (req, res) => {
   const data = await integraciones.listarMensajes();
   res.json({ ok: true, total: data.length, data });

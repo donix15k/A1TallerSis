@@ -1,6 +1,8 @@
 const { Router } = require("express");
 const { resolverDiferencia, listarDiferencias, reenviarContabilidad } = require("../services/diferenciasService");
 
+const { requireAdministrador } = require("../middlewares/requireAdministrador");
+
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 
@@ -13,6 +15,12 @@ router.get("/diferencias", wrap(async (req, res) => {
 
 // TDSI-52/698: el Administrador resuelve una diferencia con su justificacion; el
 // sistema publica el aviso a Contabilidad (DIF-<id>) y devuelve si se pudo enviar.
+// Lee ahora mismo las respuestas de Contabilidad de la suscripcion de A1, sin esperar el reloj de 30 s. Solo administrador.
+router.post("/diferencias/respuestas-contabilidad/procesar", requireAdministrador, wrap(async (req, res) => {
+  const r = await require("../jobs/respuestasContabilidad").procesarRespuestas();
+  res.json({ ok: true, procesadas: r.length });
+}));
+
 router.post("/diferencias/:id/resolver", wrap(async (req, res) => {
   const data = await resolverDiferencia(req.params.id, req.body);
   res.json({ ok: true, mensaje: "Diferencia resuelta", data });

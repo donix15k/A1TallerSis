@@ -24,6 +24,7 @@ router.get("/contabilidad/detalle", wrap(async (req, res) => {
 }));
 router.post("/contabilidad/responder", wrap(async (req, res) => {
   const data = await simulacion.responderContabilidad({ ...req.body, enviado_por: quien(req) });
+  simulacion.despertarLectorContabilidad(data.referencia, req.tokenAdministrador); // que A1 la registre al momento, no a los 30 s
   res.status(201).json({ ok: true, mensaje: "Respuesta publicada en Pub/Sub", data });
 }));
 

@@ -418,3 +418,28 @@ test("el detalle de un documento de la bandeja trae lo que A1 envio; 404 si Cont
   await assert.rejects(simulacion.detalleDocumentoContabilidad({ referencia: "DIF-99", reunirMensajes }), (e) => e.status === 404);
   await assert.rejects(simulacion.detalleDocumentoContabilidad({ referencia: "", reunirMensajes }), (e) => e.status === 400);
 });
+
+test("al publicar la respuesta de Contabilidad se despierta al servicio dueño del documento (facturas, notas de credito, diferencias) para que A1 la registre al momento", () => {
+  const llamadas = [];
+  const fetchOriginal = global.fetch;
+  const timeoutOriginal = global.setTimeout;
+  global.fetch = (url, op) => { llamadas.push({ url, auth: op.headers.Authorization }); return Promise.resolve({}); };
+  global.setTimeout = (fn) => { fn(); return { unref() {} }; };
+  try {
+    simulacion.despertarLectorContabilidad("F-000123", "TK");
+    simulacion.despertarLectorContabilidad("ANU-F-000123", "TK");
+    simulacion.despertarLectorContabilidad("NC-000004", "TK");
+    simulacion.despertarLectorContabilidad("DIF-12", "TK");
+    simulacion.despertarLectorContabilidad("LOTE-1", "TK"); // sin dueño conocido: no llama a nadie
+    simulacion.despertarLectorContabilidad("F-000123", null); // sin token no se puede
+  } finally {
+    global.fetch = fetchOriginal;
+    global.setTimeout = timeoutOriginal;
+  }
+  const por = (parte) => llamadas.filter((l) => l.url.includes(parte));
+  assert.equal(por("/api/facturas/respuestas-contabilidad/procesar").length, 6); // factura y anulacion: 3 lecturas cada una
+  assert.equal(por("/api/integraciones/respuestas-contabilidad/procesar").length, 3);
+  assert.equal(por("/api/caja/diferencias/respuestas-contabilidad/procesar").length, 3);
+  assert.equal(llamadas.length, 12);
+  assert.ok(llamadas.every((l) => l.auth === "Bearer TK"));
+});

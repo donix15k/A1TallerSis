@@ -7,6 +7,8 @@ const documentos = require("../services/documentosService");
 const contabilidad = require("../services/contabilidadService");
 const respuestasAnulacionService = require("../services/respuestasAnulacionService");
 
+const { requireAdministrador } = require("../middlewares/requireAdministrador");
+
 const router = Router();
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 
@@ -27,6 +29,12 @@ router.post("/envios-contabilidad/:id/reenviar", wrap(async (req, res) => {
   const envio = await contabilidad.reenviarEnvio(req.params.id);
   const status = envio.estado === "Enviado" ? 200 : envio.estado === "Pendiente" ? 202 : 502;
   res.status(status).json({ ok: status !== 502, data: envio });
+}));
+
+// Lee ahora mismo las respuestas de Contabilidad (resultado_documento) de la suscripcion de A1, sin esperar el reloj de 30 s. Solo administrador.
+router.post("/respuestas-contabilidad/procesar", requireAdministrador, wrap(async (req, res) => {
+  const r = await require("../jobs/respuestasContabilidad").procesarRespuestas();
+  res.json({ ok: true, procesadas: r.length });
 }));
 
 // Listado paginado y con busqueda (numero, cliente, NIT/CI) para las pantallas con muchas facturas: ?q=&pagina=&por_pagina=&numeros=F-1,F-2
