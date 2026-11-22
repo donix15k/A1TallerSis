@@ -35,10 +35,13 @@ function interpretar(texto) {
  * Guarda el resultado en el envio de esa diferencia. propio = true solo si el mensaje
  * corresponde a un envio nuestro: esos se confirman (ack); el resto se deja para otros.
  */
-async function procesarMensaje({ texto }) {
+async function procesarMensaje({ texto, publicadoEn = null }) {
   const datos = interpretar(texto);
   if (!datos) return { propio: false };
-  const envio = await repo.registrarResultado(datos.diferenciaId, { estado: datos.estado, motivo: datos.motivo });
+  const envio = await repo.registrarResultado(datos.diferenciaId, { estado: datos.estado, motivo: datos.motivo, publicadoEn });
+  // La diferencia existe pero ya estaba respondida, o la respuesta es anterior a su ultimo envio (un duplicado o una respuesta vieja): se confirma y se
+  // descarta; si no, daria vueltas en la suscripcion para siempre y podia contestar un reenvio posterior.
+  if (!envio && (await repo.obtenerPorDiferencia(datos.diferenciaId))) return { propio: true, descartada: true, referencia: datos.referencia, estado: datos.estado, envio: null };
   return { propio: Boolean(envio), referencia: datos.referencia, estado: datos.estado, envio };
 }
 

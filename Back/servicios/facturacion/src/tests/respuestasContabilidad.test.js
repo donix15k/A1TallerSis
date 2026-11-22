@@ -23,7 +23,7 @@ function suscripcionFalsa(textos) {
   falsa.pull = async () => [{
     receivedMessages: textos.map((t, i) => ({
       ackId: `ack-${i}`,
-      message: { messageId: `m-${i}`, data: Buffer.from(t), attributes: {}, publishTime: { seconds: 1760900000, nanos: 0 } },
+      message: { messageId: `m-${i}`, data: Buffer.from(t), attributes: {}, publishTime: { seconds: Math.floor(Date.now() / 1000) + 5, nanos: 0 } },
     })),
   }];
   falsa.acknowledge = async ({ ackIds }) => falsa.confirmados.push(...ackIds);
@@ -101,4 +101,28 @@ test("TDSI-22: los mensajes que no son nuestros se liberan sin confirmarlos", as
   assert.equal(envio.resultado, "rechazado");
   assert.equal(envio.resultado_motivo, "NIT invalido para el periodo");
   assert.equal(envio.numero_asiento, null);
+});
+
+test("una respuesta VIEJA (publicada antes del ultimo envio) no contesta un reenvio nuevo: se confirma y se descarta", async () => {
+  const f = await facturaEnviada();
+  // la respuesta del primer envio ya llego y fue un rechazo; se reenvia con justificacion
+  await pool.query(`UPDATE facturacion.factura_envios_contabilidad e SET resultado = 'rechazado', resultado_motivo = 'Monto no coincide' FROM facturacion.facturas x WHERE x.id = e.factura_id AND x.numero = $1`, [f.numero]);
+  const envio = (await contabilidad.listarEnvios({ tipo: "venta", limite: 200 })).envios.find((e) => e.factura_numero === f.numero);
+  await contabilidad.reenviarEnvio(envio.id, { justificacion: "Se corrigió el monto del asiento." });
+
+  // llega de nuevo la respuesta rechazada ANTIGUA (un duplicado que seguia en la suscripcion): publicada hace una hora
+  const vieja = suscripcionFalsa([resultado(f.numero, { estado: "rechazado", motivo: "Monto no coincide" })]);
+  vieja.pull = async () => [{ receivedMessages: [{ ackId: "ack-v", message: { messageId: "m-v", data: Buffer.from(resultado(f.numero, { estado: "rechazado", motivo: "Monto no coincide" })), attributes: {}, publishTime: { seconds: Math.floor(Date.now() / 1000) - 3600, nanos: 0 } } }] }];
+  subscriber.usarClienteDePrueba(vieja);
+  const r = await procesarRespuestas();
+  assert.equal(r[0].descartada, true);
+  assert.deepEqual(vieja.confirmados, ["ack-v"], "se confirma para que deje de dar vueltas");
+  const despues = (await contabilidad.listarEnvios({ tipo: "venta", limite: 200 })).envios.find((e) => e.factura_numero === f.numero);
+  assert.equal(despues.resultado, null, "el reenvio sigue esperando SU respuesta");
+
+  // la respuesta nueva (publicada despues del reenvio) si lo contesta
+  subscriber.usarClienteDePrueba(suscripcionFalsa([resultado(f.numero, { estado: "aceptado", numero_asiento: 77 })]));
+  await procesarRespuestas();
+  const final = (await contabilidad.listarEnvios({ tipo: "venta", limite: 200 })).envios.find((e) => e.factura_numero === f.numero);
+  assert.deepEqual([final.resultado, final.numero_asiento], ["aceptado", "77"]);
 });

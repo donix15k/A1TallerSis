@@ -25,7 +25,7 @@ async function procesarRespuestas() {
         const r = await procesarMensaje(m);
         (r.propio ? confirmar : liberar).push(m.ackId);
         if (r.propio) {
-          await registrarRecepcion({ servicio: "gestion_caja", tipo: "RESULTADO_DOCUMENTO", referencia: r.referencia, origen: "D", payload: parsear(m.texto), messageId: m.messageId, mensaje: `Contabilidad respondió ${r.referencia}: ${r.estado}` });
+          await registrarRecepcion({ servicio: "gestion_caja", tipo: "RESULTADO_DOCUMENTO", referencia: r.referencia, origen: "D", payload: parsear(m.texto), messageId: m.messageId, mensaje: `Contabilidad respondió ${r.referencia}: ${r.estado}${r.descartada ? " (ya respondida o respuesta vieja: descartada)" : ""}` });
           resultados.push(r);
           console.log(`[contabilidad] ${r.referencia} -> ${r.estado}`);
         }

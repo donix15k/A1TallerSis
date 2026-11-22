@@ -142,18 +142,29 @@ async function listar({ estado = null, tipo = null, limite = 50 } = {}) {
 
 /**
  * TDSI-22: guarda la respuesta de Contabilidad (resultado_documento) en el envio de esa factura.
- * Devuelve el envio actualizado, o null si no hay un envio con ese numero y tipo.
+ * Devuelve el envio actualizado, o null si no hay un envio con ese numero y tipo o si la respuesta es ANTERIOR al ultimo envio (publicadoEn < enviado_en):
+ * una respuesta vieja (por ejemplo un duplicado que seguia dando vueltas en la suscripcion) no puede contestar un reenvio nuevo.
  */
-async function registrarResultado({ facturaNumero, tipo, resultado, numeroAsiento, motivo, messageId }) {
+async function registrarResultado({ facturaNumero, tipo, resultado, numeroAsiento, motivo, messageId, publicadoEn = null }) {
   const { rows } = await query(
     `UPDATE facturacion.factura_envios_contabilidad e
      SET resultado = $3, numero_asiento = $4, resultado_motivo = $5, resultado_en = now(), resultado_message_id = $6
      FROM facturacion.facturas f
      WHERE f.id = e.factura_id AND f.numero = $1 AND e.tipo = $2
+       AND ($7::timestamptz IS NULL OR e.enviado_en IS NULL OR $7::timestamptz >= e.enviado_en - interval '2 seconds')
      RETURNING e.id`,
-    [facturaNumero, tipo, resultado, numeroAsiento, motivo, messageId]
+    [facturaNumero, tipo, resultado, numeroAsiento, motivo, messageId, publicadoEn]
   );
   return rows[0] ? obtener(rows[0].id) : null;
+}
+
+/** ¿Existe un envio con ese numero de factura y tipo? (para distinguir una respuesta vieja de una que no es nuestra) */
+async function existeEnvio({ facturaNumero, tipo }) {
+  const { rows } = await query(
+    `SELECT 1 FROM facturacion.factura_envios_contabilidad e JOIN facturacion.facturas f ON f.id = e.factura_id WHERE f.numero = $1 AND e.tipo = $2`,
+    [facturaNumero, tipo]
+  );
+  return rows.length > 0;
 }
 
 /** Datos de la factura que van en el mensaje (cabecera, items y metodos de pago). */
@@ -191,5 +202,5 @@ async function actualizarPayload(id, payload) {
 
 module.exports = {
   obtener, obtenerPorFactura, crear, marcarEnviado, registrarFallo, posponer, tomarPendientes,
-  prepararReenvio, actualizarPayload, listar, datosFactura, anulacionAutorizada, registrarResultado,
+  prepararReenvio, actualizarPayload, existeEnvio, listar, datosFactura, anulacionAutorizada, registrarResultado,
 };

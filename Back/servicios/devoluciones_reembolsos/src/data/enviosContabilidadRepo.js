@@ -110,16 +110,23 @@ async function prepararReenvio(id) {
  * TDSI-94: guarda la respuesta de Contabilidad (resultado_documento) en el envio de esa nota.
  * Devuelve el envio actualizado, o null si no hay un envio con ese numero de nota.
  */
-async function registrarResultado({ notaNumero, resultado, numeroAsiento, motivo, messageId }) {
+async function registrarResultado({ notaNumero, resultado, numeroAsiento, motivo, messageId, publicadoEn = null }) {
   const { rows } = await query(
     `UPDATE devoluciones.envios_contabilidad_nc e
         SET resultado = $2, numero_asiento = $3, resultado_motivo = $4, resultado_en = now(), resultado_message_id = $5
        FROM devoluciones.notas_credito n
       WHERE n.id = e.nota_credito_id AND n.numero = $1
+        AND ($6::timestamptz IS NULL OR e.enviado_en IS NULL OR $6::timestamptz >= e.enviado_en - interval '2 seconds')
       RETURNING e.id`,
-    [notaNumero, resultado, numeroAsiento, motivo, messageId]
+    [notaNumero, resultado, numeroAsiento, motivo, messageId, publicadoEn]
   );
   return rows[0] ? obtener(rows[0].id) : null;
+}
+
+/** ¿Existe un envio con ese numero de nota? (distingue una respuesta vieja de una que no es nuestra) */
+async function existeEnvio({ notaNumero }) {
+  const { rows } = await query(`SELECT 1 FROM devoluciones.envios_contabilidad_nc e JOIN devoluciones.notas_credito n ON n.id = e.nota_credito_id WHERE n.numero = $1`, [notaNumero]);
+  return rows.length > 0;
 }
 
 /**
@@ -139,4 +146,4 @@ async function actualizarPayload(id, payload) {
   await query(`UPDATE devoluciones.envios_contabilidad_nc SET payload = $2 WHERE id = $1`, [id, JSON.stringify(payload)]);
 }
 
-module.exports = { estadoVisible, obtener, obtenerPorNota, obtenerPorDevolucionCodigo, crear, marcarEnviado, registrarFallo, tomarPendientes, prepararReenvio, actualizarPayload, registrarResultado };
+module.exports = { estadoVisible, obtener, obtenerPorNota, obtenerPorDevolucionCodigo, crear, marcarEnviado, registrarFallo, tomarPendientes, prepararReenvio, actualizarPayload, registrarResultado, existeEnvio };

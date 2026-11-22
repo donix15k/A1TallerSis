@@ -18,7 +18,7 @@ let falloLectura;
 const CAJERO = "cajero.respuestas@tallersis.test";
 
 const respuesta = (extra) => JSON.stringify({ sistema_origen: "CONTABILIDAD", tipo_mensaje: "resultado_documento", ...extra });
-const mensaje = (n, texto) => ({ ackId: `ack-${n}`, message: { messageId: `m-${n}`, data: Buffer.from(texto), attributes: {}, publishTime: { seconds: "1700000000", nanos: 0 } } });
+const mensaje = (n, texto) => ({ ackId: `ack-${n}`, message: { messageId: `m-${n}`, data: Buffer.from(texto), attributes: {}, publishTime: { seconds: Math.floor(Date.now() / 1000) + 5, nanos: 0 } } });
 
 test.before(async () => {
   entorno = await iniciarEntorno();

@@ -31,10 +31,12 @@ function interpretar(texto) {
  * Guarda el resultado en el envio de esa factura. propio = true solo si el mensaje
  * corresponde a un envio nuestro: esos se confirman (ack); el resto se deja para otros.
  */
-async function procesarMensaje({ texto, messageId }) {
+async function procesarMensaje({ texto, messageId, publicadoEn = null }) {
   const datos = interpretar(texto);
   if (!datos) return { propio: false };
-  const envio = await repo.registrarResultado({ ...datos, messageId });
+  const envio = await repo.registrarResultado({ ...datos, messageId, publicadoEn });
+  // Si el envio existe pero la respuesta es anterior a su ultimo envio, es una respuesta VIEJA: se confirma y se descarta (no contesta el reenvio nuevo).
+  if (!envio && publicadoEn && (await repo.existeEnvio(datos))) return { propio: true, descartada: true, referencia: datos.referencia, resultado: datos.resultado, envio: null };
   return { propio: Boolean(envio), referencia: datos.referencia, resultado: datos.resultado, envio };
 }
 

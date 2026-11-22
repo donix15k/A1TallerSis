@@ -32,10 +32,12 @@ function interpretar(texto) {
  * Guarda el resultado (N° de asiento o motivo del rechazo) en el envio de esa nota. propio = true solo si el mensaje
  * corresponde a una nota nuestra con envio registrado: esos se confirman (ack); el resto se libera para quien mas lea.
  */
-async function procesarMensaje({ texto, messageId }) {
+async function procesarMensaje({ texto, messageId, publicadoEn = null }) {
   const datos = interpretar(texto);
   if (!datos) return { propio: false };
-  const envio = await repo.registrarResultado({ ...datos, messageId });
+  const envio = await repo.registrarResultado({ ...datos, messageId, publicadoEn });
+  // respuesta anterior al ultimo envio de la nota: es vieja, se confirma y se descarta
+  if (!envio && publicadoEn && (await repo.existeEnvio(datos))) return { propio: true, descartada: true, referencia: datos.referencia, resultado: datos.resultado, envio: null };
   return { propio: Boolean(envio), referencia: datos.referencia, resultado: datos.resultado, envio };
 }
 

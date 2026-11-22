@@ -21,7 +21,7 @@ function suscripcionFalsa(textos) {
   falsa.pull = async () => [{
     receivedMessages: textos.map((t, i) => ({
       ackId: `ack-${i}`,
-      message: { messageId: `m-${i}`, data: Buffer.from(t), attributes: {}, publishTime: { seconds: 1760900000, nanos: 0 } },
+      message: { messageId: `m-${i}`, data: Buffer.from(t), attributes: {}, publishTime: { seconds: Math.floor(Date.now() / 1000) + 5, nanos: 0 } },
     })),
   }];
   falsa.acknowledge = async ({ ackIds }) => falsa.confirmados.push(...ackIds);
@@ -118,7 +118,7 @@ test("TDSI-700: un rechazo guarda el motivo; los mensajes que no son nuestros se
   assert.equal(rows[0].motivo_rechazo, "NIT invalido para el periodo");
 });
 
-test("TDSI-700: una respuesta repetida (el envio ya estaba Confirmado/Rechazado) no se confirma como propia de nuevo", async () => {
+test("TDSI-700: una respuesta repetida (el envio ya estaba Confirmado/Rechazado) no pisa el resultado y se confirma como descartada (para que no de vueltas para siempre)", async () => {
   const id = await envioEnviado();
   subscriber.usarClienteDePrueba(suscripcionFalsa([resultado(`DIF-${id}`, { estado: "aceptado" })]));
   await procesarRespuestas();
@@ -126,6 +126,36 @@ test("TDSI-700: una respuesta repetida (el envio ya estaba Confirmado/Rechazado)
   const falsa = suscripcionFalsa([resultado(`DIF-${id}`, { estado: "aceptado" })]);
   subscriber.usarClienteDePrueba(falsa);
   const resultados = await procesarRespuestas();
-  assert.equal(resultados.length, 0);
-  assert.deepEqual(falsa.liberados, ["ack-0"]);
+  assert.equal(resultados[0].descartada, true);
+  assert.deepEqual(falsa.confirmados, ["ack-0"]);
+  assert.deepEqual(falsa.liberados, []);
+});
+
+test("una respuesta VIEJA o duplicada de una diferencia se confirma y se descarta: no contesta el reenvio nuevo ni da vueltas para siempre", async () => {
+  const id = await envioEnviado();
+  const viejo = (extra) => ({ ...suscripcionFalsa([]), pull: async () => [{ receivedMessages: [{ ackId: "ack-v", message: { messageId: "m-v", data: Buffer.from(resultado(`DIF-${id}`, extra)), attributes: {}, publishTime: { seconds: Math.floor(Date.now() / 1000) - 3600, nanos: 0 } } }] }] });
+
+  // publicada hace una hora, antes del envio actual (enviado_en = ahora): es vieja
+  const falsa = { ...viejo({ estado: "rechazado", motivo: "Monto no coincide" }), confirmados: [], liberados: [] };
+  falsa.acknowledge = async ({ ackIds }) => falsa.confirmados.push(...ackIds);
+  falsa.modifyAckDeadline = async ({ ackIds }) => falsa.liberados.push(...ackIds);
+  falsa.close = async () => {};
+  subscriber.usarClienteDePrueba(falsa);
+  const r = await procesarRespuestas();
+  assert.equal(r[0].descartada, true);
+  assert.deepEqual(falsa.confirmados, ["ack-v"]);
+  const { rows } = await query(`SELECT estado, motivo_rechazo FROM caja.diferencias_envios_contabilidad WHERE diferencia_id = $1`, [id]);
+  assert.deepEqual([rows[0].estado, rows[0].motivo_rechazo], ["Enviado", null]); // sigue esperando SU respuesta
+
+  // una respuesta nueva SI la contesta y un duplicado posterior se descarta sin pisarla
+  const nueva = suscripcionFalsa([resultado(`DIF-${id}`, { estado: "aceptado", numero_asiento: 5 })]);
+  subscriber.usarClienteDePrueba(nueva);
+  await procesarRespuestas();
+  const duplicado = suscripcionFalsa([resultado(`DIF-${id}`, { estado: "rechazado", motivo: "otra vez" })]);
+  subscriber.usarClienteDePrueba(duplicado);
+  const d = await procesarRespuestas();
+  assert.equal(d[0].descartada, true);
+  assert.deepEqual(duplicado.confirmados, ["ack-0"]);
+  const { rows: fin } = await query(`SELECT estado FROM caja.diferencias_envios_contabilidad WHERE diferencia_id = $1`, [id]);
+  assert.equal(fin[0].estado, "Confirmado");
 });

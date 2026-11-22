@@ -56,13 +56,14 @@ async function obtenerPorDiferencia(diferenciaId) {
  * Solo si el envio seguia abierto (Pendiente/Enviado) -- una respuesta que llega dos
  * veces no pisa un resultado que ya se asento.
  */
-async function registrarResultado(diferenciaId, { estado, motivo }) {
+async function registrarResultado(diferenciaId, { estado, motivo, publicadoEn = null }) {
   const { rows } = await query(
     `UPDATE caja.diferencias_envios_contabilidad
         SET estado = $2, motivo_rechazo = $3, respondido_en = now()
       WHERE diferencia_id = $1 AND estado IN ('Pendiente', 'Enviado')
+        AND ($4::timestamptz IS NULL OR enviado_en IS NULL OR $4::timestamptz >= enviado_en - interval '2 seconds')
       RETURNING *`,
-    [diferenciaId, estado, motivo || null]
+    [diferenciaId, estado, motivo || null, publicadoEn]
   );
   return rows[0] || null;
 }

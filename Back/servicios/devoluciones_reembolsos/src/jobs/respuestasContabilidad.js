@@ -30,10 +30,11 @@ async function procesarRespuestas() {
         if (r.propio) {
           await registrarRecepcion({
             servicio: "devoluciones", tipo: esAcuse ? "ACUSE_COMPRAS" : "RESULTADO_DOCUMENTO", referencia: r.referencia, origen: esAcuse ? "C" : "D", payload: parsear(m.texto), messageId: m.messageId,
-            mensaje: esAcuse ? `Compras acusó ${r.referencia}: ${r.resultado}` : `Contabilidad respondió ${r.referencia}: ${r.resultado}`,
+            mensaje: esAcuse ? `Compras acusó ${r.referencia}: ${r.resultado}` : `Contabilidad respondió ${r.referencia}: ${r.resultado}${r.descartada ? " (respuesta vieja, anterior al último envío: descartada)" : ""}`,
           });
           resultados.push(r);
           if (esAcuse) console.log(`[compras] ${r.referencia} -> ${r.resultado}${r.envio.numero_reclamo ? ` (reclamo ${r.envio.numero_reclamo})` : ""}`);
+          else if (r.descartada) console.log(`[contabilidad] ${r.referencia} -> respuesta vieja descartada`);
           else console.log(`[contabilidad] ${r.referencia} -> ${r.resultado}${r.envio.numero_asiento ? ` (asiento ${r.envio.numero_asiento})` : ""}`);
         }
       } catch (e) {

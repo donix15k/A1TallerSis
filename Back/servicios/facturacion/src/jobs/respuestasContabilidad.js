@@ -24,9 +24,10 @@ async function procesarRespuestas() {
         const r = await procesarMensaje(m);
         (r.propio ? confirmar : liberar).push(m.ackId);
         if (r.propio) {
-          await registrarRecepcion({ servicio: "facturacion", tipo: "RESULTADO_DOCUMENTO", referencia: r.referencia, origen: "D", payload: parsear(m.texto), messageId: m.messageId, mensaje: `Contabilidad respondió ${r.referencia}: ${r.resultado}` });
+          await registrarRecepcion({ servicio: "facturacion", tipo: "RESULTADO_DOCUMENTO", referencia: r.referencia, origen: "D", payload: parsear(m.texto), messageId: m.messageId, mensaje: `Contabilidad respondió ${r.referencia}: ${r.resultado}${r.descartada ? " (respuesta vieja, anterior al último envío: descartada)" : ""}` });
           resultados.push(r);
-          console.log(`[contabilidad] ${r.referencia} -> ${r.resultado}${r.envio.numero_asiento ? ` (asiento ${r.envio.numero_asiento})` : ""}`);
+          if (r.descartada) console.log(`[contabilidad] ${r.referencia} -> respuesta vieja descartada`);
+          else console.log(`[contabilidad] ${r.referencia} -> ${r.resultado}${r.envio.numero_asiento ? ` (asiento ${r.envio.numero_asiento})` : ""}`);
         }
       } catch (e) {
         liberar.push(m.ackId); // se vuelve a intentar en la siguiente lectura
