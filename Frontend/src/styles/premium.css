@@ -492,6 +492,11 @@
   flex: 1 1 260px;
 }
 
+/* Dentro de un campo en columna (label.vxp-campo) el flex-basis de 260px se aplicaba a la ALTURA y dejaba un hueco en blanco enorme (campo del vale). */
+.vxp-campo .vxp-buscador-campo {
+  flex: none;
+}
+
 .vxp-buscador-campo svg {
   position: absolute;
   top: 50%;
