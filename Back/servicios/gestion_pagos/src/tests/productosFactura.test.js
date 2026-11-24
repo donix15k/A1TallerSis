@@ -7,6 +7,7 @@ const { registrarPagoMixto } = require("../services/pagoMixtoService");
 const { construirFacturaDigital } = require("../services/facturaDigitalService");
 const { construirModeloComprobante } = require("../services/comprobanteModelo");
 const { generarFacturaPdfBuffer } = require("../services/facturaPdfService");
+const { renderizarHtmlFactura } = require("../services/emailService");
 const repo = require("../data/pagosRepo");
 const { query } = require("../config/db");
 
@@ -61,11 +62,18 @@ test("pago mixto con productos: se guardan y el total tiene que cuadrar", async 
   );
   const r = await registrarPagoMixto({ cajaId: "CAJA-02", total: 205, metodos: [{ metodo: "Efectivo", monto: 100 }, { metodo: "QR", monto: 105 }], items: ARROZ_Y_ACEITE, cajeroNombre: "Rosa Mamani" });
   ids.push(r.pago.id_transaccion);
-  // Se comprueba lo guardado y no la factura: abrir la factura de un pago mixto necesita que la BD ya no tenga la restriccion UNIQUE de
-  // token_verificacion (el script la quita; ver sql/script_pagos.sql) y eso es independiente de los productos.
   const guardados = await repo.listarItemsVenta(r.pago.id_transaccion);
   assert.equal(guardados.length, 2);
-  assert.equal(r.transacciones.length, 2);
+  // la factura de un pago mixto se abre (la BD ya no tiene la restriccion UNIQUE de token_verificacion) con productos y los dos metodos
+  const factura = await construirFacturaDigital(r.pago.id_transaccion);
+  assert.equal(factura.productos.length, 2);
+  assert.equal(factura.pagos.length, 2);
+  const html = renderizarHtmlFactura(factura);
+  assert.match(html, /2 x Arroz Grano de Oro 10 kg/);
+  assert.match(html, /Bs. 190.00/);
+  assert.match(html, /Atendido por: Rosa Mamani · Caja N° CAJA-02/);
+  assert.doesNotMatch(html, /autorización de/); // el supervisor no intervino: no se nombra
+  assert.equal((await generarFacturaPdfBuffer(factura)).subarray(0, 4).toString(), "%PDF");
 });
 
 test("una venta anulada muestra el supervisor que autorizo la anulacion", async () => {
@@ -78,6 +86,10 @@ test("una venta anulada muestra el supervisor que autorizo la anulacion", async 
   assert.equal(modelo.anulada, true);
   assert.deepEqual(modelo.autorizacion[0], ["Anulada con autorización de:", "Luis Angel Paredes Torrez"]);
   assert.ok(modelo.autorizacion.some(([k, v]) => k === "Motivo:" && v === "Error de cobro"));
+  const html = renderizarHtmlFactura(factura);
+  assert.match(html, /Anulada con autorización de:<\/strong> Luis Angel Paredes Torrez/);
+  assert.match(html, /Error de cobro/);
+  assert.match(html, /1 x Aceite Fino vegetal 900 ml/);
   assert.equal((await generarFacturaPdfBuffer(factura)).subarray(0, 4).toString(), "%PDF");
 
   // las filas de productos se borran junto con la venta (limpieza)

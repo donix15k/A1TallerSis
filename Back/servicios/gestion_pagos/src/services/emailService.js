@@ -30,8 +30,40 @@ function usarTransportadorDePrueba(falso) {
 // TDSI-51: una venta de Marketplace es un solo pago (no hay "metodos" que
 // desglosar) y no tiene cajero/caja -- se muestra el detalle de items de la
 // orden en vez del metodo de pago, y el numero de orden en vez de "atendido por".
+const esc = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const TH = 'style="text-align:left; border-bottom:1px solid #e4e7eb; padding-bottom:4px;"';
+const THD = 'style="text-align:right; border-bottom:1px solid #e4e7eb; padding-bottom:4px;"';
+
+/** Tabla de productos de una venta de caja (tiendita del cajero): cantidad, producto, precio unitario y subtotal. */
+function tablaProductos(productos) {
+  const filas = productos
+    .map(
+      (p) =>
+        `<tr><td style="padding:4px 0;">${p.cantidad} x ${esc(p.descripcion)}<br/><span style="color:#616e7c; font-size:0.8rem;">Bs. ${Number(p.precio_unitario).toFixed(2)} c/u</span></td><td style="padding:4px 0; text-align:right; vertical-align:top;">Bs. ${Number(p.subtotal).toFixed(2)}</td></tr>`
+    )
+    .join("");
+  return `<table style="width:100%; border-collapse:collapse; margin-top:1rem;"><thead><tr><th ${TH}>Producto</th><th ${THD}>Subtotal</th></tr></thead><tbody>${filas}</tbody></table>`;
+}
+
+/** Quien autorizo algo en la venta (anulacion o modificacion de datos): solo aparece si el supervisor realmente intervino. */
+function bloqueAutorizacion(factura) {
+  const aut = factura.autorizaciones || {};
+  const lineas = [];
+  if (aut.anulacion) {
+    lineas.push(`<strong>Anulada con autorización de:</strong> ${esc(aut.anulacion.supervisor || "no registrado")}`);
+    if (aut.anulacion.fecha) lineas.push(`<strong>Fecha de anulación:</strong> ${esc(new Date(aut.anulacion.fecha).toLocaleString("es-BO", { timeZone: "America/La_Paz" }))}`);
+    if (aut.anulacion.motivo) lineas.push(`<strong>Motivo:</strong> ${esc(aut.anulacion.motivo)}`);
+  }
+  if (Array.isArray(aut.modificacion) && aut.modificacion.length) {
+    lineas.push(`<strong>Datos modificados con autorización de:</strong> ${esc(aut.modificacion.join(", "))}`);
+  }
+  if (!lineas.length) return "";
+  return `<p style="color:#b91c1c; font-size:0.9rem; margin-top:1rem;">${lineas.join("<br/>")}</p>`;
+}
+
 function renderizarHtmlFactura(factura) {
   const esVentaOnline = Array.isArray(factura.items);
+  const productosCaja = !esVentaOnline && Array.isArray(factura.productos) && factura.productos.length ? tablaProductos(factura.productos) : "";
 
   const filasDetalle = esVentaOnline
     ? factura.items
@@ -64,12 +96,14 @@ function renderizarHtmlFactura(factura) {
       </p>
       <p><strong>Cliente:</strong> ${factura.cliente.razon_social}${factura.cliente.nit ? ` (NIT: ${factura.cliente.nit})` : ""}</p>
       <p style="color:#616e7c; font-size:0.9rem;">${lineaOrigen}</p>
+      ${productosCaja}
       <table style="width:100%; border-collapse:collapse; margin-top:1rem;">
         <thead>
           <tr>${encabezadoDetalle}</tr>
         </thead>
         <tbody>${filasDetalle}</tbody>
       </table>
+      ${bloqueAutorizacion(factura)}
       <p style="text-align:right; font-size:1.2rem; font-weight:bold; margin-top:1rem;">
         Total: Bs. ${factura.total.toFixed(2)}
       </p>
