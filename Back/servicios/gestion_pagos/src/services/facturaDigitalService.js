@@ -5,6 +5,7 @@ const { enviarFacturaPorCorreo } = require("./emailService");
 const { generarFacturaPdfBuffer } = require("./facturaPdfService");
 const { obtenerOCrearToken, obtenerOCrearTokenVentaOnline, urlVerificacion } = require("./verificacionFacturaService");
 const { validarEmail } = require("../utils/email");
+const { validarDominioCorreo } = require("../utils/dominioCorreo");
 
 // Datos fijos del negocio para el encabezado de la factura digital.
 // NIT simulado: este proyecto es academico y no tiene integracion real con el SIN.
@@ -89,6 +90,8 @@ async function construirFacturaDigital(id_transaccion) {
 async function enviarFacturaDeTransaccion(id_transaccion, email) {
   const errorEmail = validarEmail(email);
   if (errorEmail) throw new AppError(errorEmail, 400, { email });
+  const errorDominio = await validarDominioCorreo(email); // el dominio tiene que existir (DNS); si no se puede comprobar, se deja enviar
+  if (errorDominio) throw new AppError(errorDominio, 400, { email });
 
   const factura = await construirFacturaDigital(id_transaccion);
   const pdfBuffer = await generarFacturaPdfBuffer(factura);

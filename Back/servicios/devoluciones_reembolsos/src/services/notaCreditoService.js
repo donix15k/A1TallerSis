@@ -6,6 +6,7 @@ const notasCreditoRepo = require("../data/notasCreditoRepo");
 const comprobantesRepo = require("../data/comprobantesRepo");
 const emailService = require("./emailService");
 const { emailValido } = require("../utils/email");
+const { validarDominioCorreo } = require("../utils/dominioCorreo");
 const { query } = require("../config/db");
 const { montoEnLetras } = require("../utils/numeroALetras");
 const { AppError } = require("../utils/AppError");
@@ -142,6 +143,8 @@ async function enviarPorCorreo(codigo, cuerpo = {}) {
   if (!email) throw new AppError("Falta el correo al que se enviará la nota de crédito.", 400);
   // TDSI-60: un correo mal escrito no se envía y NO se registra ningún envío.
   if (!emailValido(email)) throw new AppError("El correo no es válido", 400, { email });
+  const errorDominio = await validarDominioCorreo(email); // el dominio tiene que existir (DNS); si no se puede comprobar, se deja enviar
+  if (errorDominio) throw new AppError(errorDominio, 400, { email });
 
   const datos = await armarNota(codigo); // 404 / 409 si no tiene nota
   const pdf = await generarPdf(codigo);
