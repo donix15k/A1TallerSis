@@ -50,6 +50,7 @@ async function construirFacturaDigital(id_transaccion) {
     empresa: EMPRESA,
     comprobante: {
       id_transaccion,
+      numero_factura: primera.numero_factura || null,
       fecha: primera.fecha,
       caja_id: primera.caja_id || null,
       cajero: primera.cajero || null,

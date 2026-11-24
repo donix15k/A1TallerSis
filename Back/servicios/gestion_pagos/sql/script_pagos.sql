@@ -730,3 +730,12 @@ CREATE TABLE IF NOT EXISTS pagos.transaccion_items (
 );
 CREATE INDEX IF NOT EXISTS idx_transaccion_items_id ON pagos.transaccion_items (id_transaccion);
 ALTER TABLE pagos.transaccion_items ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================================================
+-- Cada venta de caja emite su factura oficial F-NNNNNN en Facturacion (igual que las ventas del Marketplace): asi aparece en Devoluciones y
+-- su asiento viaja a Contabilidad. Aqui se guarda el numero de esa factura (o el error si Facturacion no respondio). IDEMPOTENTE.
+-- ==========================================================================
+ALTER TABLE pagos.transacciones
+    ADD COLUMN IF NOT EXISTS numero_factura VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS factura_error  TEXT;
+CREATE INDEX IF NOT EXISTS idx_transacciones_numero_factura ON pagos.transacciones (numero_factura);

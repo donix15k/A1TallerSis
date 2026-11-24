@@ -780,6 +780,11 @@ async function listarFacturasDelMes(mes, anio) {
   return rows.map((r) => ({ ...r, total: num(r.total) }));
 }
 
+/** Deja en la venta (todas sus filas) el numero de su factura F-NNNNNN, o el error si Facturacion no pudo emitirla. */
+async function guardarFacturaDeVenta(id_transaccion, { numero_factura = null, factura_error = null }) {
+  await query(`UPDATE pagos.transacciones SET numero_factura = $2, factura_error = $3 WHERE id_transaccion = $1`, [id_transaccion, numero_factura, factura_error ? String(factura_error).slice(0, 500) : null]);
+}
+
 /** Guarda los productos de una venta de caja (ya validados y con precios del catalogo). */
 async function insertarItemsVenta(id_transaccion, lineas) {
   let orden = 0;
@@ -800,6 +805,7 @@ async function listarItemsVenta(id_transaccion) {
 }
 
 module.exports = {
+  guardarFacturaDeVenta,
   insertarItemsVenta,
   listarItemsVenta,
   listarFacturasDelMes,

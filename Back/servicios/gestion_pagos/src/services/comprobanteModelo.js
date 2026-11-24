@@ -72,6 +72,8 @@ function construirModeloComprobante(factura) {
     ["Hora de emisión:", hora],
   ];
 
+  if (comprobante.numero_factura) datos.push(["Factura N°:", comprobante.numero_factura]);
+
   const clienteFilas = [["Nombre/Razón social:", cliente.razon_social]];
   if (cliente.nit) clienteFilas.push(["NIT/CI:", cliente.nit]);
 

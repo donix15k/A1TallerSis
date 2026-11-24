@@ -8,6 +8,7 @@ const { calcularDesgloseVuelto } = require("./cobroEfectivoService");
 
 const valesProxy = require("./valesProxy");
 const { resolverItemsVenta, guardarItemsVenta } = require("./itemsVentaService");
+const { emitirFacturaDeVenta } = require("./facturaVentaCajaService");
 
 const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR", "Vale"];
 
@@ -162,6 +163,10 @@ async function registrarPagoMixto(payload) {
       throw e;
     }
   }
+
+  // Factura oficial F-NNNNNN en Facturacion con los dos metodos de pago (como el Marketplace).
+  const factura = await emitirFacturaDeVenta({ id_transaccion: resultado.pago.id_transaccion, monto: calculo.total, nit: tipoDocumento ? nit : null, razon_social: tipoDocumento ? razon_social : null, metodos: calculo.metodos.map((m) => ({ metodo: m.metodo, monto: m.monto })), lineas: lineasItems });
+  if (factura.numero_factura) resultado.pago.numero_factura = factura.numero_factura;
 
   emitirActualizacion();
   return { ...resultado, cambio: calculo.cambio, desgloseVuelto: calculo.desgloseVuelto, clienteGuardado: clienteAutoguardado.creado, cliente: clienteAutoguardado.cliente };

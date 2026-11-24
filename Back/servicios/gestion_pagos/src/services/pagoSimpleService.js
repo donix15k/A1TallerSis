@@ -7,6 +7,7 @@ const { calcularVuelto, validarMontoRecibido, calcularCobroUsd } = require("./co
 
 const valesProxy = require("./valesProxy");
 const { resolverItemsVenta, guardarItemsVenta } = require("./itemsVentaService");
+const { emitirFacturaDeVenta } = require("./facturaVentaCajaService");
 
 const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR", "Vale"];
 
@@ -125,6 +126,9 @@ async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_s
       throw e;
     }
   }
+  // Factura oficial F-NNNNNN en Facturacion (como el Marketplace): asi la venta aparece en Devoluciones y su asiento viaja a Contabilidad.
+  const factura = await emitirFacturaDeVenta({ id_transaccion: pago.id_transaccion, monto, nit: tipoDocumento ? nit : null, razon_social: tipoDocumento ? razon_social : null, metodos: [{ metodo, monto }], lineas: lineasItems });
+  if (factura.numero_factura) pago.numero_factura = factura.numero_factura;
   const totalTransacciones = await repo.contarTransacciones();
   emitirActualizacion();
 
