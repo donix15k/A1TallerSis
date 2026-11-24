@@ -163,7 +163,7 @@ async function responderContabilidad({ referencia, resultado, motivo, numero_asi
  * Despues de publicar la respuesta de Contabilidad, le pide al servicio DUEÑO del documento que lea su suscripcion YA (facturas y anulaciones:
  * Facturacion; notas de credito: Devoluciones; diferencias de caja: Gestion de Caja). Sin esto cada servicio la leia solo cada 30 s y, como la
  * suscripcion es compartida, la respuesta podia tardar hasta un minuto en registrarse. Se reintenta 2 veces mas por si la primera lectura
- * se llevo otros mensajes. Nunca falla: si no se puede despertar al servicio, su reloj de 30 s la procesa igual.
+ * se llevo otros mensajes. La primera lectura espera unos segundos para que el mensaje se pueda ver en el topico. Nunca falla: si no se puede despertar al servicio, su reloj de 30 s la procesa igual.
  */
 function despertarLectorContabilidad(referencia, token) {
   const ref = String(referencia || "");
@@ -175,7 +175,10 @@ function despertarLectorContabilidad(referencia, token) {
         ? `${process.env.GESTION_CAJA_URL || "http://localhost:4004"}/api/caja/diferencias/respuestas-contabilidad/procesar`
         : null;
   if (!base || !token) return;
-  for (const espera of [1500, 6000, 15000]) {
+  // El mensaje queda en el topico de A1 (suscripcion compartida) hasta que el servicio dueño lo lee y lo confirma. Si se lee a los 1,5 s, quien este
+  // mirando el topico (el docente) no alcanza a verlo. Por eso la primera lectura espera VISIBILIDAD_SEG (por defecto 40 s; 0 = al instante).
+  const visible = Number(process.env.SIMULACION_CONTABILIDAD_VISIBLE_SEG ?? 40) * 1000;
+  for (const espera of [1500, 6000, 15000].map((e) => e + visible)) {
     setTimeout(() => {
       fetch(base, { method: "POST", headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) }).catch(() => {});
     }, espera).unref();
