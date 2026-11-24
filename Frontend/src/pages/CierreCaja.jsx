@@ -232,6 +232,13 @@ function CierreCaja() {
               </ul>
             </div>
 
+            {reporte.digital && (
+              <p style={{ margin: '0.5rem 0 0' }}>
+                <strong>Digital (tarjeta + QR):</strong> cobrado Bs. {Number(reporte.digital.cobrado).toFixed(2)}
+                {reporte.digital.devuelto > 0 && <> · devuelto Bs. {Number(reporte.digital.devuelto).toFixed(2)} · <strong>neto Bs. {Number(reporte.digital.neto).toFixed(2)}</strong></>}
+              </p>
+            )}
+
             {/* Devoluciones reembolsadas durante el turno: cuando, que productos, cuanto y con que se devolvio (QR cuenta como tarjeta) */}
             <div style={{ marginTop: '1rem' }}>
               <h4>Devoluciones del turno:</h4>
@@ -260,6 +267,12 @@ function CierreCaja() {
                       </div>
                     </div>
                   ))}
+                  {reporte.resumenDevoluciones && (
+                    <div style={{ padding: '0.6rem 0.9rem', background: '#f1f5f9', borderRadius: '8px', fontWeight: 600 }}>
+                      Descontado del efectivo: Bs. {Number(reporte.resumenDevoluciones.efectivo).toFixed(2)} · Descontado del digital: Bs. {Number(reporte.resumenDevoluciones.digital).toFixed(2)}
+                      {reporte.resumenDevoluciones.vale > 0 && <> · En vale: Bs. {Number(reporte.resumenDevoluciones.vale).toFixed(2)}</>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

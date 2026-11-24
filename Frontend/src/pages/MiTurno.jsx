@@ -73,6 +73,36 @@ function MiMetaDeHoy({ meta }) {
   )
 }
 
+/**
+ * Lo acumulado en digital (tarjeta + QR) y lo que se devolvio en el turno, con de donde se descontó: del efectivo, del digital o en vale.
+ * Son los mismos datos que despues salen en el reporte de cierre.
+ */
+function DigitalYDevoluciones({ digital, devoluciones }) {
+  const dato = (etiqueta, valor, detalle, color) => (
+    <div className="vxp-dato" style={{ textAlign: 'center' }}>
+      <div className="kpi-tarjeta-valor" style={{ fontSize: '1.35rem', margin: '0.2rem 0', color }}>{bs(valor)}</div>
+      <dt style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--vxp-texto-suave)' }}>{etiqueta}</dt>
+      {detalle && <div style={{ fontSize: '0.78rem', color: 'var(--vxp-texto-suave)', marginTop: 2 }}>{detalle}</div>}
+    </div>
+  )
+  return (
+    <div className="vxp-card" style={{ margin: 0 }}>
+      <h2 style={{ margin: '0 0 0.9rem', fontSize: '1.05rem' }}>Digital y devoluciones del turno</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
+        {dato('Digital acumulado', digital?.cobrado ?? 0, `Tarjeta ${bs(digital?.tarjeta ?? 0)} + QR ${bs(digital?.qr ?? 0)}`)}
+        {dato('Devuelto del efectivo', devoluciones?.efectivo ?? 0, 'Se descuenta del efectivo esperado', devoluciones?.efectivo > 0 ? '#b45309' : undefined)}
+        {dato('Devuelto del digital', devoluciones?.digital ?? 0, 'Tarjeta o reversión de QR', devoluciones?.digital > 0 ? '#b45309' : undefined)}
+        {dato('Digital neto', digital?.neto ?? 0, 'Digital acumulado − devuelto del digital', '#0f7b4f')}
+      </div>
+      <p style={{ margin: '0.7rem 0 0', fontSize: '0.85rem', color: 'var(--vxp-texto-suave)' }}>
+        {devoluciones == null
+          ? 'No se pudieron consultar las devoluciones del turno.'
+          : `${numero(devoluciones.cantidad)} ${devoluciones.cantidad === 1 ? 'devolución' : 'devoluciones'} en el turno${devoluciones.vale > 0 ? ` · ${bs(devoluciones.vale)} devueltos en vale de compra` : ''}.`}
+      </p>
+    </div>
+  )
+}
+
 /** TDSI-224: "Mis números del turno": Ventas, Ticket promedio y Anulaciones. */
 function MisNumeros({ numeros }) {
   const items = [
@@ -283,6 +313,7 @@ function MiTurno() {
             <MiMetaDeHoy meta={datos.meta_hoy} />
             <MisNumeros numeros={datos.numeros} />
           </div>
+          <DigitalYDevoluciones digital={datos.digital} devoluciones={datos.devoluciones} />
           <div className="vxp-grid vxp-grid--2" style={{ alignItems: 'stretch' }}>
             <CierreDeTurno
               cierre={datos.cierre}
