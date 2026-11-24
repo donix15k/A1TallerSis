@@ -232,12 +232,11 @@ function CierreCaja() {
               </ul>
             </div>
 
-            {reporte.digital && (
-              <p style={{ margin: '0.5rem 0 0' }}>
-                <strong>Digital (tarjeta + QR):</strong> cobrado Bs. {Number(reporte.digital.cobrado).toFixed(2)}
-                {reporte.digital.devuelto > 0 && <> · devuelto Bs. {Number(reporte.digital.devuelto).toFixed(2)} · <strong>neto Bs. {Number(reporte.digital.neto).toFixed(2)}</strong></>}
+            {[['Efectivo', reporte.efectivo], ['Digital (tarjeta + QR)', reporte.digital]].map(([titulo, c]) => c && (
+              <p key={titulo} style={{ margin: '0.5rem 0 0' }}>
+                <strong>{titulo}:</strong> cobrado Bs. {Number(c.cobrado).toFixed(2)} · devuelto Bs. {Number(c.devuelto).toFixed(2)} · <strong>quedó Bs. {Number(c.neto).toFixed(2)}</strong>
               </p>
-            )}
+            ))}
 
             {/* Devoluciones reembolsadas durante el turno: cuando, que productos, cuanto y con que se devolvio (QR cuenta como tarjeta) */}
             <div style={{ marginTop: '1rem' }}>
