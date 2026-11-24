@@ -8,6 +8,7 @@ const { estadoVisible } = require("../data/enviosContabilidadRepo");
 const { requireAdministrador, requireAdministradorSalvoBandeja } = require("../middlewares/requireAdministrador");
 
 const marketplaceService = require("../services/marketplaceService");
+const decisionMarketplace = require("../services/decisionMarketplaceService");
 const enviosComprasRepo = require("../data/enviosComprasRepo");
 const enviosMarketplaceRepo = require("../data/enviosMarketplaceRepo");
 
@@ -72,7 +73,9 @@ router.get("/", requireAdministradorSalvoBandeja, wrap(async (req, res) => {
 // TDSI-35: el supervisor aprueba una devolucion pendiente con su usuario y PIN ({ supervisor_id, pin }).
 router.post("/:codigo/aprobar", wrap(async (req, res) => {
   const data = await devolucionService.aprobarDevolucion(req.params.codigo, req.body);
-  res.json({ ok: true, mensaje: "Devolución aprobada", data });
+  // Si los productos son del Marketplace, ni bien el supervisor aprueba se le avisa su decision por Pub/Sub (nunca hace fallar la aprobacion).
+  const aviso = await decisionMarketplace.avisarDecisionSegura(data.codigo);
+  res.json({ ok: true, mensaje: "Devolución aprobada", data: { ...data, aviso_marketplace: aviso } });
 }));
 
 // TDSI-36: el supervisor rechaza una devolucion pendiente ({ supervisor_id, pin, motivo_rechazo >= 10 caracteres }).
@@ -80,7 +83,9 @@ router.post("/:codigo/rechazar", wrap(async (req, res) => {
   const data = await devolucionService.rechazarDevolucion(req.params.codigo, req.body);
   // TDSI-117: si es de un pedido del Marketplace, se le avisa el rechazo con su motivo (asincrono; nunca hace fallar el rechazo).
   const marketplace = await marketplaceService.avisarResultadoSeguro(data.codigo);
-  res.json({ ok: true, mensaje: "Devolución rechazada", data: { ...data, marketplace: resumenAviso(marketplace) } });
+  // Y, ni bien el supervisor rechaza, el aviso de su decision (con su nombre y el motivo) a los productos del Marketplace.
+  const aviso = await decisionMarketplace.avisarDecisionSegura(data.codigo);
+  res.json({ ok: true, mensaje: "Devolución rechazada", data: { ...data, marketplace: resumenAviso(marketplace), aviso_marketplace: aviso } });
 }));
 
 // TDSI-49: reembolsa una devolucion APROBADA (efectivo de caja y/o reversion de tarjeta/QR) y la deja PROCESADA.

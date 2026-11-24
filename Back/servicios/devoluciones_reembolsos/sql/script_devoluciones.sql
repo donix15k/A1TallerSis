@@ -265,3 +265,20 @@ CREATE TABLE IF NOT EXISTS devoluciones.envios_marketplace_dev (
 );
 CREATE INDEX IF NOT EXISTS ix_envios_marketplace_dev_pendientes ON devoluciones.envios_marketplace_dev (proximo_intento_en) WHERE estado = 'Pendiente';
 ALTER TABLE devoluciones.envios_marketplace_dev ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================================================
+-- Aviso al Marketplace (Grupo E) de lo que decidio el supervisor (aprobar o rechazar) sobre una devolucion de productos del Marketplace.
+-- Una fila por decision; guarda el mensaje publicado, su messageId o el error. IDEMPOTENTE.
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS devoluciones.envios_marketplace_decision (
+    id                BIGSERIAL PRIMARY KEY,
+    devolucion_id     BIGINT      NOT NULL REFERENCES devoluciones.devoluciones(id) ON DELETE CASCADE,
+    decision          VARCHAR(10) NOT NULL CHECK (decision IN ('APROBADA','RECHAZADA')),
+    estado            VARCHAR(10) NOT NULL CHECK (estado IN ('Enviado','Error')),
+    pubsub_message_id VARCHAR(80),
+    error             VARCHAR(500),
+    payload           JSONB,
+    enviado_en        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (devolucion_id, decision)
+);
+ALTER TABLE devoluciones.envios_marketplace_decision ENABLE ROW LEVEL SECURITY;
