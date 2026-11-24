@@ -2,7 +2,7 @@
 // (ventaOnlineService.js): Facturacion es el dueño de la numeracion, publica el asiento a Contabilidad por Pub/Sub y Devoluciones lee de ahi.
 // Si Facturacion no responde, la venta NO se pierde: queda guardado el error en la propia venta (como con el Marketplace).
 const repo = require("../data/pagosRepo");
-const { emitirFactura } = require("./facturacionProxy");
+const { emitirFacturaCaja } = require("./facturacionCajaProxy");
 
 // El NIT que acepta Facturacion tiene entre 6 y 15 digitos: una venta "sin datos" se factura a nombre de "Consumidor final" con el NIT generico.
 const NIT_SIN_DATOS = "0000000";
@@ -21,7 +21,7 @@ const omitir = () => emisorPrueba === undefined && Boolean(process.env.NODE_TEST
  */
 async function emitirFacturaDeVenta({ id_transaccion, monto, nit, razon_social, metodos, lineas }) {
   if (omitir()) return { omitida: true };
-  const emitir = emisorPrueba || emitirFactura;
+  const emitir = emisorPrueba || emitirFacturaCaja;
   const items = lineas
     ? lineas.map((l) => ({ descripcion: l.descripcion, cantidad: l.cantidad, precio_unitario: l.precio_unitario }))
     : [{ descripcion: "Venta", cantidad: 1, precio_unitario: Number(monto) }];

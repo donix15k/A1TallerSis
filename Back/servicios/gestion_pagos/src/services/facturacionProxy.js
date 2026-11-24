@@ -4,7 +4,7 @@
 const FACTURACION_URL = process.env.FACTURACION_URL || "http://localhost:4002";
 
 /** Devuelve la factura creada ({ numero, id, ... }); lanza un Error con un mensaje claro si falla. */
-async function emitirFactura({ nit, razon_social, items, metodo_pago, metodos_pago, canal }) {
+async function emitirFactura({ nit, razon_social, items, metodo_pago, canal }) {
   let respuesta;
   try {
     respuesta = await fetch(`${FACTURACION_URL}/api/facturas`, {
@@ -12,7 +12,7 @@ async function emitirFactura({ nit, razon_social, items, metodo_pago, metodos_pa
       headers: { "Content-Type": "application/json" },
       // metodo_pago: con que se pago la orden (Efectivo, Tarjeta o QR). Facturacion lo exige: toda factura lo lleva.
       // canal: "Online" para las ventas del Marketplace (Devoluciones no las reembolsa con efectivo de caja).
-      body: JSON.stringify({ nit, razon_social, items, metodo_pago, metodos_pago, canal }),
+      body: JSON.stringify({ nit, razon_social, items, metodo_pago, canal }),
     });
   } catch (e) {
     throw new Error("No se pudo contactar a facturacion para emitir la factura.");
