@@ -1416,7 +1416,7 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible; /* el aviso al pasar el cursor sale por fuera de la tarjeta */
   transition: transform 220ms var(--vxp-ease), box-shadow 220ms var(--vxp-ease), border-color 200ms ease;
 }
 
@@ -1426,6 +1426,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
+  border-radius: 14px 14px 0 0;
   background: var(--c);
   opacity: 0.9;
 }
@@ -1769,3 +1770,62 @@
     transform: none;
   }
 }
+
+/* ---------- Tarjetas KPI: aviso al pasar el cursor y ventana "como se calculo" ---------- */
+.kpi-tip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(280px, 90vw);
+  display: grid;
+  gap: 4px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: #06152f;
+  color: #e8eef8;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: 0 16px 34px -14px rgba(6, 21, 47, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 160ms ease-out, transform 160ms ease-out, visibility 0s linear 160ms;
+}
+.kpi-tip b { color: #fff; font-size: 0.82rem; }
+.kpi-tip em { color: #f4c75a; font-style: normal; font-weight: 600; font-size: 0.74rem; }
+.kpi-tarjeta:focus-visible .kpi-tip { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+@media (hover: hover) and (pointer: fine) {
+  .kpi-tarjeta:hover .kpi-tip { opacity: 1; visibility: visible; transform: none; transition-delay: 250ms, 250ms, 250ms; }
+}
+.kpi-tarjeta:nth-last-child(-n + 2) .kpi-tip { left: auto; right: 0; }
+
+.kpi-det { display: grid; gap: 1rem; }
+.kpi-det h4 { margin: 0 0 0.35rem; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--vxp-texto-suave); }
+.kpi-det p { margin: 0; font-size: 0.92rem; line-height: 1.45; color: #344054; }
+.kpi-det-formula { padding: 0.6rem 0.8rem; border-radius: 10px; background: #f1f5f9; font-weight: 700; color: var(--vx-navy) !important; }
+.kpi-det-valores { margin: 0 0 0.6rem; display: grid; gap: 6px; }
+.kpi-det-valores > div { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; padding: 0.5rem 0.75rem; border: 1px solid var(--vxp-borde); border-radius: 10px; background: #fff; }
+.kpi-det-valores dt { font-size: 0.86rem; font-weight: 600; color: #344054; }
+.kpi-det-valores dt small { display: block; font-weight: 500; font-size: 0.74rem; color: var(--vxp-texto-suave); }
+.kpi-det-valores dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--vx-navy); white-space: nowrap; }
+.kpi-det-calculo { padding: 0.6rem 0.8rem; border-left: 3px solid var(--vx-steel); background: #f8fafc; font-weight: 700; color: var(--vx-navy) !important; }
+.kpi-det-resultado { --c: var(--kpi-gris); display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.85rem 1rem; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--c) 40%, #fff); background: color-mix(in srgb, var(--c) 9%, #fff); }
+.kpi-det-resultado--VERDE { --c: var(--kpi-verde); }
+.kpi-det-resultado--AMARILLO { --c: var(--kpi-amarillo); }
+.kpi-det-resultado--ROJO { --c: var(--kpi-rojo); }
+.kpi-det-resultado small { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--vxp-texto-suave); }
+.kpi-det-resultado strong { font-size: 1.7rem; color: var(--vx-navy); font-variant-numeric: tabular-nums; }
+.kpi-det-estado { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; color: var(--c); }
+.kpi-det-semaforo { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 0.88rem; color: #344054; }
+.kpi-det-semaforo li { display: flex; align-items: center; gap: 8px; padding: 0.3rem 0.5rem; border-radius: 8px; }
+.kpi-det-semaforo--actual { background: #f1f5f9; font-weight: 700; }
+.kpi-det-semaforo em { font-style: normal; color: var(--vx-navy); font-size: 0.78rem; }
+.kpi-det-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.kpi-det-lista li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; padding: 0.4rem 0.6rem; border-radius: 8px; background: #f8fafc; }
+.kpi-det-lista b { text-align: right; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .kpi-tip { transition: none; } }

@@ -22,6 +22,8 @@ import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import Icono from '../components/ui/Icono.jsx'
 import { Aviso, Esqueleto } from '../components/ui/Aviso.jsx'
 import TarjetaKPI from '../components/kpis/TarjetaKPI.jsx'
+import ModalDetalleKpi from '../components/kpis/ModalDetalleKpi.jsx'
+import { AYUDA, construirDetalle } from '../components/kpis/detalleKpi.js'
 import GraficoVentasMeta from '../components/kpis/GraficoVentasMeta.jsx'
 import { bs, mesActualBolivia, nombrePeriodo, numero, porcentaje } from '../utils/formato.js'
 
@@ -157,6 +159,7 @@ function PanelKpis() {
   const [errores, setErrores] = useState([])
   const [configurando, setConfigurando] = useState(false) // TDSI-203
   const [exportando, setExportando] = useState(false) // TDSI-213
+  const [kpiAbierto, setKpiAbierto] = useState(null) // id del KPI cuyo calculo se esta viendo
   const toast = useToast()
 
   const cargar = useCallback(async () => {
@@ -259,6 +262,21 @@ function PanelKpis() {
         />
       )}
 
+      {kpiAbierto && (() => {
+        const detalle = construirDetalle(kpiAbierto, datos)
+        return detalle ? (
+          <ModalDetalleKpi
+            detalle={detalle}
+            periodo={nombrePeriodo(periodo)}
+            onCerrar={() => setKpiAbierto(null)}
+            onVerMas={() => {
+              setPestana(detalle.pestana)
+              setKpiAbierto(null)
+            }}
+          />
+        ) : null
+      })()}
+
       {errores.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
           <Aviso tono="warn" titulo="Algunos indicadores no se pudieron cargar">
@@ -271,7 +289,7 @@ function PanelKpis() {
         <div role="tabpanel" aria-label="Resumen">
           <div className="kpi-tarjetas vxp-escalon">
             {tarjetas.map((t) => (
-              <TarjetaKPI key={t.id} nombre={t.nombre} valor={t.valor} color={t.color} detalle={t.detalle} cargando={cargando} onClick={() => setPestana(t.pestana)} />
+              <TarjetaKPI key={t.id} nombre={t.nombre} valor={t.valor} color={t.color} detalle={t.detalle} cargando={cargando} ayuda={AYUDA[t.id]} onClick={() => setKpiAbierto(t.id)} />
             ))}
           </div>
 
