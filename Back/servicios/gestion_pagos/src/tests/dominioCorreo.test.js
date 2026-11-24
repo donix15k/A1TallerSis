@@ -6,8 +6,8 @@ const { validarDominioCorreo, usarResolvedorDePrueba } = require("../utils/domin
 const error = (code) => Object.assign(new Error(code), { code });
 // dominios que "existen" con MX, solo con registro A, o que el DNS dice que no existen; "caido" simula un DNS que falla
 const resolvedor = {
-  resolveMx: async (d) => { if (d === "ucb.edu.bo") return [{ exchange: "mx.ucb.edu.bo", priority: 10 }]; if (d === "caido.com") throw error("ECONNREFUSED"); if (d === "lento.com") return new Promise(() => {}); throw error("ENOTFOUND"); },
-  resolve4: async (d) => { if (d === "soloa.com") return ["1.2.3.4"]; if (d === "caido.com") throw error("ECONNREFUSED"); throw error("ENODATA"); },
+  resolveMx: async (d) => { if (d === "ucb.edu.bo") return [{ exchange: "mx.ucb.edu.bo", priority: 10 }]; if (d === "patito.com") return [{ exchange: "localhost", priority: 0 }]; if (d === "nulo.com") return [{ exchange: ".", priority: 0 }]; if (d === "caido.com") throw error("ECONNREFUSED"); if (d === "lento.com") return new Promise(() => {}); throw error("ENOTFOUND"); },
+  resolve4: async (d) => { if (d === "patito.com") return ["64.190.63.222"]; if (d === "soloa.com") return ["1.2.3.4"]; if (d === "caido.com") throw error("ECONNREFUSED"); throw error("ENODATA"); },
   resolve6: async () => { throw error("ENODATA"); },
 };
 test.beforeEach(() => usarResolvedorDePrueba(resolvedor));
@@ -23,7 +23,12 @@ test("un dominio sin MX pero con registro A tambien pasa (asi funciona el correo
 });
 
 test("un dominio que el DNS dice que no existe se rechaza con un mensaje claro", async () => {
-  assert.match(await validarDominioCorreo("rodnysiles@baquito.com"), /El dominio "baquito\.com" no existe/);
+  assert.match(await validarDominioCorreo("rodnysiles@baquito.com"), /El dominio "baquito.com" no existe/);
+});
+
+test("un dominio que existe pero solo declara servidor de correo localhost (patito.com) o MX nulo no recibe correo y se rechaza", async () => {
+  assert.match(await validarDominioCorreo("rody@patito.com"), /no recibe correo/);
+  assert.match(await validarDominioCorreo("rody@nulo.com"), /no recibe correo/);
 });
 
 test("si el DNS falla o no responde NO se rechaza: no se sabe, se deja enviar", async () => {
