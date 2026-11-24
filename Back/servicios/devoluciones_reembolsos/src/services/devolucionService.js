@@ -552,7 +552,39 @@ async function listarRecientes({ pagina, por_pagina } = {}) {
   };
 }
 
+// Como se le devolvio el dinero al cliente: efectivo, tarjeta (una reversion de QR tambien es "Tarjeta": vuelve por el banco) o vale de compra.
+const FORMA_REEMBOLSO = { EFECTIVO: "Efectivo", REVERSION_TARJETA: "Tarjeta", REVERSION_QR: "Tarjeta", VALE: "Vale" };
+
+/**
+ * Devoluciones reembolsadas por un cajero entre dos instantes (el turno): para el reporte de cierre de caja. Cada una con fecha y hora, factura,
+ * productos devueltos, monto y la forma de reembolso (si fue mixto, una linea por forma).
+ */
+async function listarReembolsadasDelTurno({ desde, hasta, cajeros } = {}) {
+  const d = new Date(desde);
+  const h = hasta ? new Date(hasta) : new Date();
+  if (Number.isNaN(d.getTime()) || Number.isNaN(h.getTime())) throw new AppError("Indique desde y hasta como fechas válidas.", 400);
+  const lista = (Array.isArray(cajeros) ? cajeros : String(cajeros || "").split(",")).map((c) => c.trim()).filter(Boolean);
+  if (lista.length === 0) throw new AppError("Indique el cajero.", 400);
+
+  const filas = await devolucionesRepo.listarProcesadasEntre({ desde: d, hasta: h, cajeros: lista });
+  return filas.map((f) => {
+    // una forma por reembolso; si dos reversiones (tarjeta y QR) caen en "Tarjeta" se suman
+    const formas = new Map();
+    for (const r of f.reembolsos) formas.set(FORMA_REEMBOLSO[r.tipo] || r.tipo, Math.round(((formas.get(FORMA_REEMBOLSO[r.tipo] || r.tipo) ?? 0) + r.monto) * 100) / 100);
+    return {
+      codigo: f.codigo,
+      factura_numero: f.factura_numero,
+      procesada_en: f.procesada_en,
+      cajero: f.cajero,
+      monto_total: f.monto_total,
+      productos: f.productos.map((p) => ({ descripcion: p.descripcion, cantidad: p.cantidad, subtotal: p.subtotal })),
+      reembolsos: [...formas.entries()].map(([forma, monto]) => ({ forma, monto })),
+    };
+  });
+}
+
 module.exports = {
+  listarReembolsadasDelTurno,
   listarFacturasParaDevolucion,
   listarRecientes,
   listarParaExportar,

@@ -7,6 +7,7 @@ const arqueoRepo = require("../data/arqueoRepo");
 const { tipoDe } = require("../utils/denominaciones");
 const { obtenerReporteVentas, obtenerAnuladasTurno } = require("./pagosProxy");
 const { validarSupervisor } = require("./supervisorProxy");
+const { obtenerDevolucionesDelTurno } = require("./devolucionesProxy");
 
 /**
  * TDSI-319/323: calcula el total recaudado durante el turno, desglosado por método.
@@ -223,6 +224,9 @@ async function generarReporteCierre(turnoId, efectivoContado = null) {
   const arqueoDenominaciones = turno.estado === "CERRADO" ? await obtenerArqueoDenominaciones(turnoId) : null;
   // TDSI-931: la lista de anuladas (con motivo y supervisor) va en el reporte de cierre.
   const anuladas = await listarAnuladas(turnoId);
+  // Devoluciones reembolsadas durante el turno por este cajero (fecha y hora, productos, monto y como se devolvio). null si Devoluciones no respondio.
+  const cajeros = [turno.cajero_nombre, turno.cajero_id].filter(Boolean);
+  const devoluciones = await obtenerDevolucionesDelTurno({ cajeros: [...new Set(cajeros)], desde: turno.abierto_en, hasta: turno.cerrado_en });
 
   return {
     turnoId,
@@ -239,6 +243,7 @@ async function generarReporteCierre(turnoId, efectivoContado = null) {
     operaciones: recaudado.operaciones,
     resumenVentas: recaudado.resumenVentas,
     anuladas: anuladas.anuladas,
+    devoluciones,
     arqueoEfectivo: arqueo,
     arqueoDenominaciones,
   };
@@ -291,6 +296,20 @@ async function generarReporteTexto(turnoId, efectivoContado = null) {
       L.push(col(`  ${f.numero_factura} (${new Date(f.hora).toLocaleTimeString("es-BO")})`, f.total.toFixed(2)));
       L.push(`    Motivo: ${f.motivo || "-"}`);
       L.push(`    Autorizo: ${f.supervisor || "-"}`);
+    }
+  }
+
+  // Devoluciones reembolsadas en el turno: cuando, que productos, cuanto y con que se devolvio el dinero.
+  if (r.devoluciones === null) {
+    L.push(linea());
+    L.push("DEVOLUCIONES: no se pudieron consultar");
+  } else if (r.devoluciones && r.devoluciones.length > 0) {
+    L.push(linea());
+    L.push("DEVOLUCIONES DEL TURNO");
+    for (const d of r.devoluciones) {
+      L.push(col(`  ${d.codigo} · fac. ${d.factura_numero} (${new Date(d.procesada_en).toLocaleString("es-BO", { timeZone: "America/La_Paz" })})`, d.monto_total.toFixed(2)));
+      for (const p of d.productos) L.push(`    ${p.cantidad} x ${p.descripcion}`);
+      L.push(`    Devuelto en: ${d.reembolsos.map((x) => `${x.forma} ${x.monto.toFixed(2)}`).join(" + ")}`);
     }
   }
 

@@ -123,6 +123,52 @@ function tarjeta(doc, x, y, ancho, titulo, valor, { fondo = AZUL, texto = "#FFFF
   doc.font("Helvetica-Bold").fontSize(19).fillColor(texto).text(valor, x + 14, y + 29, { width: ancho - 28, lineBreak: false });
 }
 
+/**
+ * Devoluciones reembolsadas durante el turno: por cada una, fecha y hora, codigo, factura, monto, como se devolvio el dinero (efectivo, tarjeta o
+ * vale) y los productos devueltos. Al final, cuanto se devolvio en total por cada forma.
+ */
+function bloqueDevoluciones(doc, devoluciones) {
+  seccion(doc, "Devoluciones del turno");
+  if (devoluciones === null) {
+    doc.font("Helvetica").fontSize(9.5).fillColor(AMBAR).text("No se pudieron consultar las devoluciones de este turno (el servicio de Devoluciones no respondió).", M, doc.y, { width: ANCHO });
+    doc.y += 6;
+    return;
+  }
+  const totales = new Map();
+  for (const d of devoluciones) {
+    const alto = 40 + d.productos.length * 14;
+    espacio(doc, alto);
+    const y = doc.y;
+    doc.rect(M, y, ANCHO, 22).fill(AZUL);
+    doc.font("Helvetica-Bold").fontSize(9).fillColor("#FFFFFF");
+    doc.text(`${fecha(d.procesada_en)}  ·  ${d.codigo}  ·  Factura ${d.factura_numero}`, M + 8, y + 6.5, { width: ANCHO * 0.68, lineBreak: false });
+    doc.text(bs(d.monto_total), M + ANCHO * 0.68, y + 6.5, { width: ANCHO * 0.32 - 8, align: "right", lineBreak: false });
+    let yy = y + 22;
+    for (const p of d.productos) {
+      doc.font("Helvetica").fontSize(9.5).fillColor("#1F2933");
+      doc.text(`${p.cantidad} x ${p.descripcion}`, M + 8, yy + 3, { width: ANCHO * 0.75, lineBreak: false, ellipsis: true });
+      doc.text(bs(p.subtotal), M + ANCHO * 0.75, yy + 3, { width: ANCHO * 0.25 - 8, align: "right", lineBreak: false });
+      yy += 14;
+    }
+    doc.rect(M, yy + 2, ANCHO, 18).fill(AZUL_SUAVE);
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(AZUL);
+    doc.text(`Devuelto en: ${d.reembolsos.map((r) => `${r.forma} ${bs(r.monto)}`).join("  +  ")}`, M + 8, yy + 7, { width: ANCHO - 16, lineBreak: false });
+    for (const r of d.reembolsos) totales.set(r.forma, Math.round(((totales.get(r.forma) ?? 0) + r.monto) * 100) / 100);
+    doc.y = yy + 28;
+  }
+  if (devoluciones.length === 0) {
+    doc.font("Helvetica").fontSize(9.5).fillColor(GRIS).text("No hubo devoluciones en este turno.", M, doc.y, { width: ANCHO });
+    doc.y += 8;
+    return;
+  }
+  espacio(doc, 30);
+  const yT = doc.y + 2;
+  doc.roundedRect(M, yT, ANCHO, 24, 6).fill(AZUL_SUAVE);
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(AZUL);
+  doc.text(`Total devuelto: ${devoluciones.length} ${devoluciones.length === 1 ? "devolución" : "devoluciones"}  ·  ${[...totales.entries()].map(([f, m]) => `${f} ${bs(m)}`).join("  ·  ")}`, M + 10, yT + 7.5, { width: ANCHO - 20, lineBreak: false });
+  doc.y = yT + 30;
+}
+
 /** TDSI-324: PDF del reporte de cierre de caja, con la firma del cajero al final. */
 function generarReporteCierrePdfBuffer(reporte, { cajeroNombre, cajeroUsuario }) {
   const doc = new PDFDocument({ size: "A4", margin: M, bufferPages: true, info: { Title: `Cierre de caja ${reporte.codigo}`, Author: empresa().nombre } });
@@ -213,6 +259,9 @@ function generarReporteCierrePdfBuffer(reporte, { cajeroNombre, cajeroUsuario })
       reporte.anuladas.map((f) => [f.numero_factura, hora(f.hora), bs(f.total), f.motivo || "-", f.supervisor || "-"])
     );
   }
+
+  // ---- Devoluciones reembolsadas en el turno
+  if (reporte.devoluciones !== undefined) bloqueDevoluciones(doc, reporte.devoluciones);
 
   // ---- Arqueo de efectivo
   if (dif) {

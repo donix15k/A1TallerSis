@@ -40,6 +40,11 @@ router.get("/recientes", wrap(async (req, res) => {
   res.json({ ok: true, total: r.total, pagina: r.pagina, por_pagina: r.por_pagina, total_paginas: r.total_paginas, data: r.filas });
 }));
 
+// Devoluciones reembolsadas por un cajero en un turno (?desde&hasta&cajeros=a,b): las usa el reporte de cierre de caja. Solo lectura.
+router.get("/del-turno", wrap(async (req, res) => {
+  res.json({ ok: true, data: await devolucionService.listarReembolsadasDelTurno(req.query) });
+}));
+
 // TDSI-21/22: valida los productos y cantidades contra la factura, calcula el monto (TOTAL o PARCIAL),
 // genera el codigo DEV-0001 y guarda la devolucion en estado PENDIENTE.
 router.post("/", wrap(async (req, res) => {

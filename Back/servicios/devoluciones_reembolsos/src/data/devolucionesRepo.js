@@ -309,4 +309,36 @@ async function marcarProcesada(client, devolucionId, cajero) {
   );
 }
 
-module.exports = { bloquearParaReembolso, marcarProcesada, listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, aprobarPendiente, rechazarPendiente, crearDevolucion };
+/**
+ * Devoluciones PROCESADAS (ya reembolsadas) entre dos instantes por uno de los cajeros indicados, con sus productos y la forma en que se
+ * devolvio el dinero. Es solo lectura: lo usa el reporte de cierre de caja.
+ */
+async function listarProcesadasEntre({ desde, hasta, cajeros }) {
+  const { rows } = await query(
+    `SELECT d.id, d.codigo, d.factura_numero, d.monto_total::float AS monto_total, d.metodo_pago_original, h.cambiado_en AS procesada_en, h.cambiado_por AS cajero
+       FROM devoluciones.devoluciones d
+       JOIN LATERAL (SELECT cambiado_en, cambiado_por FROM devoluciones.historial_estados
+                      WHERE devolucion_id = d.id AND estado_nuevo = 'PROCESADA' ORDER BY id DESC LIMIT 1) h ON true
+      WHERE d.estado = 'PROCESADA' AND h.cambiado_en >= $1 AND h.cambiado_en <= $2 AND h.cambiado_por = ANY($3)
+      ORDER BY h.cambiado_en, d.id`,
+    [desde, hasta, cajeros]
+  );
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const { rows: items } = await query(
+    `SELECT devolucion_id, descripcion, cantidad::float AS cantidad, precio_unitario::float AS precio_unitario, subtotal::float AS subtotal
+       FROM devoluciones.devolucion_items WHERE devolucion_id = ANY($1) ORDER BY id`,
+    [ids]
+  );
+  const { rows: reembolsos } = await query(
+    `SELECT devolucion_id, tipo, monto::float AS monto FROM devoluciones.reembolsos WHERE devolucion_id = ANY($1) ORDER BY id`,
+    [ids]
+  );
+  return rows.map((r) => ({
+    ...r,
+    productos: items.filter((i) => i.devolucion_id === r.id),
+    reembolsos: reembolsos.filter((x) => x.devolucion_id === r.id),
+  }));
+}
+
+module.exports = { listarProcesadasEntre, bloquearParaReembolso, marcarProcesada, listarMotivosActivos, obtenerMotivoActivo, cantidadesYaDevueltas, obtenerPorCodigo, listarDevoluciones, aprobarPendiente, rechazarPendiente, crearDevolucion };
