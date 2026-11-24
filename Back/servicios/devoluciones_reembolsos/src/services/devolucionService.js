@@ -2,6 +2,7 @@ const facturacionProxy = require("./facturacionProxy");
 const devolucionesRepo = require("../data/devolucionesRepo");
 const { estaDentroDePlazo } = require("../utils/plazo");
 const { AppError } = require("../utils/AppError");
+const { resolverNombres, nombreDe } = require("../utils/nombresPersonas");
 
 const OBSERVACIONES_MAX = 300;
 
@@ -320,6 +321,9 @@ async function obtenerHistorial(codigo) {
     cambiado_por: h.cambiado_por,
     cambiado_en: h.cambiado_en,
   }));
+  // Nombre completo de quien hizo cada cambio (el cajero se guarda con su usuario y el supervisor con su codigo)
+  const nombres = await resolverNombres({ cajeros: [d.cajero, ...eventos.map((e) => e.cambiado_por)], supervisores: eventos.map((e) => e.cambiado_por) });
+  for (const e of eventos) e.cambiado_por_nombre = nombreDe(nombres, e.cambiado_por);
   const evento = (nuevo) => eventos.find((e) => e.estado_nuevo === nuevo) || null;
   const resuelta = evento("APROBADA") || evento("RECHAZADA");
   const procesada = evento("PROCESADA");
@@ -328,11 +332,14 @@ async function obtenerHistorial(codigo) {
     estado_actual: d.estado,
     resumen: {
       registrada_por: d.cajero,
+      registrada_por_nombre: nombreDe(nombres, d.cajero),
       registrada_en: d.fecha_solicitud,
       resuelta_como: resuelta ? resuelta.estado_nuevo : null,
       resuelta_por: resuelta ? resuelta.cambiado_por : null,
+      resuelta_por_nombre: resuelta ? resuelta.cambiado_por_nombre : null,
       resuelta_en: resuelta ? resuelta.cambiado_en : null,
       reembolsada_por: procesada ? procesada.cambiado_por : null,
+      reembolsada_por_nombre: procesada ? procesada.cambiado_por_nombre : null,
       reembolsada_en: procesada ? procesada.cambiado_en : null,
     },
     eventos,
@@ -401,7 +408,7 @@ async function listarDevoluciones({ estado, desde, hasta, cajero, origen, limite
   if (!vacio(pagina)) {
     const n = Number(pagina);
     if (!Number.isInteger(n) || n < 1) throw new AppError("La página debe ser un número entero mayor o igual a 1.", 400, { pagina });
-    const r = await devolucionesRepo.listarDevoluciones({ ...filtros, limite: POR_PAGINA, offset: (n - 1) * POR_PAGINA });
+    const r = await conNombreDelCajero(await devolucionesRepo.listarDevoluciones({ ...filtros, limite: POR_PAGINA, offset: (n - 1) * POR_PAGINA }));
     return { ...r, pagina: n, por_pagina: POR_PAGINA, total_paginas: Math.max(1, Math.ceil(r.total / POR_PAGINA)) };
   }
 
@@ -412,7 +419,20 @@ async function listarDevoluciones({ estado, desde, hasta, cajero, origen, limite
       throw new AppError(`El límite debe ser un número entero entre 1 y ${LIMITE_LISTA_MAX}.`, 400, { limite });
     }
   }
-  return devolucionesRepo.listarDevoluciones({ ...filtros, limite: limiteNormalizado });
+  return conNombreDelCajero(await devolucionesRepo.listarDevoluciones({ ...filtros, limite: limiteNormalizado }));
+}
+
+/** Agrega a cada fila el nombre completo del cajero (cajero_nombre) debajo de su usuario. */
+async function conNombreDelCajero(r) {
+  const nombres = await resolverNombres({ cajeros: r.filas.map((f) => f.cajero) });
+  return { ...r, filas: r.filas.map((f) => ({ ...f, cajero_nombre: nombres.cajeros.get(f.cajero) ?? null })) };
+}
+
+/** El detalle de una devolucion con los nombres del cajero que la registro y del supervisor que la autorizo. */
+async function obtenerDevolucionConNombres(codigo) {
+  const d = await obtenerDevolucion(codigo);
+  const nombres = await resolverNombres({ cajeros: [d.cajero], supervisores: [d.autorizado_por] });
+  return { ...d, cajero_nombre: nombres.cajeros.get(d.cajero) ?? null, autorizado_por_nombre: nombres.supervisores.get(d.autorizado_por) ?? null };
 }
 
 /**
@@ -587,6 +607,7 @@ async function listarReembolsadasDelTurno({ desde, hasta, cajeros } = {}) {
 }
 
 module.exports = {
+  obtenerDevolucionConNombres,
   listarReembolsadasDelTurno,
   listarFacturasParaDevolucion,
   listarRecientes,

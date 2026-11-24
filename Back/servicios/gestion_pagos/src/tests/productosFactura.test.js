@@ -99,3 +99,25 @@ test("una venta anulada muestra el supervisor que autorizo la anulacion", async 
   const { rows } = await query(`SELECT 1 FROM pagos.transacciones WHERE id_transaccion = $1`, [r.pago.id_transaccion]);
   assert.equal(rows.length, 0);
 });
+
+test("la factura muestra el NOMBRE completo del cajero (no solo su usuario) y el del supervisor que autorizo una modificacion", async () => {
+  const { rows: [cajero] } = await query(`SELECT usuario, nombre FROM caja.cajeros WHERE nombre <> usuario ORDER BY id LIMIT 1`);
+  const { rows: [sup] } = await query(`SELECT supervisor_id, nombre FROM facturacion.supervisores ORDER BY supervisor_id LIMIT 1`);
+  assert.ok(cajero && sup, "hacen falta un cajero y un supervisor reales en la BD");
+
+  const r = await registrarPagoSimple({ metodo: "Efectivo", monto: 15, caja_id: "CAJA-02", cajero: cajero.usuario, cajero_nombre: cajero.usuario, items: [{ sku: "ACE-002", cantidad: 1 }] });
+  ids.push(r.pago.id_transaccion);
+  await query(
+    `INSERT INTO pagos.bitacora_modificaciones (id_transaccion, campo, valor_anterior, valor_nuevo, modificado_por, autorizado_por) VALUES ($1,'razon_social','a','b',$2,$3)`,
+    [r.pago.id_transaccion, cajero.usuario, sup.supervisor_id]
+  );
+
+  const factura = await construirFacturaDigital(r.pago.id_transaccion);
+  assert.equal(factura.comprobante.cajero_nombre_completo, cajero.nombre);
+  const modelo = construirModeloComprobante(factura);
+  assert.equal(modelo.atendidoPor, `Atendido por: ${cajero.nombre} (${cajero.usuario}) · Caja N° CAJA-02`);
+  assert.deepEqual(modelo.autorizacion, [["Datos modificados con autorización de:", sup.nombre]]); // el nombre, no SUP-xxx
+  const html = renderizarHtmlFactura(factura);
+  assert.match(html, new RegExp(`Atendido por: ${cajero.nombre}`));
+  await query(`DELETE FROM pagos.bitacora_modificaciones WHERE id_transaccion = $1`, [r.pago.id_transaccion]);
+});

@@ -6,6 +6,7 @@ const { generarFacturaPdfBuffer } = require("./facturaPdfService");
 const { obtenerOCrearToken, obtenerOCrearTokenVentaOnline, urlVerificacion } = require("./verificacionFacturaService");
 const { validarEmail } = require("../utils/email");
 const { validarDominioCorreo } = require("../utils/dominioCorreo");
+const { resolverNombres } = require("../utils/nombresPersonas");
 
 // Datos fijos del negocio para el encabezado de la factura digital.
 // NIT simulado: este proyecto es academico y no tiene integracion real con el SIN.
@@ -40,11 +41,15 @@ async function construirFacturaDigital(id_transaccion) {
   // Quien autorizo: el supervisor que aprobo la anulacion y los que autorizaron modificaciones de los datos de la venta.
   const anulada = primera.estado === "Anulado";
   const modificaciones = await pagosRepo.listarBitacoraModificaciones(id_transaccion);
+  // Nombres completos (no codigos): el supervisor se guarda con su codigo (SUP-...) y el cajero con su usuario.
+  const codigosSupervisor = [...modificaciones.map((m) => m.autorizado_por), primera.anulado_por];
+  const nombres = await resolverNombres({ cajeros: [primera.cajero, primera.cajero_nombre], supervisores: codigosSupervisor });
+  const nombreSup = (codigo) => nombres.supervisores.get(codigo) || codigo;
   const autorizaciones = {
     anulacion: anulada
-      ? { supervisor: primera.anulado_por_nombre || primera.anulado_por || null, motivo: primera.motivo_anulacion || null, fecha: primera.anulado_en || null }
+      ? { supervisor: primera.anulado_por_nombre || nombreSup(primera.anulado_por) || null, motivo: primera.motivo_anulacion || null, fecha: primera.anulado_en || null }
       : null,
-    modificacion: [...new Set(modificaciones.map((m) => m.autorizado_por).filter(Boolean))],
+    modificacion: [...new Set(modificaciones.map((m) => m.autorizado_por).filter(Boolean))].map(nombreSup),
   };
 
   return {
@@ -58,6 +63,8 @@ async function construirFacturaDigital(id_transaccion) {
       // TDSI-61/943: nombre para mostrar ("Atendido por"); "no registrado" en
       // ventas de antes de este cambio, que no tienen cajero_nombre guardado.
       cajero_nombre: primera.cajero_nombre || "no registrado",
+      // nombre completo del cajero (el de arriba suele ser su usuario); null si no se pudo leer
+      cajero_nombre_completo: nombres.cajeros.get(primera.cajero) ?? nombres.cajeros.get(primera.cajero_nombre) ?? null,
       tipo_pago: primera.tipo_pago,
       tokenVerificacion,
       urlVerificacion: urlVerificacion(tokenVerificacion),
