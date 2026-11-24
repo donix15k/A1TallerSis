@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { consultarReembolso, reembolsarDevolucion } from '../../api/devoluciones.js'
+import { createPortal } from 'react-dom'
+import { consultarReembolso, reembolsarDevolucion, listarCupones } from '../../api/devoluciones.js'
 import Modal from '../ui/Modal.jsx'
 import Boton from '../ui/Boton.jsx'
 import Icono from '../ui/Icono.jsx'
 import { Aviso, Esqueleto } from '../ui/Aviso.jsx'
 import { bs } from '../../utils/formato.js'
-import ValeCompra from './ValeCompra.jsx'
+import ImpresoraCupon from './ImpresoraCupon.jsx'
 
 const ICONO_TIPO = { EFECTIVO: 'dinero', REVERSION_TARJETA: 'tarjeta', REVERSION_QR: 'qr', VALE: 'vale' }
 const NOMBRE_TIPO = { EFECTIVO: 'Efectivo de caja', REVERSION_TARJETA: 'Reversión de tarjeta', REVERSION_QR: 'Reversión de QR', VALE: 'Vale de compra' }
@@ -34,6 +35,7 @@ function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale 
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const [resultado, setResultado] = useState(null)
+  const [cupon, setCupon] = useState(null) // el cupon del vale emitido: se muestra en la impresora ni bien se reembolsa
 
   useEffect(() => {
     let vigente = true
@@ -48,6 +50,30 @@ function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale 
     }
   }, [codigo, forma])
 
+  // El cupon con todos sus datos (cliente, factura, fechas) sale de la lista de cupones; si no responde, se arma con lo que ya se tiene.
+  async function mostrarCupon(vale) {
+    let completo = null
+    try {
+      const r = await listarCupones({ q: vale.codigo, porPagina: 5 })
+      completo = (r.data ?? []).find((c) => c.codigo === vale.codigo) ?? null
+    } catch {
+      completo = null
+    }
+    setCupon(
+      completo ?? {
+        codigo: vale.codigo,
+        monto: vale.monto ?? vale.saldo_disponible,
+        estado: 'ACTIVO',
+        emitido_en: new Date().toISOString(),
+        vence_en: vale.expira_en ?? vale.vence_en,
+        devolucion_codigo: codigo,
+        factura_numero: plan?.factura_numero ?? '',
+        cliente_nombre: null,
+        cliente_nit: null,
+      },
+    )
+  }
+
   async function confirmar() {
     setEnviando(true)
     setError(null)
@@ -55,6 +81,7 @@ function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale 
       const r = await reembolsarDevolucion(codigo, { cajero: cajero?.nombre, caja_id: cajero?.caja, forma })
       setResultado(r.data)
       onReembolsada?.(r.data)
+      if (r.data?.vale) await mostrarCupon(r.data.vale)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -186,7 +213,14 @@ function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale 
               {r.envio && r.envio.estado !== 'ENVIADO' ? ' · la pasarela la confirmará en breve' : ''}
             </Aviso>
           ))}
-          {resultado.vale && <ValeCompra vale={resultado.vale} devolucion={codigo} />}
+          {resultado.vale && (
+            <Aviso tono="ok" titulo={`Vale ${resultado.vale.codigo} emitido`}>
+              El cupón se imprime con el diseño del vale de consumo.{' '}
+              <Boton variante="negro" tam="sm" icono="imprimir" onClick={() => mostrarCupon(resultado.vale)} style={{ marginTop: 8 }}>
+                Ver e imprimir cupón
+              </Boton>
+            </Aviso>
+          )}
           {resultado.mensajes
             ?.filter((m) => !/^Entregue|^Reversión|^Vale /.test(m))
             .map((m) => (
@@ -197,6 +231,7 @@ function ModalReembolso({ codigo, cajero, onCerrar, onReembolsada, permitirVale 
           {renderResultadoExtra?.(resultado)}
         </div>
       )}
+      {cupon && createPortal(<ImpresoraCupon cupon={cupon} onCerrar={() => setCupon(null)} />, document.body)}
     </Modal>
   )
 }

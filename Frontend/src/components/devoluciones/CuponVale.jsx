@@ -4,8 +4,9 @@ import cssCupon from './Cupon.css?raw'
 import './Cupon.css'
 
 const ZONA = 'America/La_Paz'
+// Una sola linea ("23 de noviembre de 2026, 23:26"): con "a las 11:26 p. m." bajaba a dos lineas y empujaba el pie del cupon fuera de su alto.
 const fechaLarga = (v) =>
-  new Date(v).toLocaleString('es-BO', { timeZone: ZONA, day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  `${new Date(v).toLocaleDateString('es-BO', { timeZone: ZONA, day: 'numeric', month: 'long', year: 'numeric' })}, ${new Date(v).toLocaleTimeString('es-BO', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', hour12: false })}`
 const fechaCorta = (v) => (v ? new Date(v).toLocaleDateString('es-BO', { timeZone: ZONA, day: '2-digit', month: '2-digit', year: 'numeric' }) : '—')
 const montoCorto = (m) => {
   const n = Number(m) || 0

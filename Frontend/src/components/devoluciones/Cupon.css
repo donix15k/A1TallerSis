@@ -45,8 +45,8 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 16px 20px 14px 26px;
+  gap: 6px;
+  padding: 14px 20px 14px 26px;
   min-width: 0;
 }
 
@@ -109,6 +109,9 @@
   text-transform: uppercase;
   color: var(--cupon-amarillo);
   font-size: 0.62rem;
+}
+.cupon-fila:first-of-type dd {
+  white-space: nowrap;
 }
 .cupon-fila dd {
   margin: 0;
