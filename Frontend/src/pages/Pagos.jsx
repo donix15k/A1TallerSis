@@ -9,6 +9,8 @@ import AvisoCobroDuplicadoModal from '../components/AvisoCobroDuplicadoModal.jsx
 import DesgloseVuelto from '../components/DesgloseVuelto.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import BotonVerFactura from '../components/BotonVerFactura.jsx'
+import TiendaCajero from '../components/pagos/TiendaCajero.jsx'
+import { totalCarrito } from '../utils/catalogoProductos.js'
 
 // TDSI-29/572: botones rápidos de billetes para armar el monto recibido en efectivo.
 const BILLETES_RAPIDOS = [10, 20, 50, 100, 200]
@@ -203,6 +205,7 @@ function Pagos() {
 
   // TDSI-45: cancelar una venta que todavia no se cobro.
   const [mostrarCancelarVenta, setMostrarCancelarVenta] = useState(false)
+  const [carrito, setCarrito] = useState({}) // productos de la tiendita: { sku: unidades }
   const [mensajeCancelacion, setMensajeCancelacion] = useState(null)
   const [canceladasHoy, setCanceladasHoy] = useState(null)
   const [mostrarRespuestasRapidas, setMostrarRespuestasRapidas] = useState(false) // TDSI-44
@@ -797,7 +800,16 @@ function Pagos() {
     setPaso('confirmacion')
   }
 
+  // Productos elegidos en la tiendita ({ sku: unidades }): su total pasa solo al campo Monto.
+  function cambiarCarrito(siguiente) {
+    const total = totalCarrito(siguiente)
+    setCarrito(siguiente)
+    setMensajeCancelacion(null)
+    setDatos((prev) => ({ ...prev, monto: total > 0 ? total.toFixed(2) : '' }))
+  }
+
   function registrarOtro() {
+    setCarrito({})
     setDatos(ESTADO_INICIAL)
     setValeInfo(null)
     setPagoRegistrado(null)
@@ -831,14 +843,15 @@ function Pagos() {
         <MisRespuestasRapidas cajeroId={cajero?.nombre} onCerrar={() => setMostrarRespuestasRapidas(false)} />
       )}
 
-      <div className={`pagos-layout${mostrarPanelMixto ? ' pagos-layout--dividido' : ''}`}>
+      <div className={`pagos-layout pagos-layout--tienda${mostrarPanelMixto ? ' pagos-layout--dividido' : ''}`}>
         <div className="pagos-layout-col">
           {paso === 'formulario' && (
             <form className="pago-form" onSubmit={continuar}>
               {/* El ID de transacción ya no lo escribe el cajero: lo genera el sistema al confirmar el cobro. */}
               <label className="campo">
                 Monto (Bs.)
-                <input type="number" step="0.01" value={datos.monto} onChange={(e) => actualizarCampo('monto', e.target.value)} />
+                <input type="number" step="0.01" value={datos.monto} onChange={(e) => actualizarCampo('monto', e.target.value)} readOnly={Object.keys(carrito).length > 0} title={Object.keys(carrito).length > 0 ? 'Calculado con los productos elegidos' : undefined} />
+                {Object.keys(carrito).length > 0 && <small className="ayuda-mixto">Calculado con los productos elegidos.</small>}
               </label>
 
               <fieldset className="metodo-opciones" style={{ border: 'none', padding: 0 }}>
@@ -1243,6 +1256,8 @@ function Pagos() {
             />
           </div>
         )}
+
+        {paso === 'formulario' && <TiendaCajero carrito={carrito} onCambiar={cambiarCarrito} />}
       </div>
 
       {avisoDuplicado && (

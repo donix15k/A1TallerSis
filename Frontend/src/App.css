@@ -1025,6 +1025,12 @@
   min-width: 0;
 }
 
+/* Con la tiendita: el cobro a la izquierda (ancho fijo) y los productos ocupan todo el espacio libre de la derecha. */
+.pagos-layout--tienda { flex-wrap: wrap; }
+.pagos-layout--tienda > .pagos-layout-col { flex: 0 1 460px; }
+.pagos-layout--tienda > .tc { flex: 1 1 560px; }
+.pagos-layout--tienda .pago-form, .pagos-layout--tienda .pago-resumen { max-width: 100%; }
+
 .pagos-layout--dividido .pagos-layout-col {
   flex: 1 1 50%;
 }

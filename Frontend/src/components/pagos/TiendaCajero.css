@@ -1,0 +1,33 @@
+/* Tiendita del cajero (Pagos): ocupa el espacio libre a la derecha del cobro */
+.tc { background: #fff; border: 1px solid #dfe5ee; border-radius: 16px; padding: 1.1rem; box-shadow: 0 10px 30px -22px rgba(6, 21, 47, 0.5); min-width: 0; }
+.tc-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+.tc-cab h2 { margin: 0; font-size: 1.15rem; color: #06152f; }
+.tc-cab small { color: #64748b; }
+.tc-total { text-align: right; display: grid; }
+.tc-total span { font-size: 0.78rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+.tc-total b { font-size: 1.5rem; color: #06152f; font-variant-numeric: tabular-nums; }
+.tc-filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.9rem; }
+.tc-filtro { border: 1px solid #dfe5ee; background: #fff; color: #334155; border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: transform 140ms ease-out, background 140ms ease-out; }
+.tc-filtro:active { transform: scale(0.96); }
+.tc-filtro[aria-pressed='true'] { background: #06152f; color: #fff; border-color: #06152f; }
+.tc-grilla { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.tc-producto { display: grid; gap: 8px; align-content: start; border: 1px solid #dfe5ee; border-radius: 14px; overflow: hidden; padding-bottom: 12px; background: #fff; transition: box-shadow 160ms ease-out, border-color 160ms ease-out; }
+.tc-producto > :not(.tc-foto) { margin: 0 12px; }
+.tc-producto--elegido { border-color: #06152f; box-shadow: 0 0 0 3px rgba(6, 21, 47, 0.12); background: #f5f8fc; }
+.tc-foto { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.tc-foto--vacia { background: #eef1f6; }
+.tc-datos h3 { margin: 0; font-size: 0.88rem; line-height: 1.25; color: #06152f; }
+.tc-datos small { color: #64748b; font-size: 0.75rem; }
+.tc-precio { font-weight: 800; color: #06152f; }
+.tc-paso { display: inline-flex; align-items: center; justify-self: start; border: 1px solid #dfe5ee; border-radius: 12px; background: #fff; overflow: hidden; }
+.tc-paso button { width: 34px; height: 34px; border: 0; background: transparent; font-size: 1.1rem; font-weight: 700; color: #06152f; cursor: pointer; transition: background 140ms ease-out, transform 140ms ease-out; }
+.tc-paso button:hover:not(:disabled) { background: #e8eef8; }
+.tc-paso button:active:not(:disabled) { transform: scale(0.88); }
+.tc-paso button:disabled { color: #b6bfcc; cursor: not-allowed; }
+.tc-paso output { min-width: 34px; text-align: center; font-weight: 800; color: #06152f; }
+.tc-pie { margin-top: 1rem; border-top: 1px solid #dfe5ee; padding-top: 0.8rem; display: grid; gap: 0.6rem; }
+.tc-pie ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tc-pie li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.9rem; }
+.tc-pie li b { font-variant-numeric: tabular-nums; }
+.tc-vaciar { justify-self: start; border: 0; background: transparent; color: #b91c1c; font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+@media (prefers-reduced-motion: reduce) { .tc-filtro, .tc-paso button { transition: none; } }
