@@ -49,6 +49,7 @@ function LineaTiempoDevolucion({ codigo, token }) {
             <span>
               {paso.verbo}: <b style={{ color: 'var(--vx-navy)' }}>{e.cambiado_por ?? '—'}</b>
             </span>
+            {e.cambiado_por_nombre && <span style={{ color: 'var(--vx-navy)', fontWeight: 600 }}>{e.cambiado_por_nombre}</span>}
             <span>{fechaHora(e.cambiado_en)}</span>
           </li>
         )

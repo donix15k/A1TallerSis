@@ -88,7 +88,7 @@ function ModalDecisionSupervisor({ devolucion, accion, onConfirmar, onCerrar }) 
         </div>
         <div style={{ textAlign: 'right', fontSize: '0.8rem', color: 'rgba(223,232,245,.85)' }}>
           <div>{devolucion.motivo?.nombre ?? 'Sin motivo'}</div>
-          <div>{devolucion.cajero}</div>
+          <div>{devolucion.cajero}{devolucion.cajero_nombre ? <small style={{ display: 'block' }}>{devolucion.cajero_nombre}</small> : null}</div>
           <div>{fechaHora(devolucion.fecha_solicitud)}</div>
         </div>
       </div>

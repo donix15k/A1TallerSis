@@ -29,7 +29,7 @@ function DetalleDevolucion({ devolucion: d, onReembolsar, children }) {
               )}
             </div>
             <div className="vxp-texto-suave" style={{ fontSize: '0.82rem', marginTop: 2 }}>
-              Factura {d.factura_numero} · registrada por {d.cajero} el {fechaHora(d.fecha_solicitud)}
+              Factura {d.factura_numero} · registrada por {d.cajero_nombre ? `${d.cajero_nombre} (${d.cajero})` : d.cajero} el {fechaHora(d.fecha_solicitud)}
             </div>
           </div>
         </div>

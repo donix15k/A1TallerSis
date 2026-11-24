@@ -219,7 +219,10 @@ function DevolucionesAdmin() {
                         <EtiquetaMarketplace devolucion={d} />
                       </td>
                       <td className="vxp-codigo" style={{ fontWeight: 600 }}>{d.factura_numero}</td>
-                      <td style={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.cajero}>{d.cajero}</td>
+                      <td style={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.cajero_nombre ? `${d.cajero_nombre} (${d.cajero})` : d.cajero}>
+                        {d.cajero}
+                        {d.cajero_nombre && <small style={{ display: 'block', color: 'var(--vxp-texto-suave)', fontWeight: 500 }}>{d.cajero_nombre}</small>}
+                      </td>
                       <td>
                         <span className={`vxp-badge vxp-badge--sin-punto ${d.tipo === 'TOTAL' ? 'vxp-badge--violeta' : 'vxp-badge--neutro'}`}>{d.tipo}</span>
                       </td>
