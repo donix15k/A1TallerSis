@@ -254,18 +254,24 @@ function generarReporteCierrePdfBuffer(reporte, { cajeroNombre, cajeroUsuario })
     ],
     { pie: ["Total recaudado", m.Efectivo.operaciones + m.Tarjeta.operaciones + m.QR.operaciones, bs(reporte.totalRecaudado)] }
   );
-  if (reporte.digital) {
-    const dg = reporte.digital;
-    espacio(doc, 50);
+  // Cuadre por modo de pago: lo cobrado, lo devuelto al cliente (siempre por el mismo modo con que pago) y lo que quedo.
+  const cuadre = [
+    reporte.efectivo ? ["Efectivo", reporte.efectivo] : null,
+    reporte.digital ? ["Digital (tarjeta + QR)", reporte.digital] : null,
+  ].filter(Boolean);
+  for (const [titulo, c] of cuadre) {
+    espacio(doc, 58);
     const yD = doc.y + 8;
-    doc.roundedRect(M, yD, ANCHO, 40, 6).fill(ZEBRA);
+    doc.roundedRect(M, yD, ANCHO, 46, 6).fill(ZEBRA);
+    doc.font("Helvetica-Bold").fontSize(8.5).fillColor(AZUL).text(titulo.toUpperCase(), M + 12, yD + 6, { width: ANCHO - 24, lineBreak: false, characterSpacing: 0.5 });
     const col3 = ANCHO / 3;
-    [["Digital cobrado (tarjeta + QR)", bs(dg.cobrado), AZUL], ["Devuelto del digital", bs(dg.devuelto), dg.devuelto > 0 ? AMBAR : AZUL], ["Digital neto", bs(dg.neto), VERDE]].forEach(([t, v, c], i) => {
-      doc.font("Helvetica").fontSize(8).fillColor(GRIS).text(t.toUpperCase(), M + 12 + col3 * i, yD + 7, { width: col3 - 16, lineBreak: false });
-      doc.font("Helvetica-Bold").fontSize(12).fillColor(c).text(v, M + 12 + col3 * i, yD + 20, { width: col3 - 16, lineBreak: false });
+    [["Cobrado", bs(c.cobrado), AZUL], ["Devuelto", bs(c.devuelto), c.devuelto > 0 ? AMBAR : AZUL], ["Quedó", bs(c.neto), VERDE]].forEach(([t, v, color], k) => {
+      doc.font("Helvetica").fontSize(7.5).fillColor(GRIS).text(t.toUpperCase(), M + 12 + col3 * k, yD + 19, { width: col3 - 16, lineBreak: false });
+      doc.font("Helvetica-Bold").fontSize(11.5).fillColor(color).text(v, M + 12 + col3 * k, yD + 29, { width: col3 - 16, lineBreak: false });
     });
-    doc.y = yD + 44;
-  } else {
+    doc.y = yD + 50;
+  }
+  if (cuadre.length === 0) {
     doc.font("Helvetica").fontSize(9).fillColor(GRIS).text(`Del total, ${bs(reporte.resumenVentas.totalDigital)} se cobró en digital (tarjeta + QR).`, M, doc.y + 2, { width: ANCHO });
   }
 

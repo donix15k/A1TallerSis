@@ -35,6 +35,7 @@ test("la devolucion del turno trae productos, monto y la forma: el QR cuenta com
   assert.equal(r[0].monto_total, 52);
   assert.deepEqual(r[0].productos.map((p) => [p.descripcion, p.cantidad, p.subtotal]), [["Aceite Fino", 1, 15], ["Queso criollo", 1, 25], ["Leche PIL", 1, 12]]);
   assert.deepEqual(r[0].reembolsos, [{ forma: "Efectivo", monto: 12 }, { forma: "Tarjeta", monto: 40 }]);
+  assert.deepEqual(r[0].por_metodo, [{ metodo: "Efectivo", monto: 12 }, { metodo: "QR", monto: 40 }]); // el cierre descuenta el QR aparte de la tarjeta
   assert.ok(r[0].procesada_en);
 });
 

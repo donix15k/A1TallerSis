@@ -49,7 +49,7 @@ async function obtenerMiTurno({ cajero, cajaId } = {}) {
   if (!turno) return { turno: null, mensaje: MENSAJE_SIN_TURNO, avisos: AVISOS };
 
   const [recaudado, esperado, meta, devoluciones] = await Promise.all([calcularTotalRecaudado(turno.id), calcularEfectivoEsperado(turno.id), metaDeHoy(turno.caja_id), devolucionesDelTurno(turno)]);
-  const { digital, resumenDevoluciones } = resumenDigitalYDevoluciones(recaudado.porMetodo, devoluciones);
+  const { digital, efectivo, resumenDevoluciones } = resumenDigitalYDevoluciones(recaudado.porMetodo, devoluciones);
   const ventas = recaudado.resumenVentas.cantidadVentas;
   const total = recaudado.totalIngresos;
   return {
@@ -71,6 +71,7 @@ async function obtenerMiTurno({ cajero, cajaId } = {}) {
     meta_hoy: meta,
     // lo cobrado en digital (tarjeta + QR) y lo devuelto en el turno: del efectivo, del digital o en vale
     digital,
+    efectivo,
     devoluciones: resumenDevoluciones,
     cierre: {
       efectivo_esperado: esperado.efectivoEsperado,

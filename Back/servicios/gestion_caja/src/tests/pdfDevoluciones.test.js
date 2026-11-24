@@ -37,3 +37,26 @@ test("el digital acumulado suma tarjeta + QR y lo devuelto del digital se descue
   assert.equal(resumenDigitalYDevoluciones(porMetodo, null).resumenDevoluciones, null); // Devoluciones no respondio
   assert.equal(resumenDigitalYDevoluciones(porMetodo, []).digital.neto, 1120);
 });
+
+test("el cierre descuenta lo devuelto por tarjeta y por QR de cada metodo y del total, y el efectivo queda como estaba", () => {
+  const { descontarDevolucionesDigitales, resumenDigitalYDevoluciones } = require("../services/cierreService");
+  const recaudado = {
+    porMetodo: {
+      Efectivo: { ingresos: 500, egresos: 190, neto: 310, operaciones: 2 },
+      Tarjeta: { ingresos: 820, egresos: 0, neto: 820, operaciones: 4 },
+      QR: { ingresos: 300, egresos: 0, neto: 300, operaciones: 2 },
+    },
+    totalEgresos: 190, totalRecaudado: 1430,
+  };
+  const lista = [
+    { reembolsos: [{ forma: "Efectivo", monto: 190 }], por_metodo: [{ metodo: "Efectivo", monto: 190 }] },
+    { reembolsos: [{ forma: "Tarjeta", monto: 70 }], por_metodo: [{ metodo: "Tarjeta", monto: 40 }, { metodo: "QR", monto: 30 }] },
+  ];
+  const n = descontarDevolucionesDigitales(recaudado, lista);
+  assert.deepEqual([n.porMetodo.Tarjeta.neto, n.porMetodo.QR.neto, n.porMetodo.Efectivo.neto], [780, 270, 310]);
+  assert.deepEqual([n.totalEgresos, n.totalRecaudado], [260, 1360]);
+  assert.equal(descontarDevolucionesDigitales(recaudado, null), recaudado); // Devoluciones no respondio: sin cambios
+  const r = resumenDigitalYDevoluciones(recaudado.porMetodo, lista);
+  assert.deepEqual(r.digital, { tarjeta: 820, qr: 300, cobrado: 1120, devuelto: 70, neto: 1050 });
+  assert.deepEqual(r.efectivo, { cobrado: 500, devuelto: 190, neto: 310 });
+});

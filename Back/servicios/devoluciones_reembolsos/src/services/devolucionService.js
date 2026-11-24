@@ -554,6 +554,8 @@ async function listarRecientes({ pagina, por_pagina } = {}) {
 
 // Como se le devolvio el dinero al cliente: efectivo, tarjeta (una reversion de QR tambien es "Tarjeta": vuelve por el banco) o vale de compra.
 const FORMA_REEMBOLSO = { EFECTIVO: "Efectivo", REVERSION_TARJETA: "Tarjeta", REVERSION_QR: "Tarjeta", VALE: "Vale" };
+// El metodo exacto de donde sale (para descontarlo de la tarjeta o del QR por separado en el cierre de caja).
+const METODO_REEMBOLSO = { EFECTIVO: "Efectivo", REVERSION_TARJETA: "Tarjeta", REVERSION_QR: "QR", VALE: "Vale" };
 
 /**
  * Devoluciones reembolsadas por un cajero entre dos instantes (el turno): para el reporte de cierre de caja. Cada una con fecha y hora, factura,
@@ -579,6 +581,7 @@ async function listarReembolsadasDelTurno({ desde, hasta, cajeros } = {}) {
       monto_total: f.monto_total,
       productos: f.productos.map((p) => ({ descripcion: p.descripcion, cantidad: p.cantidad, subtotal: p.subtotal })),
       reembolsos: [...formas.entries()].map(([forma, monto]) => ({ forma, monto })),
+      por_metodo: f.reembolsos.map((r) => ({ metodo: METODO_REEMBOLSO[r.tipo] || r.tipo, monto: r.monto })),
     };
   });
 }

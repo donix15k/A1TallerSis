@@ -211,13 +211,35 @@ async function obtenerArqueoDenominaciones(turnoId) {
  * Lo cobrado en digital (tarjeta + QR) y lo que se devolvio del turno, separado por de donde salio el dinero: del efectivo, del digital (tarjeta; una
  * reversion de QR tambien) o en vale de compra. `lista` son las devoluciones del turno (null si Devoluciones no respondio).
  */
+/**
+ * Descuenta del turno lo devuelto por tarjeta o QR (esas devoluciones no salen de la caja, asi que no estan en caja.movimientos): baja el neto de
+ * cada metodo digital, los egresos y el total recaudado. El efectivo ya viene descontado por las salidas que Devoluciones registra en Caja.
+ * Si la lista es null (Devoluciones no respondio) devuelve el recaudado tal cual.
+ */
+function descontarDevolucionesDigitales(recaudado, lista) {
+  if (!lista) return recaudado;
+  const devuelto = { Tarjeta: 0, QR: 0 };
+  for (const d of lista) for (const p of d.por_metodo || []) if (p.metodo in devuelto) devuelto[p.metodo] += aCentavos(p.monto);
+  if (devuelto.Tarjeta + devuelto.QR === 0) return recaudado;
+  const porMetodo = { ...recaudado.porMetodo };
+  for (const m of ["Tarjeta", "QR"]) {
+    const egresos = aCentavos(porMetodo[m].egresos) + devuelto[m];
+    porMetodo[m] = { ...porMetodo[m], egresos: aMonto(egresos), neto: aMonto(aCentavos(porMetodo[m].ingresos) - egresos) };
+  }
+  const totalEgresos = aMonto(aCentavos(recaudado.totalEgresos) + devuelto.Tarjeta + devuelto.QR);
+  return { ...recaudado, porMetodo, totalEgresos, totalRecaudado: aMonto(aCentavos(recaudado.totalRecaudado) - devuelto.Tarjeta - devuelto.QR) };
+}
+
 function resumenDigitalYDevoluciones(porMetodo, lista) {
   const tarjeta = aCentavos(porMetodo.Tarjeta?.ingresos || 0);
   const qr = aCentavos(porMetodo.QR?.ingresos || 0);
   const suma = { Efectivo: 0, Tarjeta: 0, Vale: 0 };
   for (const d of lista || []) for (const r of d.reembolsos) if (r.forma in suma) suma[r.forma] += aCentavos(r.monto);
   const devueltoDigital = suma.Tarjeta;
+  const ef = porMetodo.Efectivo || { ingresos: 0, egresos: 0 };
   return {
+    // efectivo: lo cobrado en efectivo, lo devuelto en efectivo (salidas de caja) y lo que quedo
+    efectivo: { cobrado: aMonto(aCentavos(ef.ingresos)), devuelto: aMonto(aCentavos(ef.egresos)), neto: aMonto(aCentavos(ef.ingresos) - aCentavos(ef.egresos)) },
     digital: {
       tarjeta: aMonto(tarjeta),
       qr: aMonto(qr),
@@ -262,7 +284,8 @@ async function generarReporteCierre(turnoId, efectivoContado = null) {
   const anuladas = await listarAnuladas(turnoId);
   // Devoluciones reembolsadas durante el turno por este cajero (fecha y hora, productos, monto y como se devolvio). null si Devoluciones no respondio.
   const devoluciones = await devolucionesDelTurno(turno);
-  const { digital, resumenDevoluciones } = resumenDigitalYDevoluciones(recaudado.porMetodo, devoluciones);
+  const { digital, efectivo, resumenDevoluciones } = resumenDigitalYDevoluciones(recaudado.porMetodo, devoluciones);
+  const recaudadoNeto = descontarDevolucionesDigitales(recaudado, devoluciones); // total y metodos ya sin lo devuelto por tarjeta/QR
 
   return {
     turnoId,
@@ -272,16 +295,17 @@ async function generarReporteCierre(turnoId, efectivoContado = null) {
     abiertoEn: turno.abierto_en,
     cerradoEn: turno.cerrado_en,
     cerradoPorNombre: turno.cerrado_por_nombre || turno.cerrado_por,
-    totalesPorMetodo: recaudado.porMetodo,
+    totalesPorMetodo: recaudadoNeto.porMetodo,
     totalIngresos: recaudado.totalIngresos,
-    totalEgresos: recaudado.totalEgresos,
-    totalRecaudado: recaudado.totalRecaudado,
+    totalEgresos: recaudadoNeto.totalEgresos,
+    totalRecaudado: recaudadoNeto.totalRecaudado,
     operaciones: recaudado.operaciones,
     resumenVentas: recaudado.resumenVentas,
     anuladas: anuladas.anuladas,
     devoluciones,
     resumenDevoluciones,
     digital,
+    efectivo,
     arqueoEfectivo: arqueo,
     arqueoDenominaciones,
   };
@@ -354,12 +378,13 @@ async function generarReporteTexto(turnoId, efectivoContado = null) {
     L.push(col("  Descontado del digital", rd.digital.toFixed(2)));
     if (rd.vale > 0) L.push(col("  Devuelto en vale", rd.vale.toFixed(2)));
   }
-  if (r.digital) {
+  for (const [titulo, c] of [["EFECTIVO", r.efectivo], ["DIGITAL (TARJETA + QR)", r.digital]]) {
+    if (!c) continue;
     L.push(linea());
-    L.push("DIGITAL (TARJETA + QR)");
-    L.push(col("  Cobrado", r.digital.cobrado.toFixed(2)));
-    L.push(col("  Devuelto del digital", r.digital.devuelto.toFixed(2)));
-    L.push(col("  Digital neto", r.digital.neto.toFixed(2)));
+    L.push(`CUADRE ${titulo}`);
+    L.push(col("  Cobrado", c.cobrado.toFixed(2)));
+    L.push(col("  Devuelto", c.devuelto.toFixed(2)));
+    L.push(col("  Quedo", c.neto.toFixed(2)));
   }
 
   if (r.arqueoEfectivo) {
@@ -462,4 +487,5 @@ async function cerrarTurno(turnoId, { supervisor_id, pin, efectivo_contado, arqu
 
 module.exports = {
   resumenDigitalYDevoluciones,
+  descontarDevolucionesDigitales,
   devolucionesDelTurno, calcularTotalRecaudado, calcularEfectivoEsperado, calcularArqueo, compararEfectivo, compararArqueo, listarAnuladas, generarReporteCierre, generarReporteTexto, cerrarTurno };
