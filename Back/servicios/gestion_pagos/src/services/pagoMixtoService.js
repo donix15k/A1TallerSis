@@ -7,6 +7,7 @@ const { TIPOS_DOCUMENTO_VALIDOS, validarFormatoDocumento } = require("../utils/d
 const { calcularDesgloseVuelto } = require("./cobroEfectivoService");
 
 const valesProxy = require("./valesProxy");
+const { resolverItemsVenta, guardarItemsVenta } = require("./itemsVentaService");
 
 const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR", "Vale"];
 
@@ -124,6 +125,7 @@ async function registrarPagoMixto(payload) {
     ? payload.metodos.map((m) => (m && m.metodo === "Vale" ? { ...m, referencia: String(m.codigo_vale ?? m.referencia ?? "").trim().toUpperCase() } : m))
     : payload.metodos;
   const calculo = calcularDivision({ ...payload, metodos: metodosEntrada });
+  const lineasItems = resolverItemsVenta(payload.items, calculo.total); // productos de la tiendita (opcional)
 
   // El vale se valida ANTES de registrar: existe, no esta vencido ni usado y su saldo cubre lo que se le asigna.
   const parteVale = calculo.metodos.find((m) => m.metodo === "Vale");
@@ -148,6 +150,8 @@ async function registrarPagoMixto(payload) {
     cajeroNombre,
     cobro_duplicado,
   });
+
+  await guardarItemsVenta(resultado.pago.id_transaccion, lineasItems);
 
   // TDSI-70: descontar el vale con la transaccion como referencia; si falla, la venta se deshace.
   if (parteVale) {

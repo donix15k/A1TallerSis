@@ -702,6 +702,7 @@ async function registrarPagoMixtoCompleto({ id_transaccion, cajaId, turnoId, tot
  * cuando el vale con el que se cobro no se pudo descontar: nadie la llego a ver ni a facturar.
  */
 async function eliminarVentaRegistrada(id_transaccion) {
+  await query(`DELETE FROM pagos.transaccion_items WHERE id_transaccion = $1`, [id_transaccion]);
   await query(`DELETE FROM pagos.transacciones WHERE id_transaccion = $1`, [id_transaccion]);
   await query(`DELETE FROM pagos.pagos_mixtos WHERE id_transaccion = $1`, [id_transaccion]); // el detalle cae en cascada
 }
@@ -779,7 +780,28 @@ async function listarFacturasDelMes(mes, anio) {
   return rows.map((r) => ({ ...r, total: num(r.total) }));
 }
 
+/** Guarda los productos de una venta de caja (ya validados y con precios del catalogo). */
+async function insertarItemsVenta(id_transaccion, lineas) {
+  let orden = 0;
+  for (const l of lineas) {
+    orden += 1;
+    await query(
+      `INSERT INTO pagos.transaccion_items (id_transaccion, orden, sku, descripcion, cantidad, precio_unitario, subtotal)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [id_transaccion, orden, l.sku, l.descripcion, l.cantidad, l.precio_unitario, l.subtotal]
+    );
+  }
+}
+
+/** Productos de una venta de caja, en el orden en que se cargaron (vacio si la venta se cobro solo por monto). */
+async function listarItemsVenta(id_transaccion) {
+  const { rows } = await query(`SELECT sku, descripcion, cantidad, precio_unitario, subtotal FROM pagos.transaccion_items WHERE id_transaccion = $1 ORDER BY orden`, [id_transaccion]);
+  return rows.map((r) => ({ ...r, cantidad: Number(r.cantidad), precio_unitario: num(r.precio_unitario), subtotal: num(r.subtotal) }));
+}
+
 module.exports = {
+  insertarItemsVenta,
+  listarItemsVenta,
   listarFacturasDelMes,
   crearCobroQr,
   obtenerCobroQrPorId,

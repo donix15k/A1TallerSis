@@ -712,3 +712,21 @@ ALTER TABLE pagos.pubsub_verificaciones
     ADD COLUMN IF NOT EXISTS tipo       VARCHAR(60),
     ADD COLUMN IF NOT EXISTS referencia VARCHAR(80);
 CREATE INDEX IF NOT EXISTS idx_pubsub_verificaciones_direccion ON pagos.pubsub_verificaciones (direccion, creado_en DESC);
+
+-- ==========================================================================
+-- Productos de cada venta de caja (la tiendita del cajero): una fila por producto con su precio y subtotal del momento de la venta.
+-- La factura/comprobante los muestra como detalle. IDEMPOTENTE.
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS pagos.transaccion_items (
+    id              BIGSERIAL PRIMARY KEY,
+    id_transaccion  VARCHAR(60)   NOT NULL,
+    orden           SMALLINT      NOT NULL,
+    sku             VARCHAR(40)   NOT NULL,
+    descripcion     VARCHAR(200)  NOT NULL,
+    cantidad        INTEGER       NOT NULL CHECK (cantidad > 0),
+    precio_unitario NUMERIC(14,2) NOT NULL CHECK (precio_unitario >= 0),
+    subtotal        NUMERIC(14,2) NOT NULL CHECK (subtotal >= 0),
+    UNIQUE (id_transaccion, sku)
+);
+CREATE INDEX IF NOT EXISTS idx_transaccion_items_id ON pagos.transaccion_items (id_transaccion);
+ALTER TABLE pagos.transaccion_items ENABLE ROW LEVEL SECURITY;

@@ -43,6 +43,29 @@ function construirModeloComprobante(factura) {
         }),
       };
 
+  // Productos de la venta de caja: una tabla "Producto / Subtotal" ANTES del desglose por metodo de pago.
+  const productos = Array.isArray(factura.productos) && factura.productos.length
+    ? {
+        encabezado: ["Producto", "Subtotal Bs."],
+        filas: factura.productos.map((p) => [`${p.cantidad} x ${p.descripcion} (Bs ${Number(p.precio_unitario).toFixed(2)})`, Number(p.subtotal).toFixed(2)]),
+      }
+    : null;
+
+  // Quien autorizo algo en esta venta (anulacion o modificacion de datos): el supervisor de caja.
+  const aut = factura.autorizaciones || {};
+  const autorizacion = [];
+  if (aut.anulacion) {
+    autorizacion.push(["Anulada con autorización de:", aut.anulacion.supervisor || "no registrado"]);
+    if (aut.anulacion.fecha) {
+      const f = formatearFechaHora(aut.anulacion.fecha);
+      autorizacion.push(["Fecha de anulación:", `${f.dia} ${f.hora}`]);
+    }
+    if (aut.anulacion.motivo) autorizacion.push(["Motivo:", aut.anulacion.motivo]);
+  }
+  if (Array.isArray(aut.modificacion) && aut.modificacion.length) {
+    autorizacion.push(["Datos modificados con autorización de:", aut.modificacion.join(", ")]);
+  }
+
   const datos = [
     ["N° de comprobante:", comprobante.id_transaccion],
     ["Fecha:", dia],
@@ -62,7 +85,9 @@ function construirModeloComprobante(factura) {
     // TDSI-51: una venta de Marketplace no tiene cajero/caja -- se muestra su N° de orden.
     atendidoPor: esOnline ? `Orden: ${comprobante.orden_id}` : lineaAtendidoPor(comprobante),
     cliente: clienteFilas,
+    productos,
     detalle,
+    autorizacion,
     total: factura.total.toFixed(2),
     son: `Son: ${montoEnLetras(factura.total)}`,
     qrTexto: "Escanee el código QR para verificar esta factura",

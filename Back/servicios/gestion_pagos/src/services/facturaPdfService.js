@@ -103,12 +103,33 @@ function dibujarContenido(doc, { modelo, qrBuffer }) {
   lineaPunteada(doc);
   modelo.cliente.forEach(([etiqueta, valor]) => filaDosColumnas(doc, etiqueta, valor));
 
+  // --- Productos (tiendita del cajero) ---
+  if (modelo.productos) {
+    lineaPunteada(doc);
+    doc.font("Mono-Bold").fontSize(6.8);
+    filaDosColumnas(doc, modelo.productos.encabezado[0], modelo.productos.encabezado[1]);
+    doc.font("Mono").fontSize(6.8);
+    modelo.productos.filas.forEach(([etiqueta, monto]) => filaDosColumnas(doc, etiqueta, monto));
+  }
+
   // --- Detalle ---
   lineaPunteada(doc);
   doc.font("Mono-Bold").fontSize(6.8);
   filaDosColumnas(doc, modelo.detalle.encabezado[0], modelo.detalle.encabezado[1]);
   doc.font("Mono").fontSize(6.8);
   modelo.detalle.filas.forEach(([etiqueta, monto]) => filaDosColumnas(doc, etiqueta, monto));
+
+  // --- Quien autorizo (anulacion / modificacion): supervisor de caja ---
+  if (modelo.autorizacion && modelo.autorizacion.length) {
+    lineaPunteada(doc);
+    doc.font("Mono").fontSize(6.8).fillColor(ROJO);
+    modelo.autorizacion.forEach(([etiqueta, valor]) => {
+      doc.text(etiqueta, MARGEN, doc.y, { width: ANCHO_UTIL });
+      doc.font("Mono-Bold").text(valor, MARGEN, doc.y, { width: ANCHO_UTIL });
+      doc.font("Mono").moveDown(0.15);
+    });
+    doc.fillColor(AZUL_MARINO);
+  }
 
   // --- Total: bloque azul marino ---
   doc.moveDown(0.5);

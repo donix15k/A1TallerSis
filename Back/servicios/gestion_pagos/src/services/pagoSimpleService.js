@@ -6,6 +6,7 @@ const { TIPOS_DOCUMENTO_VALIDOS, validarFormatoDocumento } = require("../utils/d
 const { calcularVuelto, validarMontoRecibido, calcularCobroUsd } = require("./cobroEfectivoService");
 
 const valesProxy = require("./valesProxy");
+const { resolverItemsVenta, guardarItemsVenta } = require("./itemsVentaService");
 
 const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR", "Vale"];
 
@@ -21,7 +22,7 @@ const METODOS_VALIDOS = ["Efectivo", "Tarjeta", "QR", "Vale"];
  * TDSI-61/199: cajero_nombre es el nombre para mostrar ("Atendido por"), se
  * toma de la cuenta con la que el cajero inicio sesion -- nunca se escribe a mano.
  */
-async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_social, telefono, email, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, cobro_duplicado = false, moneda_recibida, monto_usd, codigo_vale }) {
+async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_social, telefono, email, caja_id, turno_id, cajero, cajero_id, cajero_nombre, monto_recibido, cobro_duplicado = false, moneda_recibida, monto_usd, codigo_vale, items }) {
   if (!metodo || monto === undefined) {
     throw new AppError("Los campos metodo y monto son obligatorios.", 400);
   }
@@ -31,6 +32,9 @@ async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_s
   if (typeof monto !== "number" || monto <= 0) {
     throw new AppError("El monto debe ser un numero mayor a 0.", 400);
   }
+
+  // Productos de la tiendita (opcional): se validan contra el catalogo antes de registrar nada.
+  const lineasItems = resolverItemsVenta(items, monto);
 
   // TDSI-70: con "Vale" el cajero escribe el codigo; antes de registrar nada se valida con Devoluciones que el vale
   // exista, no este vencido ni usado y que su saldo alcance (si no alcanza, 422 con lo que falta para pago mixto).
@@ -108,6 +112,8 @@ async function registrarPagoSimple({ metodo, monto, tipo_documento, nit, razon_s
     tipo_cambio: tipoCambioUsado,
     codigo_vale: codigoVale,
   });
+
+  await guardarItemsVenta(pago.id_transaccion, lineasItems);
 
   // TDSI-70: ya registrada la venta, se descuenta el vale con la transaccion como referencia (idempotente). Si el
   // descuento falla (el saldo cambio justo antes, Devoluciones cae...) la venta se deshace: no queda cobrada sin vale.

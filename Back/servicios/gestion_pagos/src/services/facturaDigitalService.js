@@ -33,6 +33,19 @@ async function construirFacturaDigital(id_transaccion) {
   // cliente a verificar la factura, no el codigo cosmetico que habia antes.
   const tokenVerificacion = await obtenerOCrearToken(id_transaccion);
 
+  // Productos de la venta (tiendita del cajero): vacio si se cobro solo por monto.
+  const productos = await pagosRepo.listarItemsVenta(id_transaccion);
+
+  // Quien autorizo: el supervisor que aprobo la anulacion y los que autorizaron modificaciones de los datos de la venta.
+  const anulada = primera.estado === "Anulado";
+  const modificaciones = await pagosRepo.listarBitacoraModificaciones(id_transaccion);
+  const autorizaciones = {
+    anulacion: anulada
+      ? { supervisor: primera.anulado_por_nombre || primera.anulado_por || null, motivo: primera.motivo_anulacion || null, fecha: primera.anulado_en || null }
+      : null,
+    modificacion: [...new Set(modificaciones.map((m) => m.autorizado_por).filter(Boolean))],
+  };
+
   return {
     empresa: EMPRESA,
     comprobante: {
@@ -61,6 +74,9 @@ async function construirFacturaDigital(id_transaccion) {
       monto_usd: t.monto_usd ?? null,
       tipo_cambio: t.tipo_cambio ?? null,
     })),
+    // Se llama "productos" (y no "items") a proposito: "items" identifica a una venta del Marketplace en el comprobante y el correo.
+    productos: productos.length ? productos : null,
+    autorizaciones,
     total,
   };
 }
