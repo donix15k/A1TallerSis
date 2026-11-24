@@ -123,11 +123,18 @@ function tarjeta(doc, x, y, ancho, titulo, valor, { fondo = AZUL, texto = "#FFFF
   doc.font("Helvetica-Bold").fontSize(19).fillColor(texto).text(valor, x + 14, y + 29, { width: ancho - 28, lineBreak: false });
 }
 
+// Si el reporte no trae el resumen ya calculado, se suma de la lista (efectivo, digital = tarjeta o QR, vale).
+function resumirDevoluciones(lista) {
+  const r = { efectivo: 0, digital: 0, vale: 0 };
+  for (const d of lista || []) for (const x of d.reembolsos) { if (x.forma === "Efectivo") r.efectivo += x.monto; else if (x.forma === "Tarjeta") r.digital += x.monto; else if (x.forma === "Vale") r.vale += x.monto; }
+  return r;
+}
+
 /**
  * Devoluciones reembolsadas durante el turno: por cada una, fecha y hora, codigo, factura, monto, como se devolvio el dinero (efectivo, tarjeta o
  * vale) y los productos devueltos. Al final, cuanto se devolvio en total por cada forma.
  */
-function bloqueDevoluciones(doc, devoluciones) {
+function bloqueDevoluciones(doc, devoluciones, resumen) {
   seccion(doc, "Devoluciones del turno");
   if (devoluciones === null) {
     doc.font("Helvetica").fontSize(9.5).fillColor(AMBAR).text("No se pudieron consultar las devoluciones de este turno (el servicio de Devoluciones no respondió).", M, doc.y, { width: ANCHO });
@@ -161,12 +168,23 @@ function bloqueDevoluciones(doc, devoluciones) {
     doc.y += 8;
     return;
   }
-  espacio(doc, 30);
+  espacio(doc, 70);
   const yT = doc.y + 2;
   doc.roundedRect(M, yT, ANCHO, 24, 6).fill(AZUL_SUAVE);
   doc.font("Helvetica-Bold").fontSize(10).fillColor(AZUL);
   doc.text(`Total devuelto: ${devoluciones.length} ${devoluciones.length === 1 ? "devolución" : "devoluciones"}  ·  ${[...totales.entries()].map(([f, m]) => `${f} ${bs(m)}`).join("  ·  ")}`, M + 10, yT + 7.5, { width: ANCHO - 20, lineBreak: false });
   doc.y = yT + 30;
+
+  // De donde salio lo devuelto: del efectivo de la caja, del digital (tarjeta/QR) o en vale. Es lo que se descuenta en el cierre.
+  espacio(doc, 50);
+  const yR = doc.y + 2;
+  doc.roundedRect(M, yR, ANCHO, 40, 6).fill(ZEBRA);
+  const c3 = ANCHO / 3;
+  [["Descontado del efectivo", resumen.efectivo], ["Descontado del digital", resumen.digital], ["Devuelto en vale", resumen.vale]].forEach(([t, v], i) => {
+    doc.font("Helvetica").fontSize(8).fillColor(GRIS).text(t.toUpperCase(), M + 12 + c3 * i, yR + 7, { width: c3 - 16, lineBreak: false });
+    doc.font("Helvetica-Bold").fontSize(12).fillColor(AMBAR).text(bs(v), M + 12 + c3 * i, yR + 20, { width: c3 - 16, lineBreak: false });
+  });
+  doc.y = yR + 46;
 }
 
 /** TDSI-324: PDF del reporte de cierre de caja, con la firma del cajero al final. */
@@ -236,7 +254,20 @@ function generarReporteCierrePdfBuffer(reporte, { cajeroNombre, cajeroUsuario })
     ],
     { pie: ["Total recaudado", m.Efectivo.operaciones + m.Tarjeta.operaciones + m.QR.operaciones, bs(reporte.totalRecaudado)] }
   );
-  doc.font("Helvetica").fontSize(9).fillColor(GRIS).text(`Del total, ${bs(reporte.resumenVentas.totalDigital)} se cobró en digital (tarjeta + QR).`, M, doc.y + 2, { width: ANCHO });
+  if (reporte.digital) {
+    const dg = reporte.digital;
+    espacio(doc, 50);
+    const yD = doc.y + 8;
+    doc.roundedRect(M, yD, ANCHO, 40, 6).fill(ZEBRA);
+    const col3 = ANCHO / 3;
+    [["Digital cobrado (tarjeta + QR)", bs(dg.cobrado), AZUL], ["Devuelto del digital", bs(dg.devuelto), dg.devuelto > 0 ? AMBAR : AZUL], ["Digital neto", bs(dg.neto), VERDE]].forEach(([t, v, c], i) => {
+      doc.font("Helvetica").fontSize(8).fillColor(GRIS).text(t.toUpperCase(), M + 12 + col3 * i, yD + 7, { width: col3 - 16, lineBreak: false });
+      doc.font("Helvetica-Bold").fontSize(12).fillColor(c).text(v, M + 12 + col3 * i, yD + 20, { width: col3 - 16, lineBreak: false });
+    });
+    doc.y = yD + 44;
+  } else {
+    doc.font("Helvetica").fontSize(9).fillColor(GRIS).text(`Del total, ${bs(reporte.resumenVentas.totalDigital)} se cobró en digital (tarjeta + QR).`, M, doc.y + 2, { width: ANCHO });
+  }
 
   // ---- Resumen de ventas
   seccion(doc, "Resumen de ventas");
@@ -261,7 +292,7 @@ function generarReporteCierrePdfBuffer(reporte, { cajeroNombre, cajeroUsuario })
   }
 
   // ---- Devoluciones reembolsadas en el turno
-  if (reporte.devoluciones !== undefined) bloqueDevoluciones(doc, reporte.devoluciones);
+  if (reporte.devoluciones !== undefined) bloqueDevoluciones(doc, reporte.devoluciones, reporte.resumenDevoluciones || resumirDevoluciones(reporte.devoluciones));
 
   // ---- Arqueo de efectivo
   if (dif) {

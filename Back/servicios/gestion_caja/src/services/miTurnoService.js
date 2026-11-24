@@ -3,7 +3,7 @@ const metasRepo = require("../data/metasVentaRepo");
 const { AppError } = require("../utils/AppError");
 const { aCentavos, aMonto } = require("../utils/money");
 const { hoyLocal } = require("../utils/fechas");
-const { calcularTotalRecaudado, calcularEfectivoEsperado, compararEfectivo, compararArqueo } = require("./cierreService");
+const { calcularTotalRecaudado, calcularEfectivoEsperado, compararEfectivo, compararArqueo, resumenDigitalYDevoluciones, devolucionesDelTurno } = require("./cierreService");
 const { calcularRecaudadoPorCaja } = require("./recaudadoService");
 const { limitesDe, colorSegun, INICIALES } = require("./objetivosProxy");
 
@@ -48,7 +48,8 @@ async function obtenerMiTurno({ cajero, cajaId } = {}) {
   const turno = await turnoDelCajero(cajero, cajaId);
   if (!turno) return { turno: null, mensaje: MENSAJE_SIN_TURNO, avisos: AVISOS };
 
-  const [recaudado, esperado, meta] = await Promise.all([calcularTotalRecaudado(turno.id), calcularEfectivoEsperado(turno.id), metaDeHoy(turno.caja_id)]);
+  const [recaudado, esperado, meta, devoluciones] = await Promise.all([calcularTotalRecaudado(turno.id), calcularEfectivoEsperado(turno.id), metaDeHoy(turno.caja_id), devolucionesDelTurno(turno)]);
+  const { digital, resumenDevoluciones } = resumenDigitalYDevoluciones(recaudado.porMetodo, devoluciones);
   const ventas = recaudado.resumenVentas.cantidadVentas;
   const total = recaudado.totalIngresos;
   return {
@@ -68,6 +69,9 @@ async function obtenerMiTurno({ cajero, cajaId } = {}) {
       total_vendido: total,
     },
     meta_hoy: meta,
+    // lo cobrado en digital (tarjeta + QR) y lo devuelto en el turno: del efectivo, del digital o en vale
+    digital,
+    devoluciones: resumenDevoluciones,
     cierre: {
       efectivo_esperado: esperado.efectivoEsperado,
       efectivo_inicial: esperado.efectivoInicial,

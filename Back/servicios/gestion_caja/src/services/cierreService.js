@@ -207,6 +207,42 @@ async function obtenerArqueoDenominaciones(turnoId) {
   return { detalle: filas.map((f) => ({ ...f, tipo: tipoDe(f.denominacion) })), totalContado: aMonto(totalC) };
 }
 
+/**
+ * Lo cobrado en digital (tarjeta + QR) y lo que se devolvio del turno, separado por de donde salio el dinero: del efectivo, del digital (tarjeta; una
+ * reversion de QR tambien) o en vale de compra. `lista` son las devoluciones del turno (null si Devoluciones no respondio).
+ */
+function resumenDigitalYDevoluciones(porMetodo, lista) {
+  const tarjeta = aCentavos(porMetodo.Tarjeta?.ingresos || 0);
+  const qr = aCentavos(porMetodo.QR?.ingresos || 0);
+  const suma = { Efectivo: 0, Tarjeta: 0, Vale: 0 };
+  for (const d of lista || []) for (const r of d.reembolsos) if (r.forma in suma) suma[r.forma] += aCentavos(r.monto);
+  const devueltoDigital = suma.Tarjeta;
+  return {
+    digital: {
+      tarjeta: aMonto(tarjeta),
+      qr: aMonto(qr),
+      cobrado: aMonto(tarjeta + qr),
+      devuelto: aMonto(devueltoDigital),
+      neto: aMonto(tarjeta + qr - devueltoDigital),
+    },
+    resumenDevoluciones: lista === null
+      ? null
+      : {
+          cantidad: lista.length,
+          efectivo: aMonto(suma.Efectivo),
+          digital: aMonto(suma.Tarjeta),
+          vale: aMonto(suma.Vale),
+          total: aMonto(suma.Efectivo + suma.Tarjeta + suma.Vale),
+        },
+  };
+}
+
+/** Devoluciones reembolsadas en el turno por su cajero (null si Devoluciones no respondio). */
+async function devolucionesDelTurno(turno) {
+  const cajeros = [...new Set([turno.cajero_nombre, turno.cajero_id].filter(Boolean))];
+  return obtenerDevolucionesDelTurno({ cajeros, desde: turno.abierto_en, hasta: turno.cerrado_en });
+}
+
 /** TDSI-321: arma el reporte de cierre con totales por método (datos estructurados). */
 async function generarReporteCierre(turnoId, efectivoContado = null) {
   const turno = await turnosRepo.obtenerTurnoPorId(turnoId);
@@ -225,8 +261,8 @@ async function generarReporteCierre(turnoId, efectivoContado = null) {
   // TDSI-931: la lista de anuladas (con motivo y supervisor) va en el reporte de cierre.
   const anuladas = await listarAnuladas(turnoId);
   // Devoluciones reembolsadas durante el turno por este cajero (fecha y hora, productos, monto y como se devolvio). null si Devoluciones no respondio.
-  const cajeros = [turno.cajero_nombre, turno.cajero_id].filter(Boolean);
-  const devoluciones = await obtenerDevolucionesDelTurno({ cajeros: [...new Set(cajeros)], desde: turno.abierto_en, hasta: turno.cerrado_en });
+  const devoluciones = await devolucionesDelTurno(turno);
+  const { digital, resumenDevoluciones } = resumenDigitalYDevoluciones(recaudado.porMetodo, devoluciones);
 
   return {
     turnoId,
@@ -244,6 +280,8 @@ async function generarReporteCierre(turnoId, efectivoContado = null) {
     resumenVentas: recaudado.resumenVentas,
     anuladas: anuladas.anuladas,
     devoluciones,
+    resumenDevoluciones,
+    digital,
     arqueoEfectivo: arqueo,
     arqueoDenominaciones,
   };
@@ -311,6 +349,17 @@ async function generarReporteTexto(turnoId, efectivoContado = null) {
       for (const p of d.productos) L.push(`    ${p.cantidad} x ${p.descripcion}`);
       L.push(`    Devuelto en: ${d.reembolsos.map((x) => `${x.forma} ${x.monto.toFixed(2)}`).join(" + ")}`);
     }
+    const rd = r.resumenDevoluciones;
+    L.push(col("  Descontado del efectivo", rd.efectivo.toFixed(2)));
+    L.push(col("  Descontado del digital", rd.digital.toFixed(2)));
+    if (rd.vale > 0) L.push(col("  Devuelto en vale", rd.vale.toFixed(2)));
+  }
+  if (r.digital) {
+    L.push(linea());
+    L.push("DIGITAL (TARJETA + QR)");
+    L.push(col("  Cobrado", r.digital.cobrado.toFixed(2)));
+    L.push(col("  Devuelto del digital", r.digital.devuelto.toFixed(2)));
+    L.push(col("  Digital neto", r.digital.neto.toFixed(2)));
   }
 
   if (r.arqueoEfectivo) {
@@ -411,4 +460,6 @@ async function cerrarTurno(turnoId, { supervisor_id, pin, efectivo_contado, arqu
   };
 }
 
-module.exports = { calcularTotalRecaudado, calcularEfectivoEsperado, calcularArqueo, compararEfectivo, compararArqueo, listarAnuladas, generarReporteCierre, generarReporteTexto, cerrarTurno };
+module.exports = {
+  resumenDigitalYDevoluciones,
+  devolucionesDelTurno, calcularTotalRecaudado, calcularEfectivoEsperado, calcularArqueo, compararEfectivo, compararArqueo, listarAnuladas, generarReporteCierre, generarReporteTexto, cerrarTurno };

@@ -23,3 +23,17 @@ test("muchas devoluciones saltan de hoja sin romperse", async () => {
   const muchas = Array.from({ length: 25 }, (_, i) => ({ ...dev, codigo: `DEV-${i}`, productos: [dev.productos[0], dev.productos[0]] }));
   assert.equal((await pdf(muchas)).subarray(0, 4).toString(), "%PDF");
 });
+
+test("el digital acumulado suma tarjeta + QR y lo devuelto del digital se descuenta; el vale y el efectivo no", () => {
+  const { resumenDigitalYDevoluciones } = require("../services/cierreService");
+  const porMetodo = { Efectivo: { ingresos: 500 }, Tarjeta: { ingresos: 820 }, QR: { ingresos: 300 } };
+  const lista = [
+    { reembolsos: [{ forma: "Efectivo", monto: 190 }] },
+    { reembolsos: [{ forma: "Tarjeta", monto: 40.5 }, { forma: "Vale", monto: 12 }] },
+  ];
+  const r = resumenDigitalYDevoluciones(porMetodo, lista);
+  assert.deepEqual(r.digital, { tarjeta: 820, qr: 300, cobrado: 1120, devuelto: 40.5, neto: 1079.5 });
+  assert.deepEqual(r.resumenDevoluciones, { cantidad: 2, efectivo: 190, digital: 40.5, vale: 12, total: 242.5 });
+  assert.equal(resumenDigitalYDevoluciones(porMetodo, null).resumenDevoluciones, null); // Devoluciones no respondio
+  assert.equal(resumenDigitalYDevoluciones(porMetodo, []).digital.neto, 1120);
+});
