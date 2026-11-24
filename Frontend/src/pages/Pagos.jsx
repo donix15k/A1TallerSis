@@ -586,6 +586,11 @@ function Pagos() {
     if (datos.enviarCorreo) {
       datosFacturacion.email = datos.email.trim()
     }
+    // Productos de la tiendita: el servidor pone el precio del catalogo y revisa que sumen el monto; la factura los muestra.
+    const skus = Object.keys(carrito)
+    if (skus.length > 0) {
+      datosFacturacion.items = skus.map((sku) => ({ sku, cantidad: carrito[sku] }))
+    }
     return datosFacturacion
   }
 

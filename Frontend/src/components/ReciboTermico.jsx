@@ -34,9 +34,30 @@ function ReciboTermico({ modelo, qr }) {
       <hr className="vx-recibo-linea" />
       <Filas filas={modelo.cliente} />
 
+      {modelo.productos && (
+        <>
+          <hr className="vx-recibo-linea" />
+          <Filas filas={[modelo.productos.encabezado]} negrita />
+          <Filas filas={modelo.productos.filas} />
+        </>
+      )}
+
       <hr className="vx-recibo-linea" />
       <Filas filas={[modelo.detalle.encabezado]} negrita />
       <Filas filas={modelo.detalle.filas} />
+
+      {modelo.autorizacion?.length > 0 && (
+        <>
+          <hr className="vx-recibo-linea" />
+          <div className="vx-recibo-autoriza">
+            {modelo.autorizacion.map(([etiqueta, valor]) => (
+              <p key={etiqueta}>
+                {etiqueta} <strong>{valor}</strong>
+              </p>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="vx-recibo-total">
         <span>TOTAL Bs.</span>
