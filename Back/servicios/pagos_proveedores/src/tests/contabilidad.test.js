@@ -20,6 +20,7 @@ test.before(async () => {
   });
   await new Promise((ok) => servidor.listen(0, ok));
   process.env.MODO_AISLADO = "false";
+  process.env.CONTABILIDAD_PERIODO_SIMULADO = "false"; // el .env lo trae en true: estas pruebas son del proxy REAL
   process.env.CONTABILIDAD_URL = `http://localhost:${servidor.address().port}`;
   process.env.CONTABILIDAD_TOKEN = "token-prueba";
   process.env.INTEGRACIONES_TIMEOUT_MS = "500";
@@ -116,4 +117,18 @@ test("TDSI-420: receptor simulado del modo aislado acepta el reporte o simula la
   const caida = envioSimulado("lote-8-envio-1", { CONTABILIDAD_SIMULAR_CAIDA: true });
   assert.equal(caida.ok, false);
   assert.equal(caida.reintentable, true);
+});
+test("CONTABILIDAD_PERIODO_SIMULADO: la verificacion del periodo responde abierto SIN llamar a Contabilidad (y lo demas del modo real no cambia)", async () => {
+  const cfg = require("../config/integraciones");
+  const antes = cfg.CONTABILIDAD_PERIODO_SIMULADO;
+  ultima = null;
+  cfg.CONTABILIDAD_PERIODO_SIMULADO = true;
+  try {
+    const r = await proxy().consultarPeriodoContable("2026-11-05");
+    assert.deepEqual(r, { disponible: true, periodo: "2026-11", abierto: true, estado: "ABIERTO", origen: "SIMULADO" });
+    assert.equal(ultima, null, "no debe hacer ninguna llamada HTTP");
+    assert.equal(cfg.MODO_AISLADO, false, "los ingresos reales siguen siendo reales");
+  } finally {
+    cfg.CONTABILIDAD_PERIODO_SIMULADO = antes;
+  }
 });

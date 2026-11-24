@@ -31,7 +31,7 @@ function leerEstado(cuerpo) {
 }
 
 async function consultarPeriodoContable(fecha) {
-  if (cfg.MODO_AISLADO) return periodoSimulado(fecha);
+  if (cfg.MODO_AISLADO || cfg.CONTABILIDAD_PERIODO_SIMULADO) return periodoSimulado(fecha);
 
   const periodo = periodoDe(fecha);
   const headers = { Accept: "application/json" };

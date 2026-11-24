@@ -50,6 +50,9 @@ const bool = (nombre) => String(process.env[nombre] || "false").toLowerCase() ==
 
 module.exports = {
   MODO_AISLADO: bool("MODO_AISLADO"),
+  // Solo la verificacion del PERIODO contable es simulada (responde "abierto"); los ingresos del dia siguen siendo los reales de Gestion de Pagos y el
+  // reporte del lote sale por Pub/Sub como siempre. Contabilidad (grupo D) no tiene una API HTTP de periodos: solo habla por Pub/Sub.
+  CONTABILIDAD_PERIODO_SIMULADO: bool("CONTABILIDAD_PERIODO_SIMULADO"),
   GESTION_PAGOS_URL: (process.env.GESTION_PAGOS_URL || "http://localhost:4005").replace(/\/+$/, ""),
   TIMEOUT_MS: entero("INTEGRACIONES_TIMEOUT_MS", 5000, 500, 30000),
 
