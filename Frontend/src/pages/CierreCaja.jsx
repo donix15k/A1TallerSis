@@ -232,6 +232,38 @@ function CierreCaja() {
               </ul>
             </div>
 
+            {/* Devoluciones reembolsadas durante el turno: cuando, que productos, cuanto y con que se devolvio (QR cuenta como tarjeta) */}
+            <div style={{ marginTop: '1rem' }}>
+              <h4>Devoluciones del turno:</h4>
+              {reporte.devoluciones == null ? (
+                <p style={{ color: '#92400e' }}>No se pudieron consultar las devoluciones de este turno.</p>
+              ) : reporte.devoluciones.length === 0 ? (
+                <p style={{ color: '#616e7c' }}>No hubo devoluciones en este turno.</p>
+              ) : (
+                <div style={{ display: 'grid', gap: '0.6rem' }}>
+                  {reporte.devoluciones.map((d) => (
+                    <div key={d.codigo} style={{ border: '1px solid #d1d5db', borderRadius: '8px', padding: '0.7rem 0.9rem', background: '#fff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', fontWeight: 700 }}>
+                        <span>{d.codigo} · Factura {d.factura_numero}</span>
+                        <span>Bs. {Number(d.monto_total).toFixed(2)}</span>
+                      </div>
+                      <div style={{ color: '#616e7c', fontSize: '0.85rem' }}>
+                        {new Date(d.procesada_en).toLocaleString('es-BO', { timeZone: 'America/La_Paz' })}
+                      </div>
+                      <ul style={{ margin: '0.4rem 0', paddingLeft: '1.1rem' }}>
+                        {d.productos.map((p, i) => (
+                          <li key={i}>{p.cantidad} × {p.descripcion} — Bs. {Number(p.subtotal).toFixed(2)}</li>
+                        ))}
+                      </ul>
+                      <div style={{ fontWeight: 600 }}>
+                        Devuelto en: {d.reembolsos.map((r) => `${r.forma} Bs. ${Number(r.monto).toFixed(2)}`).join(' + ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <ResumenArqueo cantidades={cantidades} efectivoEsperado={efectivoEsperado} />
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
