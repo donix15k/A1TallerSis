@@ -3,6 +3,7 @@ const ordenesPagoRepo = require("../data/ordenesPagoRepo");
 const { consultarOrdenPorNumero } = require("../services/ordenPagoService");
 const { registrarEgreso, METODOS_VALIDOS } = require("../services/egresoService");
 const { DIAS_PARA_VENCER } = require("../services/kpiDiasPagoService");
+const { confirmarPagoACompras } = require("../services/pagoProveedorCompras");
 
 // Pantalla "Pagos a proveedores" del administrador (/api/pagos-proveedores, solo administrador). Reusa la logica que ya existia (registrarEgreso:
 // valida la orden, el monto adeudado y la liquida); aqui solo se agrega la lista de ordenes y el pago por orden con el administrador como quien paga.
@@ -34,7 +35,16 @@ router.post("/ordenes/:numero/pagar", wrap(async (req, res) => {
     descripcion: typeof descripcion === "string" ? descripcion.trim().slice(0, 200) || undefined : undefined,
     registrado_por: String(quien).slice(0, 60),
   });
-  res.status(201).json({ ok: true, mensaje: `Orden ${orden.numero} pagada`, data: { orden: r.orden, egreso: r.egreso } });
+  // Ni bien se paga, se le confirma a Compras por Pub/Sub (nunca hace fallar el pago: si falla queda en Error y se puede reenviar).
+  const compras = await confirmarPagoACompras(orden.numero);
+  res.status(201).json({ ok: true, mensaje: `Orden ${orden.numero} pagada`, data: { orden: r.orden, egreso: r.egreso, confirmacion_compras: compras } });
+}));
+
+// Reenvia la confirmacion a Compras de una orden ya pagada cuyo mensaje quedo en Error (o sin enviar).
+router.post("/ordenes/:numero/reenviar-confirmacion", wrap(async (req, res) => {
+  const orden = await consultarOrdenPorNumero(req.params.numero); // 404 si no existe
+  const compras = await confirmarPagoACompras(orden.numero);
+  res.status(compras.enviada ? 200 : 502).json({ ok: compras.enviada, mensaje: compras.enviada ? "Confirmación enviada a Compras" : `No se pudo enviar: ${compras.error}`, data: { confirmacion_compras: compras } });
 }));
 
 module.exports = router;

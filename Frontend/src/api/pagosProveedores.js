@@ -10,3 +10,7 @@ export const listarOrdenesProveedores = (estado, token) => apiFetch(`/api/pagos-
 /** Paga la orden por su monto: { metodo: 'TRANSFERENCIA' | 'CHEQUE' | 'EFECTIVO', descripcion? }. */
 export const pagarOrdenProveedor = (numero, cuerpo, token) =>
   apiFetch(`/api/pagos-proveedores/ordenes/${encodeURIComponent(numero)}/pagar`, conToken(token, { method: 'POST', body: JSON.stringify(cuerpo) }), PROVEEDORES)
+
+/** Reenvia a Compras la confirmacion (Pub/Sub) del pago de una orden cuyo mensaje quedo en Error o sin enviar. */
+export const reenviarConfirmacionCompras = (numero, token) =>
+  apiFetch(`/api/pagos-proveedores/ordenes/${encodeURIComponent(numero)}/reenviar-confirmacion`, conToken(token, { method: 'POST' }), PROVEEDORES)

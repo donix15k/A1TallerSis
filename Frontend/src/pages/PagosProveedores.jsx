@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listarOrdenesProveedores, pagarOrdenProveedor } from '../api/pagosProveedores.js'
+import { listarOrdenesProveedores, pagarOrdenProveedor, reenviarConfirmacionCompras } from '../api/pagosProveedores.js'
 import { useAdminAuth } from '../context/AdminAuthContext.jsx'
 import Boton from '../components/ui/Boton.jsx'
 import Icono from '../components/ui/Icono.jsx'
@@ -128,12 +128,24 @@ function PagosProveedores() {
     cargar()
   }, [cargar])
 
+  async function reenviar(orden) {
+    try {
+      await reenviarConfirmacionCompras(orden.numero, token)
+      toast.ok(`Confirmación de ${orden.numero} enviada a Compras`)
+      cargar()
+    } catch (e) {
+      toast.error('No se pudo enviar a Compras', e.message)
+    }
+  }
+
   async function pagar({ metodo, descripcion }) {
     setEnviando(true)
     setErrorPago(null)
     try {
-      await pagarOrdenProveedor(pagando.numero, { metodo, descripcion }, token)
-      toast.ok(`Orden ${pagando.numero} pagada`, `${bs(pagando.monto)} a ${pagando.proveedor} · ${NOMBRE_METODO[metodo] ?? metodo}`)
+      const r = await pagarOrdenProveedor(pagando.numero, { metodo, descripcion }, token)
+      const compras = r.data?.confirmacion_compras
+      toast.ok(`Orden ${pagando.numero} pagada`, `${bs(pagando.monto)} a ${pagando.proveedor} · ${NOMBRE_METODO[metodo] ?? metodo}${compras?.enviada ? ' · confirmado a Compras' : ''}`)
+      if (compras && !compras.enviada) toast.aviso('El pago quedó registrado, pero no se pudo confirmar a Compras', 'Puede reenviar la confirmación desde la pestaña Pagadas.')
       setPagando(null)
       cargar()
     } catch (e) {
@@ -243,7 +255,17 @@ function PagosProveedores() {
                           Pagar
                         </Boton>
                       ) : (
-                        <span className="vxp-badge vxp-badge--ok">PAGADA</span>
+                        <>
+                          <span className="vxp-badge vxp-badge--ok">PAGADA</span>
+                          <small style={{ display: 'block', marginTop: 4, color: o.confirmacion_compras === 'Enviado' ? 'var(--kpi-verde)' : '#b45309', fontWeight: 600 }}>
+                            {o.confirmacion_compras === 'Enviado' ? 'Compras: confirmado ✓' : `Compras: ${o.confirmacion_compras === 'Error' ? 'no se pudo enviar' : 'sin confirmar'}`}
+                          </small>
+                          {o.confirmacion_compras !== 'Enviado' && (
+                            <Boton variante="claro" tam="sm" icono="enviar" onClick={() => reenviar(o)} style={{ marginTop: 4 }}>
+                              Confirmar a Compras
+                            </Boton>
+                          )}
+                        </>
                       )}
                     </td>
                   </tr>

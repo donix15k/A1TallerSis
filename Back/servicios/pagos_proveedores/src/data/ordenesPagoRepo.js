@@ -86,13 +86,15 @@ async function marcarNotificacionLeida(id) {
 async function listarOrdenes({ estado = null, limite = 200 } = {}) {
   const { rows } = await query(
     `SELECT numero, proveedor_razon_social AS proveedor, proveedor_nit AS nit, proveedor_banco AS banco, proveedor_cuenta_bancaria AS cuenta,
-            monto, moneda, concepto, estado, creado_en, liquidada_en, liquidada_por,
+            monto, moneda, concepto, o.estado AS estado, creado_en, liquidada_en, liquidada_por,
             TO_CHAR(creado_en AT TIME ZONE 'America/La_Paz', 'YYYY-MM-DD') AS "fechaEmision",
             TO_CHAR(fecha_vencimiento, 'YYYY-MM-DD') AS "fechaVencimiento",
-            ROUND((EXTRACT(EPOCH FROM (COALESCE(liquidada_en, now()) - creado_en)) / 86400)::numeric, 1) AS dias_desde_aprobacion
-       FROM proveedores.ordenes_pago
-      WHERE ($1::text IS NULL OR estado = $1)
-      ORDER BY (estado = 'PENDIENTE') DESC, COALESCE(liquidada_en, creado_en) DESC, id DESC
+            ROUND((EXTRACT(EPOCH FROM (COALESCE(liquidada_en, now()) - creado_en)) / 86400)::numeric, 1) AS dias_desde_aprobacion,
+            c.estado AS confirmacion_compras, c.error AS confirmacion_error
+       FROM proveedores.ordenes_pago o
+       LEFT JOIN proveedores.confirmaciones_pago_pubsub c ON c.orden_pago_id = o.id
+      WHERE ($1::text IS NULL OR o.estado = $1)
+      ORDER BY (o.estado = 'PENDIENTE') DESC, COALESCE(o.liquidada_en, o.creado_en) DESC, o.id DESC
       LIMIT $2`,
     [estado, Number(limite)]
   );

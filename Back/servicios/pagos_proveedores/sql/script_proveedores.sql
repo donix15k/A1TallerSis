@@ -174,3 +174,18 @@ BEGIN
             ADD CONSTRAINT ck_envios_contabilidad_canal CHECK (canal IN ('HTTP', 'PUBSUB'));
     END IF;
 END $$;
+
+-- ==========================================================================
+-- Confirmacion a Compras (Grupo C) por Pub/Sub de que se pago a un proveedor: una fila por orden (messageId o error). IDEMPOTENTE.
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS proveedores.confirmaciones_pago_pubsub (
+    id                BIGSERIAL PRIMARY KEY,
+    orden_pago_id     BIGINT      NOT NULL UNIQUE REFERENCES proveedores.ordenes_pago(id) ON DELETE CASCADE,
+    estado            VARCHAR(10) NOT NULL CHECK (estado IN ('Enviado','Error')),
+    pubsub_message_id VARCHAR(80),
+    error             VARCHAR(500),
+    intentos          INTEGER     NOT NULL DEFAULT 1,
+    payload           JSONB,
+    enviado_en        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE proveedores.confirmaciones_pago_pubsub ENABLE ROW LEVEL SECURITY;
