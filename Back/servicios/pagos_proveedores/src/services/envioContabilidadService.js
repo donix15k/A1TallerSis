@@ -9,6 +9,21 @@ const { armarReporte } = require("./reporteContabilidadService");
 
 const ESTADOS_ENVIO = ["PENDIENTE", "ENVIADO", "ERROR"];
 
+// Sobre que Contabilidad (Grupo D) espera en su topico: el mismo de las facturas y notas de credito de Facturacion.
+const SISTEMA_ORIGEN = "GESTION_DE_PAGOS_Y_FACTURACION";
+const TIPO_OPERACION_CIERRE = "cierre_diario";
+
+/** Envuelve el reporte del lote en el sobre estandar { sistema_origen, tipo_operacion, referencia_externa, fecha_documento, datos }. */
+function armarSobreContabilidad(reporte) {
+  return {
+    sistema_origen: SISTEMA_ORIGEN,
+    tipo_operacion: TIPO_OPERACION_CIERRE,
+    referencia_externa: `LOTE-${reporte.fecha}`,
+    fecha_documento: reporte.fecha,
+    datos: reporte,
+  };
+}
+
 function validarSolicitadoPor(valor, porDefecto) {
   const texto = typeof valor === "string" ? valor.trim() : "";
   if (!texto) return porDefecto;
@@ -36,9 +51,12 @@ async function intentarEnvio(envio) {
   const payload = envio.payload || (await enviosRepo.obtenerPorId(envio.id, { conPayload: true })).payload;
   const clave = `envio-${envio.id}`;
   const canal = cfg.PUBSUB_TOPIC ? "PUBSUB" : "HTTP";
+  const sobre = armarSobreContabilidad(payload);
   const r = canal === "PUBSUB"
-    ? await publicarReporte(payload, {
+    ? await publicarReporte(sobre, {
         tipo: payload.tipo,
+        tipo_operacion: sobre.tipo_operacion,
+        referencia_externa: sobre.referencia_externa,
         fecha: payload.fecha,
         envio_id: envio.id,
         idempotency_key: clave,
@@ -47,7 +65,7 @@ async function intentarEnvio(envio) {
       })
     : await enviarReporte(payload, clave);
   if (canal === "PUBSUB") {
-    await registrarEnvio({ servicio: "pagos_proveedores", tipo: payload.tipo || "LOTE_CIERRE", referencia: `LOTE-${payload.fecha}`, topico: cfg.PUBSUB_TOPIC, origen: cfg.GRUPO_ORIGEN, payload, ok: r.ok, messageId: r.messageId, error: r.error });
+    await registrarEnvio({ servicio: "pagos_proveedores", tipo: payload.tipo || "LOTE_CIERRE", referencia: sobre.referencia_externa, topico: cfg.PUBSUB_TOPIC, origen: cfg.GRUPO_ORIGEN, payload: sobre, ok: r.ok, messageId: r.messageId, error: r.error });
   }
   if (r.ok) return enviosRepo.marcarEnviado(envio, { ...r, canal });
   return enviosRepo.registrarFallo(envio, r, cfg.CONTABILIDAD_MAX_INTENTOS, cfg.CONTABILIDAD_BACKOFF_BASE_SEG, canal);
@@ -125,4 +143,4 @@ async function reenviarEnvio(id, { solicitado_por } = {}) {
   return intentarEnvio(envio);
 }
 
-module.exports = { enviarLote, enviarLoteAutomatico, intentarEnvio, listarEnvios, obtenerEnvio, reenviarEnvio };
+module.exports = { armarSobreContabilidad, enviarLote, enviarLoteAutomatico, intentarEnvio, listarEnvios, obtenerEnvio, reenviarEnvio };

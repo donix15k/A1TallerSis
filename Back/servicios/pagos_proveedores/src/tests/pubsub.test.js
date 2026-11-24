@@ -69,10 +69,17 @@ test("TDSI-656: publica el reporte en el topico y el envio queda ENVIADO con el 
   assert.deepEqual(falso.topicosPedidos, [TOPICO]);
 
   const [msg] = falso.publicados;
-  assert.equal(msg.json.tipo, "REPORTE_CIERRE_DIARIO");
-  assert.equal(msg.json.fecha, FECHA);
+  // Va dentro del sobre estandar que lee Contabilidad (Grupo D)
+  assert.equal(msg.json.sistema_origen, "GESTION_DE_PAGOS_Y_FACTURACION");
+  assert.equal(msg.json.tipo_operacion, "cierre_diario");
+  assert.equal(msg.json.referencia_externa, `LOTE-${FECHA}`);
+  assert.equal(msg.json.fecha_documento, FECHA);
+  assert.equal(msg.json.datos.tipo, "REPORTE_CIERRE_DIARIO");
+  assert.equal(msg.json.datos.fecha, FECHA);
   assert.deepEqual(msg.attributes, {
     tipo: "REPORTE_CIERRE_DIARIO",
+    tipo_operacion: "cierre_diario",
+    referencia_externa: `LOTE-${FECHA}`,
     fecha: FECHA,
     envio_id: String(envio.id),
     idempotency_key: `envio-${envio.id}`,
@@ -83,10 +90,10 @@ test("TDSI-656: publica el reporte en el topico y el envio queda ENVIADO con el 
   assert.equal(lote.rows[0].estado, "ENVIADO");
 });
 
-test("TDSI-656: el mensaje publicado es el mismo reporte guardado en el envio", async () => {
+test("TDSI-656: el mensaje publicado lleva el mismo reporte guardado en el envio, dentro del sobre", async () => {
   const envio = await enviarLote({ fecha: FECHA });
   const { rows } = await pool.query("SELECT payload FROM proveedores.envios_contabilidad WHERE id = $1", [envio.id]);
-  assert.deepEqual(falso.publicados[0].json, rows[0].payload);
+  assert.deepEqual(falso.publicados[0].json.datos, rows[0].payload);
 });
 
 test("TDSI-656: si Pub/Sub no esta disponible queda PENDIENTE y el worker lo publica despues", async () => {
