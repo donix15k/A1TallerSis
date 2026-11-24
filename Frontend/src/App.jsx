@@ -7,6 +7,7 @@ import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Cajeros from './pages/Cajeros.jsx'
 import Pagos from './pages/Pagos.jsx'
+import PagosProveedores from './pages/PagosProveedores.jsx'
 import Clientes from './pages/Clientes.jsx'
 import Facturas from './pages/Facturas.jsx'
 import TableroIngresos from './pages/TableroIngresos.jsx'
@@ -113,6 +114,7 @@ function App() {
           <Route path="/admin/libro-ventas" element={<RutaProtegidaAdmin><LibroVentas /></RutaProtegidaAdmin>} />
           <Route path="/admin/usuarios" element={<RutaProtegidaAdmin><Usuarios /></RutaProtegidaAdmin>} />
           <Route path="/admin/pubsub-verificacion" element={<RutaProtegidaAdmin><PubSubVerificacion /></RutaProtegidaAdmin>} />
+          <Route path="/admin/pagos-proveedores" element={<RutaProtegidaAdmin><PagosProveedores /></RutaProtegidaAdmin>} />
           <Route path="/admin/devoluciones" element={<RutaProtegidaAdmin><DevolucionesAdmin /></RutaProtegidaAdmin>} />
           <Route path="/admin/monitor-integraciones" element={<RutaProtegidaAdmin><MonitorIntegraciones /></RutaProtegidaAdmin>} />
           <Route path="/admin/simulacion" element={<RutaProtegidaAdmin><SimulacionGrupos /></RutaProtegidaAdmin>} />

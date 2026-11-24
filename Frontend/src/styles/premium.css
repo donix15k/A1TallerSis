@@ -1835,3 +1835,10 @@
 .kpi-tarjeta:hover,
 .kpi-tarjeta:focus-visible { z-index: 100; }
 .kpi-tip { z-index: 100; }
+
+/* Pagos a proveedores */
+.pp-datos { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pp-datos > div { padding: 0.5rem 0.75rem; border: 1px solid var(--vxp-borde); border-radius: 10px; background: #fff; }
+.pp-datos dt { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--vxp-texto-suave); }
+.pp-datos dd { margin: 2px 0 0; font-weight: 600; color: var(--vx-navy); overflow-wrap: anywhere; }
+.pp-vencida { background: #fff5f5; }
