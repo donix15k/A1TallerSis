@@ -1829,3 +1829,9 @@
 .kpi-det-lista li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; padding: 0.4rem 0.6rem; border-radius: 8px; background: #f8fafc; }
 .kpi-det-lista b { text-align: right; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .kpi-tip { transition: none; } }
+
+/* La tarjeta con el aviso abierto pasa por ENCIMA de todas las demas (antes las tarjetas siguientes la tapaban). */
+.kpi-tarjetas { position: relative; z-index: 5; }
+.kpi-tarjeta:hover,
+.kpi-tarjeta:focus-visible { z-index: 100; }
+.kpi-tip { z-index: 100; }
